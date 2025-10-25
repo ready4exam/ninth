@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -7,7 +7,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        // Consolidated Tailwind Configuration
         tailwind.config = {
             theme: {
                 extend: {
@@ -16,11 +15,11 @@
                         serif: ['Merriweather', 'serif'],
                     },
                     colors: {
-                        'cbse-blue': '#1a3e6a',      // Primary dark blue
-                        'cbse-light': '#f0f4f8',     // Light background
-                        'accent-green': '#059669',  // Chemistry/Bio
-                        'accent-red': '#dc2626',    // Biology
-                        'accent-blue': '#2563eb',   // Physics
+                        'cbse-blue': '#1a3e6a',
+                        'cbse-light': '#f0f4f8',
+                        'accent-green': '#059669', // Chemistry Color
+                        'accent-red': '#dc2626',   // Biology Color
+                        'accent-blue': '#2563eb',  // Physics Color
                         'unit-bg': '#e3f2fd',
                     }
                 }
@@ -33,354 +32,210 @@
             transition: all 0.3s ease;
             cursor: pointer;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+            transform: translate(0);
         }
         .book-card:hover {
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-            transform: translateY(-4px); 
-        }
-        .chapter-card {
-            border-left-width: 4px;
-        }
-        .nav-link {
-            padding: 0.25rem 0.75rem;
-            border-radius: 0.5rem;
-            color: #4b5563; 
-            transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
-        }
-        .nav-link:hover {
-            background-color: #f0f4f8; 
-            color: #1a3e6a; 
-        }
-
-        /* --- ACCORDION STYLES --- */
-        .unit-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.4s ease-in-out;
-        }
-        .unit-header.active .icon-rotate {
-            transform: rotate(180deg);
-        }
-        
-        /* Mock Test Card Styling */
-        .mock-test-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-        .mock-test-card:hover {
-            transform: translateY(-4px) scale(1.02);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+            transform: translateY(-4px);
         }
     </style>
 </head>
+<body class="min-h-screen bg-cbse-light">
 
-<body class="bg-cbse-light min-h-screen font-sans">
-
-    <header class="bg-white shadow-md sticky top-0 z-10">
+    <header class="bg-white shadow sticky top-0 z-10">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-            <a href="#" id="header-home-btn" class="flex items-center space-x-2 cursor-pointer">
-                <span data-lucide="book-open-text" class="w-8 h-8 text-cbse-blue"></span>
-                <h1 class="text-xl font-bold text-cbse-blue">Class 9 Science</h1>
-            </a>
+            <h1 class="text-xl font-bold text-cbse-blue cursor-pointer">CBSE Class 9 Science</h1>
             <nav>
-                <a href="#" class="nav-link">Home</a>
-                <a href="#" class="nav-link">Quizzes</a>
+                <button id="backToBooksBtn" class="nav-link hidden px-3 py-1 rounded-lg text-gray-600 hover:bg-cbse-light hover:text-cbse-blue transition" title="Back to Subjects">
+                    <i data-lucide="book-open-text" class="w-5 h-5"></i>
+                </button>
             </nav>
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        <!-- Book Selection View -->
-        <section id="book-select-view" class="space-y-8">
-            <h2 class="text-3xl font-bold text-cbse-blue mb-6 border-b-2 pb-2">Select a Science Stream 🚀</h2>
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                
-                <!-- Physics Card -->
-                <div class="book-card book-select-btn bg-accent-blue/10 p-6 rounded-xl" 
-                    data-book="Physics" 
-                    data-title="Physics" 
-                    data-color="#2563eb">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <span data-lucide="zap" class="w-12 h-12 text-accent-blue mb-3"></span>
-                        <h2 class="text-xl font-bold text-cbse-blue text-center">Physics</h2>
-                        <p class="text-sm text-gray-600 text-center mt-1">(Motion, Force, Gravitation, Work, Sound)</p>
-                    </div>
-                </div>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
 
-                <!-- Chemistry Card -->
-                <div class="book-card book-select-btn bg-accent-green/10 p-6 rounded-xl"
-                    data-book="Chemistry" 
-                    data-title="Chemistry" 
-                    data-color="#059669">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <span data-lucide="atom" class="w-12 h-12 text-accent-green mb-3"></span>
-                        <h2 class="text-xl font-bold text-cbse-blue text-center">Chemistry</h2>
-                        <p class="text-sm text-gray-600 text-center mt-1">(Matter, Atoms, Molecules, Structure of Atom)</p>
-                    </div>
-                </div>
+        <div id="book-select-view" class="p-6 md:p-10 min-h-screen bg-cbse-light">
+            <h2 class="text-3xl font-extrabold text-cbse-blue mb-8 text-center">Select Subject Stream</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
 
-                <!-- Biology Card -->
-                <div class="book-card book-select-btn bg-accent-red/10 p-6 rounded-xl"
-                    data-book="Biology" 
-                    data-title="Biology" 
-                    data-color="#dc2626">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <span data-lucide="dna" class="w-12 h-12 text-accent-red mb-3"></span>
-                        <h2 class="text-xl font-bold text-cbse-blue text-center">Biology</h2>
-                        <p class="text-sm text-gray-600 text-center mt-1">(Cell, Tissues, Food Resources)</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Full Mock Test Card -->
-            <div class="mt-12">
-                <div class="mock-test-card p-8 rounded-2xl shadow-xl text-white">
-                    <div class="flex flex-col md:flex-row items-center justify-between">
-                        <div class="mb-4 md:mb-0">
-                            <h3 class="text-2xl font-bold mb-2 flex items-center">
-                                <span data-lucide="award" class="w-8 h-8 mr-3"></span>
-                                Full Science Mock Test
-                            </h3>
-                            <p class="text-white/90">Test your readiness with a full-length examination covering Physics, Chemistry, and Biology chapters.</p>
+                <div class="book-card book-select-btn bg-white rounded-xl shadow-lg p-6 border-l-4 border-accent-green" 
+                    data-book="chemistry" 
+                    data-title="Chemistry: Matter and The Atom" 
+                    data-color="accent-green">
+                    <div class="flex items-start space-x-4">
+                        <i data-lucide="flask-conical" class="w-8 h-8 text-accent-green mt-1"></i>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-500 uppercase tracking-wider">Unit I & II</p>
+                            <h3 class="text-xl font-bold text-gray-800">Chemistry</h3>
+                            <p class="text-gray-600 mt-2">Study of matter, its structure, and fundamental laws.</p>
+                            <span class="inline-block mt-3 text-sm font-medium text-accent-green">View Chapters</span>
                         </div>
-                        <button id="mock-test-btn" class="bg-white text-purple-700 px-8 py-3 rounded-lg font-bold hover:bg-purple-50 transition transform hover:scale-105 shadow-lg">
-                            Start Mock Test
-                        </button>
                     </div>
                 </div>
-            </div>
-        </section>
 
-        <!-- Unit Selection View -->
-        <section id="unit-select-view" class="hidden space-y-6">
-            <button id="back-to-books-btn" class="text-cbse-blue hover:text-cbse-blue/80 flex items-center mb-6 transition">
-                <span data-lucide="arrow-left" class="w-5 h-5 mr-2"></span> Back to Subject Selection
-            </button>
-            
-            <h2 id="unit-title" class="text-3xl font-bold text-cbse-blue mb-6 border-l-4 pl-3 pb-1 border-cbse-blue"></h2>
-            
-            <div id="unit-content" class="space-y-4">
-            </div>
-        </section>
+                <div class="book-card book-select-btn bg-white rounded-xl shadow-lg p-6 border-l-4 border-accent-red" 
+                    data-book="biology" 
+                    data-title="Biology: Cell, Tissues, and Health" 
+                    data-color="accent-red">
+                    <div class="flex items-start space-x-4">
+                        <i data-lucide="leaf" class="w-8 h-8 text-accent-red mt-1"></i>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-500 uppercase tracking-wider">Unit IV & V</p>
+                            <h3 class="text-xl font-bold text-gray-800">Life Science (Biology)</h3>
+                            <p class="text-gray-600 mt-2">Fundamental units of life, diversity, and health concepts.</p>
+                            <span class="inline-block mt-3 text-sm font-medium text-accent-red">View Chapters</span>
+                        </div>
+                    </div>
+                </div>
 
-        <!-- Difficulty Selection View -->
-        <section id="difficulty-select-view" class="hidden space-y-6">
-            <button id="back-to-chapters-btn" class="text-cbse-blue hover:text-cbse-blue/80 flex items-center mb-6 transition">
-                <span data-lucide="arrow-left" class="w-5 h-5 mr-2"></span> Back to Chapter List
-            </button>
-            
-            <div id="difficulty-content" class="text-center p-8 bg-white rounded-lg shadow-xl">
-                 <h2 id="difficulty-title" class="text-2xl font-bold mb-8 text-cbse-blue">Select Difficulty</h2>
+                <div class="book-card book-select-btn bg-white rounded-xl shadow-lg p-6 border-l-4 border-accent-blue" 
+                    data-book="physics" 
+                    data-title="Physics: Motion, Force, and Work" 
+                    data-color="accent-blue">
+                    <div class="flex items-start space-x-4">
+                        <i data-lucide="rocket" class="w-8 h-8 text-accent-blue mt-1"></i>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-500 uppercase tracking-wider">Unit III</p>
+                            <h3 class="text-xl font-bold text-gray-800">Physics</h3>
+                            <p class="text-gray-600 mt-2">The laws of motion, gravitation, work, and sound.</p>
+                            <span class="inline-block mt-3 text-sm font-medium text-accent-blue">View Chapters</span>
+                        </div>
+                    </div>
+                </div>
+
             </div>
-        </section>
+        </div>
+
+        <div id="unit-view" class="hidden p-6 md:p-10 min-h-screen">
+            <h2 id="unit-title" class="text-3xl font-extrabold text-cbse-blue mb-2"></h2>
+            <p id="unit-subtitle" class="text-xl text-gray-600 mb-8">Select a chapter to start the quiz.</p>
+            <div id="chapter-list" class="space-y-4 max-w-3xl mx-auto">
+                </div>
+        </div>
 
     </main>
 
     <script>
-        
-        const unitSelectView = document.getElementById('unit-select-view');
-        const bookSelectView = document.getElementById('book-select-view');
-        const difficultySelectView = document.getElementById('difficulty-select-view');
-        const backToBooksBtn = document.getElementById('back-to-books-btn');
-        const backToChaptersBtn = document.getElementById('back-to-chapters-btn');
-        const headerHomeBtn = document.getElementById('header-home-btn');
-        const mockTestBtn = document.getElementById('mock-test-btn');
-
-        let currentBookTitle = ''; 
-        let currentBookKey = '';
-        let currentBookColor = '';
-
-        // --- Consolidated Chapter Data (Grouped by Units) ---
-        const bookData = {
-            'Physics': [
-                { 
-                    unit: 'UNIT I: Motion & Force', 
-                    chapters: [
-                        { chapter: "Motion", file: "motion_quiz.html", concepts: "Displacement, Velocity, Acceleration, Graphical Representation of Motion." },
-                        { chapter: "Force and Laws of Motion", file: "force_quiz.html", concepts: "Balanced/Unbalanced Forces, Newton's Laws, Momentum." },
-                        { chapter: "Gravitation", file: "gravitation_quiz.html", concepts: "Universal Law of Gravitation, Free Fall, Mass, Weight, Buoyancy." },
-                    ]
-                },
-                { 
-                    unit: 'UNIT II: Work & Sound', 
-                    chapters: [
-                        { chapter: "Work and Energy", file: "work_quiz.html", concepts: "Work Done, Kinetic Energy, Potential Energy, Conservation of Energy, Power." },
-                        { chapter: "Sound", file: "sound_quiz.html", concepts: "Production, Propagation, Characteristics (Pitch, Loudness), Reflection, Echo, SONAR." }
-                    ]
-                },
+        // --- DATA STRUCTURE: The central hub for all chapters and their quiz table links ---
+        const allChapters = {
+            'chemistry': [
+                // Chapters 1-4
+                { chapter: 'matter_surroundings', title: 'Chapter 1: Matter in Our Surroundings', subtitle: 'Chemistry', icon: 'flask-conical', quiz_table: 'matter_quiz', color: 'accent-green' },
+                { chapter: 'is_matter_pure', title: 'Chapter 2: Is Matter Around Us Pure', subtitle: 'Chemistry', icon: 'droplets', quiz_table: 'pure_matter_quiz', color: 'accent-green' },
+                { chapter: 'atoms_molecules', title: 'Chapter 3: Atoms and Molecules', subtitle: 'Chemistry', icon: 'atom', quiz_table: 'atoms_quiz', color: 'accent-green' },
+                { chapter: 'structure_atom', title: 'Chapter 4: Structure of the Atom', subtitle: 'Chemistry', icon: 'nucleus', quiz_table: 'structure_atom_quiz', color: 'accent-green' }
             ],
-            'Chemistry': [
-                { 
-                    unit: 'UNIT III: Matter & Structure',
-                    chapters: [
-                        { chapter: "Matter in Our Surroundings", file: "matter_surroundings_quiz.html", concepts: "States of Matter, Interconversion of States, Evaporation." },
-                        { chapter: "Is Matter Around Us Pure", file: "pure_matter_quiz.html", concepts: "Mixtures, Solutions, Colloids, Suspensions, Separation Techniques." },
-                        { chapter: "Atoms and Molecules", file: "atoms_molecules_quiz.html", concepts: "Laws of Chemical Combination, Atomic Mass, Mole Concept." },
-                        { chapter: "Structure of the Atom", file: "atom_structure_quiz.html", concepts: "Electrons, Protons, Neutrons, Bohr's Model, Isotopes, Isobars." }
-                    ]
-                }
+            'biology': [
+                // Chapters 5, 6, 7, 13, 15
+                { chapter: 'life', title: 'Chapter 5: The Fundamental Unit of Life (Cell)', subtitle: 'Biology', icon: 'dna', quiz_table: 'cell_quiz', color: 'accent-red' },
+                { chapter: 'tissues', title: 'Chapter 6: Tissues', subtitle: 'Biology', icon: 'microscope', quiz_table: 'tissues_quiz', color: 'accent-red' },
+                { chapter: 'diversity', title: 'Chapter 7: Diversity in Living Organisms', subtitle: 'Biology', icon: 'tree-deciduous', quiz_table: 'diversity_quiz', color: 'accent-red' },
+                { chapter: 'health', title: 'Chapter 13: Why Do We Fall Ill', subtitle: 'Biology', icon: 'heart-pulse', quiz_table: 'health_quiz', color: 'accent-red' },
+                { chapter: 'food_production', title: 'Chapter 15: Improvement in Food Resources', subtitle: 'Biology', icon: 'wheat', quiz_table: 'food_quiz', color: 'accent-red' }
             ],
-            'Biology': [
-                {
-                    unit: 'UNIT IV: Cell, Tissues, and Food Resources',
-                    chapters: [
-                        { chapter: "The Fundamental Unit of Life", file: "cell_quiz.html", concepts: "Cell Theory, Prokaryotic/Eukaryotic Cells, Cell Organelles." },
-                        { chapter: "Tissues", file: "tissues_quiz.html", concepts: "Plant Tissues (Meristematic, Permanent), Animal Tissues (Epithelial, Connective, Muscular, Nervous)." },
-                        { chapter: "Improvement in Food Resources", file: "food_resources_quiz.html", concepts: "Crop Variety Improvement, Crop Protection Management, Animal Husbandry." }
-                    ]
-                }
+            'physics': [
+                // Chapters 8, 9, 10, 11, 12
+                { chapter: 'motion', title: 'Chapter 8: Motion', subtitle: 'Physics', icon: 'move-right', quiz_table: 'motion_quiz', color: 'accent-blue' },
+                { chapter: 'force', title: 'Chapter 9: Force and Laws of Motion', subtitle: 'Physics', icon: 'grip', quiz_table: 'force_quiz', color: 'accent-blue' },
+                { chapter: 'gravitation', title: 'Chapter 10: Gravitation', subtitle: 'Physics', icon: 'globe', quiz_table: 'gravitation_quiz', color: 'accent-blue' },
+                { chapter: 'work', title: 'Chapter 11: Work and Energy', subtitle: 'Physics', icon: 'bolt', quiz_table: 'work_quiz', color: 'accent-blue' },
+                { chapter: 'sound', title: 'Chapter 12: Sound', subtitle: 'Physics', icon: 'volume-2', quiz_table: 'sound_quiz', color: 'accent-blue' }
             ]
         };
 
-        // --- Core View Management ---
-        function showView(viewName) {
-            bookSelectView.classList.add('hidden');
-            unitSelectView.classList.add('hidden');
-            difficultySelectView.classList.add('hidden');
+        // --- VIEW MANAGEMENT ---
 
-            if (viewName === 'book-select') {
-                bookSelectView.classList.remove('hidden');
-            } else if (viewName === 'unit-select') {
-                unitSelectView.classList.remove('hidden');
-            } else if (viewName === 'difficulty-select') {
-                difficultySelectView.classList.remove('hidden');
+        function showView(viewId) {
+            document.getElementById('book-select-view').classList.add('hidden');
+            document.getElementById('unit-view').classList.add('hidden');
+            document.getElementById(viewId).classList.remove('hidden');
+
+            // Toggle Header Buttons
+            if (viewId === 'book-select-view') {
+                document.getElementById('backToBooksBtn').classList.add('hidden');
+            } else if (viewId === 'unit-view') {
+                document.getElementById('backToBooksBtn').classList.remove('hidden');
             }
-            window.scrollTo(0, 0); 
+        }
+        
+        // Helper function to redirect for a hypothetical 'home' page
+        function redirectToIndex() {
+             // Change this to your actual index page if needed (e.g., 'index_class_9.html')
+             // For now, it just reloads the current page (science.html)
+             window.location.reload(); 
         }
 
-        // --- Chapter Rendering Logic (Accordion/Unit structure) ---
-        function getUnitsHTML(bookKey, color) {
-            const units = bookData[bookKey] || [];
-            let html = '';
+        function renderChapterCard(chapterData, bookColor) {
+            // Dynamically applies the subject color border
+            const cardColor = `var(--tw-colors-${bookColor})`;
 
-            if (units.length === 0 || !units[0].unit) {
-                return `<div class="text-gray-700 p-4 rounded-lg bg-yellow-50 border-l-4 border-yellow-500 col-span-full">
-                    Chapter list for <strong>${bookKey}</strong> is currently under development or not grouped by units.
-                </div>`;
-            }
-
-            units.forEach((unitItem, index) => {
-                const unitId = `${bookKey}-unit-${index}`;
-
-                let chaptersHtml = unitItem.chapters.map((chapter) => `
-                    <div class="chapter-card bg-white p-4 rounded-lg shadow border-l-4 flex justify-between items-center" style="border-color: ${color};">
+            const cardHtml = `
+                <div class="bg-white rounded-lg shadow-md p-5 flex items-center justify-between border-l-4" style="border-left-color: ${cardColor};">
+                    <div class="flex items-center space-x-4">
+                        <div class="p-3 rounded-full bg-cbse-light">
+                            <i data-lucide="${chapterData.icon}" class="w-5 h-5 text-cbse-blue"></i>
+                        </div>
                         <div>
-                            <span class="text-gray-700 font-medium block">${chapter.chapter}</span>
-                            <p class="text-xs text-gray-500 mt-1">${chapter.concepts}</p>
+                            <h4 class="text-lg font-semibold text-gray-800">${chapterData.title}</h4>
+                            <p class="text-sm text-gray-500">${chapterData.subtitle}</p>
                         </div>
-                        <button class="quiz-button bg-cbse-blue text-white px-4 py-2 text-sm font-semibold rounded-lg hover:bg-cbse-blue/90 transition" 
-                            data-chapter="${chapter.chapter}" 
-                            data-file="${chapter.file}"
-                            data-color="${color}"
-                            data-book="${bookKey}">
-                            Start Quiz
-                        </button>
                     </div>
-                `).join('');
+                    <button class="quiz-btn bg-cbse-blue text-white font-medium py-2 px-4 rounded-lg hover:bg-opacity-90 transition" 
+                            data-chapter="${chapterData.chapter}"
+                            data-table="${chapterData.quiz_table}">
+                        Start Quiz
+                    </button>
+                </div>
+            `;
+            return cardHtml;
+        }
 
-                html += `
-                    <div class="border border-gray-200 rounded-xl overflow-hidden mb-6">
-                        <div class="unit-header bg-unit-bg p-4 flex justify-between items-center font-bold text-gray-700 hover:bg-unit-bg/80 active cursor-pointer transition duration-150" data-target="${unitId}">
-                            <span>${unitItem.unit}</span>
-                            <span data-lucide="chevron-down" class="icon-rotate w-5 h-5 transition-transform duration-300"></span>
-                        </div>
-                        <div id="${unitId}" class="unit-content p-4 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-                            ${chaptersHtml}
-                        </div>
-                    </div>
-                `;
+        // --- Core Logic: Populates the chapter list when a subject card is clicked ---
+        function showUnits(book, title, color) {
+            document.getElementById('unit-title').textContent = title;
+            
+            const chapterList = document.getElementById('chapter-list');
+            chapterList.innerHTML = '';
+            
+            const chapters = allChapters[book] || [];
+            
+            chapters.forEach(chapter => {
+                chapterList.innerHTML += renderChapterCard(chapter, color);
             });
 
-            return html;
+            // Re-render lucide icons for the newly injected HTML
+            lucide.createIcons();
+            
+            // Re-attach event listeners for the new quiz buttons
+            chapterList.querySelectorAll('.quiz-btn').forEach(button => {
+                button.addEventListener('click', handleQuizButtonClick);
+            });
+
+            showView('unit-view');
         }
 
-        // --- Accordion Logic ---
-        function initAccordion() {
-            document.querySelectorAll('.unit-header').forEach(header => {
-                const content = document.getElementById(header.dataset.target);
-                if (content) {
-                    // Set initial state to open
-                    content.style.maxHeight = content.scrollHeight + "px";
-                    header.classList.add('active');
 
-                    header.removeEventListener('click', handleAccordionClick);
-                    header.addEventListener('click', handleAccordionClick);
+        function attachEventListeners() {
+            // Attach listeners to all book selection cards
+            document.querySelectorAll('.book-select-btn').forEach(card => {
+                if (!card.hasAttribute('data-listener-attached')) {
+                    card.addEventListener('click', handleBookSelectClick);
+                    card.setAttribute('data-listener-attached', 'true');
                 }
             });
-        }
-
-        function handleAccordionClick(event) {
-            const header = event.currentTarget;
-            const content = document.getElementById(header.dataset.target);
-
-            header.classList.toggle('active');
-            if (header.classList.contains('active')) {
-                content.style.maxHeight = content.scrollHeight + "px";
-            } else {
-                content.style.maxHeight = '0';
-            }
-        }
-
-        // --- Difficulty Selection Function ---
-        function renderDifficultySelection(chapterName, chapterFile, color) {
-            showView('difficulty-select');
-
-            document.getElementById('difficulty-title').textContent = `Select Difficulty for ${chapterName} Quiz`;
-
-            const difficulties = ['Simple', 'Medium', 'Advanced'];
             
-            let buttonColorClass;
-            switch(color) {
-                case '#2563eb': buttonColorClass = 'bg-accent-blue hover:bg-accent-blue/90 focus:ring-accent-blue/50'; break; 
-                case '#059669': buttonColorClass = 'bg-accent-green hover:bg-accent-green/90 focus:ring-accent-green/50'; break; 
-                case '#dc2626': buttonColorClass = 'bg-accent-red hover:bg-accent-red/90 focus:ring-accent-red/50'; break; 
-                default: buttonColorClass = 'bg-cbse-blue hover:bg-cbse-blue/90 focus:ring-cbse-blue/50';
-            }
-            
-            const buttonHTML = difficulties.map(difficulty => `
-                <a href="${chapterFile}?difficulty=${difficulty}" 
-                   class="inline-block px-8 py-3 m-2 text-white font-bold rounded-lg shadow-xl ${buttonColorClass} transition transform hover:scale-105 focus:outline-none focus:ring-4">
-                    ${difficulty} Level
-                </a>
-            `).join('');
-
-            document.getElementById('difficulty-content').innerHTML = `
-                <h2 class="text-2xl font-bold mb-8 text-cbse-blue">${document.getElementById('difficulty-title').textContent}</h2>
-                ${buttonHTML}
-            `;
-        }
-
-        // --- Unit Selection Function ---
-        function showUnits(bookKey, title, color) {
-            showView('unit-select');
-
-            currentBookTitle = title; 
-            currentBookKey = bookKey;
-            currentBookColor = color;
-
-            const unitTitle = document.getElementById('unit-title');
-            unitTitle.textContent = title + ' Chapters';
-            
-            unitTitle.className = 'text-3xl font-bold text-cbse-blue mb-6 border-l-4 pl-3 pb-1';
-            unitTitle.style.borderColor = color; 
-            
-            const unitContent = document.getElementById('unit-content');
-            
-            unitContent.innerHTML = getUnitsHTML(bookKey, color);
-            lucide.createIcons();
-            attachEventListeners();
-            setTimeout(initAccordion, 10); // Initialize accordion after content is loaded
+            // Global Nav Listeners
+            document.querySelector('header h1').addEventListener('click', redirectToIndex);
+            document.getElementById('backToBooksBtn').addEventListener('click', () => showView('book-select-view'));
         }
 
         // --- Event Handlers ---
+
         function handleQuizButtonClick(event) {
             const chapterName = event.currentTarget.dataset.chapter;
-            const chapterFile = event.currentTarget.dataset.file;
-            const color = event.currentTarget.dataset.color; 
-            renderDifficultySelection(chapterName, chapterFile, color);
+            // The logic here is to redirect to a quiz page using the chapter name
+            startQuiz(chapterName);
         }
 
         function handleBookSelectClick(event) {
@@ -391,47 +246,22 @@
             showUnits(book, title, color);
         }
 
-        // --- Function to attach listeners to all dynamic buttons ---
-        function attachEventListeners() {
-            // Attach listeners for the subject cards
-            document.querySelectorAll('.book-select-btn').forEach(card => {
-                card.removeEventListener('click', handleBookSelectClick);
-                card.addEventListener('click', handleBookSelectClick);
-            });
-            
-            // Attach listeners for the chapter quiz buttons
-            document.querySelectorAll('.quiz-button').forEach(button => {
-                button.removeEventListener('click', handleQuizButtonClick);
-                button.addEventListener('click', handleQuizButtonClick);
-            });
+        // --- Quiz Redirection Placeholder ---
+        function startQuiz(chapterName) {
+            // This is the action for the Quiz button. 
+            // It assumes your quiz files are named like 'motion_quiz.html'
+            window.location.href = `${chapterName}_quiz.html`;
         }
-        
+
         // --- Initialization on Document Load ---
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
-
             attachEventListeners();
             
-            // Navigation buttons
-            headerHomeBtn.addEventListener('click', (e) => {
-                e.preventDefault(); 
-                showView('book-select');
-            });
-            
-            backToBooksBtn.addEventListener('click', () => showView('book-select'));
-            
-            // Back button from Difficulty to Chapters
-            backToChaptersBtn.addEventListener('click', () => {
-                showUnits(currentBookKey, currentBookTitle, currentBookColor);
-            });
-            
-            // Mock Test button
-            mockTestBtn.addEventListener('click', () => {
-                alert('Mock Test feature coming soon! This will include questions from all subjects.');
-                // You can link to: window.location.href = 'full_science_mock_test.html';
-            });
+            // Start on the book-select view
+            showView('book-select-view');
         });
-        
+
     </script>
 </body>
 </html>
