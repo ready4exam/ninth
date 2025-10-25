@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motion Chapter Quiz</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script> 
+    <script src="/js/config.js"></script> <style>
+        .quiz-container { max-width: 800px; }
+        .btn-primary { background-color: #1a3e6a; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; }
+    </style>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'], },
+                    colors: {
+                        'cbse-blue': '#1a3e6a', 
+                        'cbse-light': '#f0f4f8', 
+                        'accent-green': '#059669', 
+                        'correct': '#10b981', 
+                        'incorrect': '#ef4444', 
+                    }
+                }
+            }
+        }
+
+        // === START: Quiz Specific Configuration ===
+        const TABLE_NAME = 'motion'; 
+        // === END: Quiz Specific Configuration ===
+
+        let allQuestions = [];
+        let currentQuizQuestions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let selectedDifficulty = '';
+
+        function initSupabase() {
+            if (typeof SUPABASE_URL === 'undefined' || typeof SUPABASE_KEY === 'undefined') {
+                document.getElementById('quiz-container').innerHTML = `<p class="error-message text-red-700 bg-red-100 p-4 rounded">Configuration Error: SUPABASE_URL or SUPABASE_KEY not defined. Check **js/config.js**.</p>`;
+                return;
+            }
+            const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            fetchQuizData(supabaseClient); 
+        }
+
+        async function fetchQuizData(supabaseClient) {
+            const container = document.getElementById('quiz-container');
+
+            const { data: quizData, error } = await supabaseClient
+                .from(TABLE_NAME) 
+                .select('*');
+
+            if (error) {
+                if (container) {
+                    container.innerHTML = `<p class="error-message text-red-700 bg-red-100 p-4 rounded">Error retrieving questions: ${error.message}. Please check RLS policy for the table **${TABLE_NAME}**.</p>`;
+                }
+                return;
+            }
+
+            if (quizData && quizData.length > 0) {
+                allQuestions = quizData;
+                renderDifficultySelection(quizData);
+            } else {
+                if (container) {
+                    container.innerHTML = `<p class="text-gray-700 p-4 rounded">No questions found for table **${TABLE_NAME}**.</p>`;
+                }
+            }
+        }
+
+        function renderDifficultySelection(data) {
+            const container = document.getElementById('quiz-container');
+            const difficulties = [...new Set(data.map(q => q.difficulty))]; 
+
+            if (difficulties.length === 0) {
+                 container.innerHTML = `<p class="text-gray-700 p-4 rounded">No questions found for table **${TABLE_NAME}**.</p>`;
+                 return;
+            }
+
+            let difficultyOptions = difficulties.map(d => 
+                `<button class="difficulty-btn btn-primary m-2 hover:bg-cbse-blue/80" data-difficulty="${d}">Start ${d} Quiz</button>`
+            ).join('');
+
+            container.innerHTML = `
+                <div class="text-center p-6 bg-white rounded-lg shadow-xl">
+                    <h2 class="text-2xl font-bold mb-4 text-cbse-blue">Select Difficulty for the ${TABLE_NAME.toUpperCase()} Chapter Quiz</h2>
+                    <div class="flex justify-center flex-wrap">
+                        ${difficultyOptions}
+                    </div>
+                </div>
+            `;
+
+            document.querySelectorAll('.difficulty-btn').forEach(button => {
+                button.addEventListener('click', (e) => startQuiz(e.target.dataset.difficulty));
+            });
+        }
+
+        function startQuiz(difficulty) {
+            selectedDifficulty = difficulty;
+            currentQuizQuestions = allQuestions.filter(q => q.difficulty === difficulty);
+            
+            if (currentQuizQuestions.length === 0) {
+                alert(`No ${difficulty} questions found.`);
+                renderDifficultySelection(allQuestions);
+                return;
+            }
+
+            currentQuizQuestions.sort(() => Math.random() - 0.5); 
+            currentQuestionIndex = 0;
+            score = 0;
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            const container = document.getElementById('quiz-container');
+            if (currentQuestionIndex >= currentQuizQuestions.length) {
+                renderResults();
+                return;
+            }
+
+            const q = currentQuizQuestions[currentQuestionIndex];
+            
+            const options = [];
+            if (q.option_a) options.push({ key: 'A', text: q.option_a });
+            if (q.option_b) options.push({ key: 'B', text: q.option_b });
+            if (q.option_c) options.push({ key: 'C', text: q.option_c });
+            if (q.option_d) options.push({ key: 'D', text: q.option_d });
+
+            const optionButtons = options.map(opt => `
+                <button class="option-btn w-full text-left p-3 my-2 border rounded-lg bg-cbse-light hover:bg-cbse-blue/20 transition" data-key="${opt.key}">
+                    <span class="font-semibold text-cbse-blue mr-2">${opt.key}.</span> ${opt.text}
+                </button>
+            `).join('');
+            
+            container.innerHTML = `
+                <div class="p-6 bg-white rounded-lg shadow-xl">
+                    <div class="text-sm font-medium mb-2 text-cbse-blue">Question ${currentQuestionIndex + 1} of ${currentQuizQuestions.length} (Difficulty: ${selectedDifficulty})</div>
+                    <h3 class="text-lg font-bold mb-4">${q.question_text}</h3>
+                    ${q.scenario_reason_text ? `<p class="text-sm italic mb-4 p-2 bg-gray-100 rounded">${q.scenario_reason_text}</p>` : ''}
+                    <div id="options-container">
+                        ${optionButtons}
+                    </div>
+                    <div id="feedback-container" class="mt-4 text-center"></div>
+                </div>
+            `;
+
+            document.querySelectorAll('.option-btn').forEach(button => {
+                button.addEventListener('click', handleAnswerClick);
+            });
+        }
+
+        function handleAnswerClick(event) {
+            const selectedKey = event.target.closest('.option-btn').dataset.key;
+            const currentQuestion = currentQuizQuestions[currentQuestionIndex];
+            const correctKey = currentQuestion.correct_answer_key;
+            const feedbackContainer = document.getElementById('feedback-container');
+
+            document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true);
+
+            document.querySelectorAll('.option-btn').forEach(btn => {
+                if (btn.dataset.key === selectedKey) {
+                    btn.style.backgroundColor = (selectedKey === correctKey) ? '#10b981' : '#ef4444'; 
+                    btn.style.color = 'white';
+                }
+                if (btn.dataset.key === correctKey && selectedKey !== correctKey) {
+                    btn.style.border = '2px solid #10b981'; 
+                }
+            });
+
+            if (selectedKey === correctKey) {
+                score++;
+                feedbackContainer.innerHTML = `<p class="text-correct font-bold">Correct! ✅</p>`;
+            } else {
+                feedbackContainer.innerHTML = `<p class="text-incorrect font-bold">Incorrect. The correct answer was ${correctKey}. ❌</p>`;
+            }
+
+            const nextButton = document.createElement('button');
+            nextButton.textContent = 'Next Question';
+            nextButton.className = 'btn-primary mt-4 hover:bg-cbse-blue/80';
+            nextButton.onclick = () => {
+                currentQuestionIndex++;
+                renderQuestion();
+            };
+            feedbackContainer.appendChild(nextButton);
+        }
+
+        function renderResults() {
+            const container = document.getElementById('quiz-container');
+            container.innerHTML = `
+                <div class="text-center p-6 bg-white rounded-lg shadow-xl">
+                    <h2 class="text-2xl font-bold mb-4 text-cbse-blue">Quiz Complete!</h2>
+                    <p class="text-xl mb-4">You scored: <span class="font-extrabold text-accent-green">${score} / ${currentQuizQuestions.length}</span></p>
+                    <p class="mb-6">Thanks for taking the **${TABLE_NAME.toUpperCase()}** chapter quiz.</p>
+                    <button class="btn-primary m-2 hover:bg-cbse-blue/80" onclick="renderDifficultySelection(allQuestions)">Select New Difficulty</button>
+                    <button class="btn-primary m-2 hover:bg-cbse-blue/80" onclick="window.location.href='science.html'">Back to Subjects</button>
+                </div>
+            `;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('quiz-container');
+            if (container) {
+                container.innerHTML = `<div class="text-center p-6 bg-white rounded-lg shadow-xl">Loading Quiz Data...</div>`;
+            }
+            initSupabase();
+        });
+
+    </script>
+</head>
+<body class="bg-cbse-light min-h-screen flex items-center justify-center p-4">
+    <div id="quiz-container" class="quiz-container w-full">
+    </div>
+</body>
+</html>
