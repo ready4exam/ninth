@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CBSE Class 9: Motion Quiz</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'cbse-blue': '#1a3e6a', 
+                        'cbse-light': '#f0f4f8', 
+                        'accent-blue': '#2563eb', // Physics Accent
+                        'correct': '#10b981', /* Emerald 500 */
+                        'incorrect': '#ef4444', /* Red 500 */
+                    }
+                }
+            }
+        }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script> 
+
+    <script src="/js/config.js"></script> 
+    <script>
+        // --- QUIZ CONFIGURATION ---
+        const TABLE_NAME = 'motion'; 
+        const CHAPTER_TITLE = 'Chapter 7: Motion';
+        const CONFIG_PATH = '/js/config.js'; // Display path
+        // --------------------------
+        
+        // GLOBAL VARIABLES
+        let quizData = [];
+        let currentQuiz = [];
+        let questionIndex = 0;
+        let score = 0;
+        let quizAttempts = 0;
+        let questionsPerQuiz = 10;
+        let supabaseClient;
+
+        // Utility to shuffle an array
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // --- SUPABASE INITIALIZATION ---
+
+        function initSupabase() {
+            const container = document.getElementById('quiz-container');
+            if (typeof SUPABASE_URL === 'undefined' || typeof SUPABASE_ANON_KEY === 'undefined') {
+                if (container) {
+                    container.innerHTML = `<p class="error-message text-red-700 bg-red-100 p-4 rounded">Error: config.js not loaded or missing SUPABASE_URL/SUPABASE_ANON_KEY. Please ensure the file is at **${CONFIG_PATH}**.</p>`;
+                }
+                return;
+            }
+
+            try {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log("Supabase client initialized successfully. Attempting to fetch quiz data.");
+                fetchQuizData(supabaseClient); 
+            } catch (e) {
+                if (container) {
+                    container.innerHTML = `<p class="error-message text-red-700 bg-red-100 p-4 rounded">Error initializing Supabase: ${e.message}</p>`;
+                }
+            }
+        }
+
+        async function fetchQuizData(supabaseClient) {
+            const container = document.getElementById('quiz-container');
+
+            const { data: rawQuizData, error } = await supabaseClient
+                .from(TABLE_NAME) 
+                .select('*');
+
+            if (error) {
+                console.error('Supabase Query Error:', error);
+                if (container) {
+                    container.innerHTML = `<p class="error-message text-red-700 bg-red-100 p-4 rounded">Error retrieving questions: ${error.message}. Please check RLS policy for the table **${TABLE_NAME}**.</p>`;
+                }
+                return;
+            }
+
+            if (rawQuizData && rawQuizData.length > 0) {
+                quizData = rawQuizData;
+                console.log(`Quiz data loaded successfully! Array(${quizData.length})`, quizData);
+                // SUCCESS: Render the initial difficulty selection screen
+                renderDifficultySelection(quizData);
+            } else {
+                if (container) {
+                    container.innerHTML = `<p class="text-gray-700 p-4 rounded">No questions found. The table **${TABLE_NAME}** is empty or the RLS policy is blocking access, but not giving a proper error code.</p>`;
+                }
+            }
+        }
+
+        // --- RENDERING FUNCTIONS ---
+
+        function renderDifficultySelection(data) {
+            const container = document.getElementById('quiz-container');
+            const difficulties = [...new Set(data.map(q => q.difficulty))].filter(d => d).sort();
+
+            let buttonsHtml = difficulties.map(d => `
+                <button 
+                    class="difficulty-btn px-6 py-3 text-xl font-bold rounded-lg shadow-lg hover:shadow-xl transition duration-150 transform hover:scale-105"
+                    data-difficulty="${d}"
+                    onclick="startQuiz('${d}')"
+                    style="background-color: ${getDifficultyColor(d)}; color: white;"
+                >
+                    ${d} (${data.filter(q => q.difficulty === d).length} Qs)
+                </button>
+            `).join('');
+
+            // Also include a master quiz button
+            const totalQuestions = data.length;
+            if (totalQuestions > 0) {
+                 buttonsHtml += `
+                    <button 
+                        class="difficulty-btn px-6 py-3 text-xl font-bold rounded-lg shadow-lg hover:shadow-xl transition duration-150 transform hover:scale-105 mt-6"
+                        data-difficulty="All"
+                        onclick="startQuiz('All')"
+                        style="background-color: var(--tw-colors-cbse-blue); color: white;"
+                    >
+                        Master Quiz (All ${totalQuestions} Qs)
+                    </button>
+                `;
+            }
+
+
+            container.innerHTML = `
+                <h2 class="text-3xl font-bold text-gray-800 mb-8 font-serif text-center">Select Quiz Difficulty</h2>
+                <p class="text-center text-gray-600 mb-10">Choose a difficulty level to start a ${questionsPerQuiz}-question quiz.</p>
+                <div class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6">
+                    ${buttonsHtml}
+                </div>
+            `;
+        }
+
+        function getDifficultyColor(difficulty) {
+            switch (difficulty.toLowerCase()) {
+                case 'easy': return '#10b981'; // Emerald 500
+                case 'medium': return '#f59e0b'; // Amber 500
+                case 'hard': return '#ef4444'; // Red 500
+                default: return 'var(--tw-colors-accent-blue)';
+            }
+        }
+
+        function renderQuestion() {
+            const container = document.getElementById('quiz-container');
+            const q = currentQuiz[questionIndex];
+
+            if (!q) {
+                renderResults();
+                return;
+            }
+
+            const options = { a: q.option_a, b: q.option_b, c: q.option_c, d: q.option_d };
+            let optionsHtml = ['a', 'b', 'c', 'd'].map(key => {
+                if (options[key]) {
+                    return `
+                        <button 
+                            class="option-btn w-full text-left p-4 bg-white border border-gray-200 rounded-lg shadow hover:bg-cbse-light transition duration-150 mb-3"
+                            data-key="${key}"
+                            onclick="checkAnswer('${key}')"
+                            >
+                            <span class="font-bold uppercase mr-2 text-accent-blue">${key}.</span> ${options[key]}
+                        </button>
+                    `;
+                }
+                return '';
+            }).join('');
+
+            const scenarioHtml = q.scenario_reason_text 
+                ? `<div class="bg-blue-50 border-l-4 border-accent-blue text-gray-800 p-4 mb-6 rounded-md">
+                    <p class="font-bold mb-1">Scenario/Reasoning:</p>
+                    <p>${q.scenario_reason_text}</p>
+                   </div>`
+                : '';
+
+            container.innerHTML = `
+                <div class="progress-bar w-full bg-gray-200 rounded-full h-2.5 mb-8">
+                    <div class="bg-accent-blue h-2.5 rounded-full" style="width: ${((questionIndex + 1) / questionsPerQuiz) * 100}%"></div>
+                </div>
+
+                <div class="bg-white p-6 sm:p-8 rounded-xl shadow-2xl border-t-8 border-accent-blue">
+                    <p class="text-sm font-semibold text-accent-blue mb-2">Question ${questionIndex + 1} of ${questionsPerQuiz} | Difficulty: <span style="color: ${getDifficultyColor(q.difficulty)}">${q.difficulty}</span></p>
+                    ${scenarioHtml}
+                    <h3 class="text-xl font-bold text-gray-800 mb-6 leading-relaxed">${q.question_text}</h3>
+                    <div id="options-container" class="space-y-3">
+                        ${optionsHtml}
+                    </div>
+                    <div id="feedback-container" class="mt-4 hidden"></div>
+                    <button id="next-btn" class="mt-6 w-full py-3 bg-gray-400 text-white font-bold rounded-lg transition duration-150 hidden" onclick="nextQuestion()">Next Question</button>
+                </div>
+            `;
+        }
+
+        function renderResults() {
+            const container = document.getElementById('quiz-container');
+            const percentage = ((score / questionsPerQuiz) * 100).toFixed(0);
+            const message = getResultMessage(percentage);
+
+            container.innerHTML = `
+                <div class="bg-white p-8 rounded-xl shadow-2xl border-t-8 border-accent-blue text-center">
+                    <h2 class="text-4xl font-extrabold text-cbse-blue mb-4 font-serif">Quiz Complete!</h2>
+                    <p class="text-xl text-gray-700 mb-6">You finished the **${CHAPTER_TITLE}** quiz.</p>
+                    
+                    <div class="my-8">
+                        <p class="text-2xl font-bold mb-2">Your Score:</p>
+                        <p class="text-6xl font-extrabold" style="color: ${percentage >= 70 ? 'var(--tw-colors-correct)' : percentage >= 40 ? 'var(--tw-colors-accent-blue)' : 'var(--tw-colors-incorrect)'}">
+                            ${score} / ${questionsPerQuiz}
+                        </p>
+                        <p class="text-lg text-gray-500 mt-1">${percentage}% Accuracy</p>
+                    </div>
+
+                    <p class="text-2xl font-semibold mb-8">${message}</p>
+
+                    <button class="px-6 py-3 bg-accent-blue text-white font-bold rounded-lg shadow-md hover:bg-accent-blue/90 transition duration-150 text-lg" onclick="initSupabase()">
+                        Try a New Quiz
+                    </button>
+                </div>
+            `;
+        }
+
+        // --- QUIZ LOGIC ---
+
+        function getResultMessage(percentage) {
+            if (percentage >= 90) return "Excellent work! You are a master of this chapter. 🚀";
+            if (percentage >= 70) return "Great job! You have a solid understanding. Keep reviewing the tough spots.";
+            if (percentage >= 40) return "Good effort. Focus on improving key concepts in this chapter.";
+            return "Time to hit the books! Review the basics and try again. 💪";
+        }
+
+
+        function startQuiz(difficulty) {
+            quizAttempts++;
+            score = 0;
+            questionIndex = 0;
+
+            let filteredQuestions = quizData;
+
+            if (difficulty !== 'All') {
+                filteredQuestions = quizData.filter(q => q.difficulty === difficulty);
+            }
+
+            if (filteredQuestions.length === 0) {
+                 alert(`No questions found for difficulty: ${difficulty}.`);
+                 renderDifficultySelection(quizData); // Go back
+                 return;
+            }
+
+            // Shuffle and select the required number of questions
+            shuffleArray(filteredQuestions);
+            currentQuiz = filteredQuestions.slice(0, questionsPerQuiz);
+            questionsPerQuiz = currentQuiz.length; // Adjust in case fewer than 10 are available
+
+            renderQuestion();
+        }
+
+        function checkAnswer(selectedKey) {
+            const q = currentQuiz[questionIndex];
+            const isCorrect = selectedKey === q.correct_answer_key;
+            
+            const optionsContainer = document.getElementById('options-container');
+            const feedbackContainer = document.getElementById('feedback-container');
+            const nextButton = document.getElementById('next-btn');
+
+            // Disable all option buttons
+            optionsContainer.querySelectorAll('.option-btn').forEach(btn => {
+                btn.disabled = true;
+                btn.classList.remove('hover:bg-cbse-light');
+            });
+            
+            // Highlight the selected answer
+            const selectedButton = optionsContainer.querySelector(`[data-key="${selectedKey}"]`);
+            if (selectedButton) {
+                 selectedButton.classList.add('shadow-inner', 'ring-4', 'ring-offset-2');
+            }
+
+            // Highlight the correct answer
+            const correctButton = optionsContainer.querySelector(`[data-key="${q.correct_answer_key}"]`);
+            if (correctButton) {
+                correctButton.classList.add('bg-correct', 'text-white', 'shadow-lg');
+                correctButton.classList.remove('shadow', 'border');
+            }
+
+
+            if (isCorrect) {
+                score++;
+                if(selectedButton) selectedButton.classList.add('bg-correct/80', 'ring-correct');
+                feedbackContainer.innerHTML = `<p class="text-lg font-bold text-correct">🎉 Correct! Well done.</p>`;
+            } else {
+                if(selectedButton) selectedButton.classList.add('bg-incorrect/80', 'text-white', 'ring-incorrect');
+                feedbackContainer.innerHTML = `<p class="text-lg font-bold text-incorrect">❌ Incorrect. The correct answer was **${q.correct_answer_key.toUpperCase()}**.</p>`;
+            }
+            
+            // Show feedback and next button
+            feedbackContainer.classList.remove('hidden');
+            nextButton.classList.remove('hidden');
+            nextButton.classList.remove('bg-gray-400');
+            nextButton.classList.add('bg-accent-blue', 'hover:bg-accent-blue/90');
+        }
+
+        function nextQuestion() {
+            questionIndex++;
+            renderQuestion();
+        }
+
+
+        // Start the application after the script loads
+        document.addEventListener('DOMContentLoaded', () => {
+            initSupabase();
+        });
+    </script>
+</body>
+</html>
