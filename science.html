@@ -32,25 +32,34 @@
         .book-card {
             transition: all 0.3s ease;
             cursor: pointer;
-            /* Added Box Shadow to match the economics (1).html template */
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
         }
         .book-card:hover {
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+            transform: translateY(-4px); 
         }
         .chapter-card {
             border-left-width: 4px;
         }
         .nav-link {
-            /* Styles to match economics (1).html navigation */
             padding: 0.25rem 0.75rem;
             border-radius: 0.5rem;
-            color: #4b5563; /* gray-600 */
+            color: #4b5563; 
             transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
         }
         .nav-link:hover {
-            background-color: #f0f4f8; /* cbse-light */
-            color: #1a3e6a; /* cbse-blue */
+            background-color: #f0f4f8; 
+            color: #1a3e6a; 
+        }
+
+        /* --- ACCORDION STYLES FROM ORIGINAL science (1).html --- */
+        .unit-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-in-out;
+        }
+        .unit-header.active .icon-rotate {
+            transform: rotate(180deg);
         }
     </style>
 </head>
@@ -88,25 +97,25 @@
                     </div>
                 </div>
 
-                <div class="book-card bg-accent-green/10 p-6 rounded-xl"
-                    data-book="Chemistry"
-                    data-title="Chemistry"
+                <div class="book-card book-select-btn bg-accent-green/10 p-6 rounded-xl"
+                    data-book="Chemistry" 
+                    data-title="Chemistry" 
                     data-color="#059669">
                     <div class="flex flex-col items-center justify-center h-full">
                         <span data-lucide="atom" class="w-12 h-12 text-accent-green mb-3"></span>
                         <h2 class="text-xl font-bold text-cbse-blue text-center">Chemistry</h2>
-                        <p class="text-sm text-gray-600 text-center mt-1">Status: Coming Soon</p>
+                        <p class="text-sm text-gray-600 text-center mt-1">(Matter, Atoms, Molecules, Structure of Atom)</p>
                     </div>
                 </div>
 
-                <div class="book-card bg-accent-red/10 p-6 rounded-xl"
-                    data-book="Biology"
-                    data-title="Biology"
+                <div class="book-card book-select-btn bg-accent-red/10 p-6 rounded-xl"
+                    data-book="Biology" 
+                    data-title="Biology" 
                     data-color="#dc2626">
                     <div class="flex flex-col items-center justify-center h-full">
                         <span data-lucide="dna" class="w-12 h-12 text-accent-red mb-3"></span>
                         <h2 class="text-xl font-bold text-cbse-blue text-center">Biology</h2>
-                        <p class="text-sm text-gray-600 text-center mt-1">Status: Coming Soon</p>
+                        <p class="text-sm text-gray-600 text-center mt-1">(Cell, Tissues, Food Resources)</p>
                     </div>
                 </div>
             </div>
@@ -119,7 +128,7 @@
             
             <h2 id="unit-title" class="text-3xl font-bold text-cbse-blue mb-6 border-l-4 pl-3 pb-1 border-cbse-blue"></h2>
             
-            <div id="unit-content" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div id="unit-content" class="space-y-4">
                 </div>
         </section>
 
@@ -144,9 +153,51 @@
         const backToChaptersBtn = document.getElementById('back-to-chapters-btn');
         const headerHomeBtn = document.getElementById('header-home-btn');
 
-        let currentBookTitle = '';
+        let currentBookTitle = ''; 
         let currentBookKey = '';
         let currentBookColor = '';
+
+        // --- Consolidated Chapter Data (Now grouped by Units for the old syllabus structure) ---
+        const bookData = {
+            'Physics': [
+                { 
+                    unit: 'UNIT I: Motion & Force', 
+                    chapters: [
+                        { chapter: "Motion", file: "motion_quiz.html", concepts: "Displacement, Velocity, Acceleration, Graphical Representation of Motion." },
+                        { chapter: "Force and Laws of Motion", file: "force_quiz.html", concepts: "Balanced/Unbalanced Forces, Newton's Laws, Momentum." },
+                        { chapter: "Gravitation", file: "gravitation_quiz.html", concepts: "Universal Law of Gravitation, Free Fall, Mass, Weight, Buoyancy." },
+                    ]
+                },
+                { 
+                    unit: 'UNIT II: Work & Sound', 
+                    chapters: [
+                        { chapter: "Work and Energy", file: "work_quiz.html", concepts: "Work Done, Kinetic Energy, Potential Energy, Conservation of Energy, Power." },
+                        { chapter: "Sound", file: "sound_quiz.html", concepts: "Production, Propagation, Characteristics (Pitch, Loudness), Reflection, Echo, SONAR." }
+                    ]
+                },
+            ],
+            'Chemistry': [
+                { 
+                    unit: 'UNIT III: Matter & Structure',
+                    chapters: [
+                        { chapter: "Matter in Our Surroundings", file: "matter_surroundings_quiz.html", concepts: "States of Matter, Interconversion of States, Evaporation." },
+                        { chapter: "Is Matter Around Us Pure", file: "pure_matter_quiz.html", concepts: "Mixtures, Solutions, Colloids, Suspensions, Separation Techniques." },
+                        { chapter: "Atoms and Molecules", file: "atoms_molecules_quiz.html", concepts: "Laws of Chemical Combination, Atomic Mass, Mole Concept." },
+                        { chapter: "Structure of the Atom", file: "atom_structure_quiz.html", concepts: "Electrons, Protons, Neutrons, Bohr's Model, Isotopes, Isobars." }
+                    ]
+                }
+            ],
+            'Biology': [
+                {
+                    unit: 'UNIT IV: Cell, Tissues, and Food Resources',
+                    chapters: [
+                        { chapter: "The Fundamental Unit of Life", file: "cell_quiz.html", concepts: "Cell Theory, Prokaryotic/Eukaryotic Cells, Cell Organelles." },
+                        { chapter: "Tissues", file: "tissues_quiz.html", concepts: "Plant Tissues (Meristematic, Permanent), Animal Tissues (Epithelial, Connective, Muscular, Nervous)." },
+                        { chapter: "Improvement in Food Resources", file: "food_resources_quiz.html", concepts: "Crop Variety Improvement, Crop Protection Management, Animal Husbandry." }
+                    ]
+                }
+            ]
+        };
 
         // --- Core View Management ---
 
@@ -162,66 +213,130 @@
             } else if (viewName === 'difficulty-select') {
                 difficultySelectView.classList.remove('hidden');
             }
-            window.scrollTo(0, 0); // Scroll to top on view change
+            window.scrollTo(0, 0); 
         }
 
 
-        // --- Physics Chapter Rendering Logic (using original file data) ---
+        // --- Chapter Rendering Logic (Reverted to Accordion/Unit structure) ---
 
-        function getPhysicsChaptersHTML(color) {
-            // Using the chapters from the original science (1).html's bookData for Physics
-            const chapters = [
-                { name: "Motion", file: "motion_quiz.html", concepts: "Displacement, Velocity, Acceleration, Graphical Representation of Motion." },
-                { name: "Force and Laws of Motion", file: "force_quiz.html", concepts: "Balanced/Unbalanced Forces, Newton's Laws, Momentum." },
-                { name: "Gravitation", file: "gravitation_quiz.html", concepts: "Universal Law of Gravitation, Free Fall, Mass, Weight, Buoyancy." },
-                { name: "Work and Energy", file: "work_quiz.html", concepts: "Work Done, Kinetic Energy, Potential Energy, Conservation of Energy, Power." },
-                { name: "Sound", file: "sound_quiz.html", concepts: "Production, Propagation, Characteristics (Pitch, Loudness), Reflection, Echo, SONAR." }
-            ];
+        function getUnitsHTML(bookKey, color) {
+            const units = bookData[bookKey] || [];
+            let html = '';
 
-            return chapters.map(chapter => `
-                <div class="chapter-card block p-6 bg-white rounded-lg border-l-4 border-[${color}] shadow-md hover:bg-gray-50 transition duration-150 ease-in-out">
-                    <h3 class="text-xl font-semibold text-cbse-blue font-serif">Chapter: ${chapter.name}</h3>
-                    <p class="text-sm text-gray-600 mt-2">${chapter.concepts}</p>
-                    <button class="quiz-button mt-4 text-[${color}] hover:text-cbse-blue font-medium flex items-center" 
-                                data-chapter="${chapter.name.replace(/'/g, '\\\'')}" 
-                                data-file="${chapter.file}">
-                        Start Quiz <span data-lucide="chevron-right" class="w-4 h-4 ml-1"></span>
-                    </button>
-                </div>
-            `).join('');
+            if (units.length === 0 || !units[0].unit) {
+                // Fallback for an un-grouped list if data is missing or not in unit format
+                return `<div class="text-gray-700 p-4 rounded-lg bg-yellow-50 border-l-4 border-yellow-500 col-span-full">
+                    Chapter list for **${bookKey}** is currently under development or not grouped by units.
+                </div>`;
+            }
+
+            // Map custom color to Tailwind class for consistent button styling
+            let accentColorClass;
+            switch(color) {
+                case '#2563eb': accentColorClass = 'text-accent-blue'; break;
+                case '#059669': accentColorClass = 'text-accent-green'; break;
+                case '#dc2626': accentColorClass = 'text-accent-red'; break;
+                default: accentColorClass = 'text-cbse-blue';
+            }
+
+            units.forEach((unitItem, index) => {
+                const unitId = `${bookKey}-unit-${index}`;
+
+                let chaptersHtml = unitItem.chapters.map((chapter) => `
+                    <div class="chapter-card bg-white p-4 rounded-lg shadow border-l-4 flex justify-between items-center" style="border-color: ${color};">
+                        <div>
+                            <span class="text-gray-700 font-medium block">${chapter.chapter}</span>
+                            <p class="text-xs text-gray-500 mt-1">${chapter.concepts}</p>
+                        </div>
+                        <button class="quiz-button bg-cbse-blue text-white px-4 py-2 text-sm font-semibold rounded-lg hover:bg-cbse-blue/90 transition" 
+                            data-chapter="${chapter.chapter}" 
+                            data-file="${chapter.file}"
+                            data-color="${color}"
+                            data-book="${bookKey}">
+                            Start Quiz
+                        </button>
+                    </div>
+                `).join('');
+
+                html += `
+                    <div class="border border-gray-200 rounded-xl overflow-hidden mb-6">
+                        <div class="unit-header bg-unit-bg p-4 flex justify-between items-center font-bold text-gray-700 hover:bg-unit-bg/80 active cursor-pointer transition duration-150" data-target="${unitId}">
+                            <span>${unitItem.unit}</span>
+                            <span data-lucide="chevron-down" class="icon-rotate w-5 h-5 transition-transform duration-300"></span>
+                        </div>
+                        <div id="${unitId}" class="unit-content p-4 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+                            ${chaptersHtml}
+                        </div>
+                    </div>
+                `;
+            });
+
+            return html;
         }
 
-        // --- Difficulty Selection Function ---
-        function renderDifficultySelection(chapterName, chapterFile) {
+        // --- Accordion Logic ---
+
+        function initAccordion() {
+            document.querySelectorAll('.unit-header').forEach(header => {
+                const content = document.getElementById(header.dataset.target);
+                if (content) {
+                    // Set initial state to open
+                    content.style.maxHeight = content.scrollHeight + "px";
+                    header.classList.add('active');
+
+                    header.removeEventListener('click', handleAccordionClick);
+                    header.addEventListener('click', handleAccordionClick);
+                }
+            });
+        }
+
+        function handleAccordionClick(event) {
+            const header = event.currentTarget;
+            const content = document.getElementById(header.dataset.target);
+
+            header.classList.toggle('active');
+            if (header.classList.contains('active')) {
+                content.style.maxHeight = content.scrollHeight + "px";
+            } else {
+                content.style.maxHeight = '0';
+            }
+        }
+
+        // --- Difficulty Selection Function (Unchanged) ---
+        function renderDifficultySelection(chapterName, chapterFile, color) {
             showView('difficulty-select');
 
             document.getElementById('difficulty-title').textContent = `Select Difficulty for the ${chapterName} Quiz`;
 
             const difficulties = ['Simple', 'Medium', 'Advanced'];
-            // Use the current book's accent color for the buttons
-            const accentColor = currentBookColor.replace('#', '');
-            const buttonColorClass = `bg-[${currentBookColor}] hover:bg-[${currentBookColor.slice(0, -1)}/90]`; 
+            
+            let buttonColorClass;
+            switch(color) {
+                case '#2563eb': buttonColorClass = 'bg-accent-blue hover:bg-accent-blue/90 focus:ring-accent-blue/50'; break; 
+                case '#059669': buttonColorClass = 'bg-accent-green hover:bg-accent-green/90 focus:ring-accent-green/50'; break; 
+                case '#dc2626': buttonColorClass = 'bg-accent-red hover:bg-accent-red/90 focus:ring-accent-red/50'; break; 
+                default: buttonColorClass = 'bg-cbse-blue hover:bg-cbse-blue/90 focus:ring-cbse-blue/50';
+            }
             
             const buttonHTML = difficulties.map(difficulty => `
                 <a href="${chapterFile}?difficulty=${difficulty}" 
-                   class="inline-block px-8 py-3 m-2 text-white font-bold rounded-lg shadow-lg ${buttonColorClass} transition transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-opacity-50"
-                   style="--tw-ring-color: ${currentBookColor};">
+                   class="inline-block px-8 py-3 m-2 text-white font-bold rounded-lg shadow-xl ${buttonColorClass} transition transform hover:scale-105 focus:outline-none focus:ring-4">
                     ${difficulty} Level
                 </a>
             `).join('');
 
             document.getElementById('difficulty-content').innerHTML = `
-                <h2 id="difficulty-title" class="text-2xl font-bold mb-8 text-cbse-blue">${document.getElementById('difficulty-title').textContent}</h2>
+                <h2 class="text-2xl font-bold mb-8 text-cbse-blue">${document.getElementById('difficulty-title').textContent}</h2>
                 ${buttonHTML}
             `;
         }
 
-        // --- Unit Selection Function (Renamed from showUnits in template) ---
-        function showChapterList(book, title, color) {
+        // --- Unit Selection Function ---
+        function showUnits(bookKey, title, color) {
             showView('unit-select');
 
-            currentBookTitle = title;
-            currentBookKey = book;
+            currentBookTitle = title; 
+            currentBookKey = bookKey;
             currentBookColor = color;
 
             const unitTitle = document.getElementById('unit-title');
@@ -232,15 +347,10 @@
             
             const unitContent = document.getElementById('unit-content');
             
-            if (book === 'Physics') {
-                unitContent.innerHTML = getPhysicsChaptersHTML(color);
-                lucide.createIcons();
-                attachEventListeners(); // Re-attach listeners to the new chapter buttons
-            } else {
-                unitContent.innerHTML = `<div class="text-gray-700 p-4 rounded-lg bg-yellow-50 border-l-4 border-yellow-500 col-span-full">
-                    Chapter list for **${title}** is currently under development. Please check back later.
-                </div>`;
-            }
+            unitContent.innerHTML = getUnitsHTML(bookKey, color);
+            lucide.createIcons();
+            attachEventListeners();
+            setTimeout(initAccordion, 10); // Initialize accordion after content is loaded
         }
 
         // --- Event Handlers that use Data Attributes ---
@@ -248,7 +358,8 @@
         function handleQuizButtonClick(event) {
             const chapterName = event.currentTarget.dataset.chapter;
             const chapterFile = event.currentTarget.dataset.file;
-            renderDifficultySelection(chapterName, chapterFile);
+            const color = event.currentTarget.dataset.color; 
+            renderDifficultySelection(chapterName, chapterFile, color);
         }
 
         function handleBookSelectClick(event) {
@@ -256,7 +367,7 @@
             const book = card.dataset.book;
             const title = card.dataset.title;
             const color = card.dataset.color;
-            showChapterList(book, title, color);
+            showUnits(book, title, color);
         }
 
         // --- Function to attach listeners to all dynamic buttons ---
@@ -267,7 +378,7 @@
                 card.addEventListener('click', handleBookSelectClick);
             });
             
-            // Attach listeners for the new chapter quiz buttons
+            // Attach listeners for the chapter quiz buttons
             document.querySelectorAll('.quiz-button').forEach(button => {
                 button.removeEventListener('click', handleQuizButtonClick);
                 button.addEventListener('click', handleQuizButtonClick);
@@ -278,7 +389,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
 
-            // Initial attachment for subject cards
             attachEventListeners();
             
             // Navigation buttons
@@ -290,12 +400,8 @@
             
             // Back button from Difficulty to Chapters
             backToChaptersBtn.addEventListener('click', () => {
-                // Use stored state to return to the correct chapter list
-                if (currentBookKey && currentBookTitle && currentBookColor) {
-                    showChapterList(currentBookKey, currentBookTitle, currentBookColor);
-                } else {
-                    showView('book-select'); // Fallback
-                }
+                // Use stored key/title/color to go back to the correct chapter list view (which is now unit-grouped)
+                showUnits(currentBookKey, currentBookTitle, currentBookColor);
             });
         });
         
