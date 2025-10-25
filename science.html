@@ -6,7 +6,9 @@
     <title>CBSE Class 9 Science Curriculum</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    
     <script>
+        // Tailwind Configuration
         tailwind.config = {
             theme: {
                 extend: {
@@ -15,11 +17,11 @@
                         serif: ['Merriweather', 'serif'],
                     },
                     colors: {
-                        'cbse-blue': '#1a3e6a',
-                        'cbse-light': '#f0f4f8',
-                        'accent-green': '#059669', // Chemistry/Bio
-                        'accent-red': '#dc2626',   // Biology
-                        'accent-blue': '#2563eb',  // Physics
+                        'cbse-blue': '#1a3e6a',      // Primary dark blue
+                        'cbse-light': '#f0f4f8',     // Light background
+                        'accent-green': '#059669',  // Chemistry/Bio (Emerald 600)
+                        'accent-red': '#dc2626',    // Biology (Red 600)
+                        'accent-blue': '#2563eb',   // Physics (Blue 600)
                         'unit-bg': '#e3f2fd',
                     }
                 }
@@ -27,6 +29,7 @@
         }
     </script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    
     <style>
         .book-card {
             transition: all 0.3s ease;
@@ -36,307 +39,160 @@
         }
         .book-card:hover {
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-            transform: translateY(-4px);
+            transform: translateY(-5px);
         }
-        .unit-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.4s ease-in-out;
-        }
-        .unit-header.active .icon-rotate {
-            transform: rotate(180deg);
-        }
-        .back-btn {
-            display: inline-flex;
-            align-items: center;
-            font-size: 1.125rem;
-            font-weight: 500;
-            color: #1a3e6a;
-            margin-bottom: 1.5rem;
-            transition: color 150ms;
-        }
-        .back-btn:hover {
-            color: rgba(26, 62, 106, 0.8);
-        }
-        .auth-container {
-            max-width: 400px;
-            margin: 0 auto;
-            padding: 2rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 50;
-        }
+        /* Custom Utility for dynamic border colors (Tailwind JIT replacement) */
+        .border-\[\#2563eb\] { border-color: #2563eb; }
+        .text-\[\#2563eb\] { color: #2563eb; }
     </style>
 </head>
-<body class="bg-cbse-light min-h-screen antialiased">
 
-    <header class="bg-white shadow-lg sticky top-0 z-10 border-t-8 border-cbse-blue">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row justify-between items-center">
-            <div class="flex items-center space-x-3 mb-4 md:mb-0 cursor-pointer" onclick="window.location.href='index_class_9.html'">
-                <span data-lucide="flask-round" class="text-cbse-blue w-8 h-8"></span>
-                <h1 class="text-2xl font-extrabold text-cbse-blue">CBSE Class 9 Science Portal</h1>
-            </div>
-            <nav class="flex space-x-2 sm:space-x-4">
-                <button id="logout-nav-btn" class="px-3 py-1 rounded-lg text-gray-600 hover:bg-cbse-light hover:text-cbse-blue transition hidden">🚪 Logout</button>
+<body class="bg-cbse-light min-h-screen font-sans">
+
+    <header class="bg-white shadow-md sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <a href="#" id="header-home-btn" class="flex items-center space-x-2 cursor-pointer">
+                <span data-lucide="book-open-text" class="w-8 h-8 text-cbse-blue"></span>
+                <h1 class="text-xl font-bold text-cbse-blue">Class 9 Science</h1>
+            </a>
+            <nav>
+                <a href="#" class="nav-link">Home</a>
+                <a href="#" class="nav-link">Quizzes</a>
             </nav>
         </div>
     </header>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        <div id="quiz-content-wrapper">
-            <div id="book-select-view" class="view">
-                <h2 class="text-3xl font-bold text-gray-800 mb-8 border-b-2 border-cbse-blue pb-2 font-serif">Select Science Sub-Topic</h2>
-                <div class="grid md:grid-cols-3 gap-8">
-
-                    <div class="book-card bg-white p-6 rounded-xl border-t-4 border-accent-blue book-select-btn" data-book="Physics" data-title="Physics: Motion, Force, and Energy" data-color="accent-blue">
-                        <span data-lucide="zap" class="w-10 h-10 text-accent-blue mb-3"></span>
-                        <h3 class="text-xl font-bold text-gray-800 mb-1 font-serif">Physics</h3>
-                        <p class="text-gray-500 text-sm">Motion, Laws of Motion, Gravitation, Work, Energy, and Sound.</p>
+        
+        <section id="book-select-view" class="space-y-6">
+            <h2 class="text-3xl font-bold text-cbse-blue mb-6 border-b-2 pb-2">Select a Science Stream 🚀</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                
+                <div class="book-card book-select-btn bg-accent-blue/10 p-6 rounded-xl shadow-lg" 
+                     data-book="Physics" 
+                     data-title="Physics" 
+                     data-color="#2563eb">
+                    <div class="flex flex-col items-center justify-center h-full">
+                        <span data-lucide="zap" class="w-12 h-12 text-accent-blue mb-3"></span>
+                        <h2 class="text-xl font-bold text-cbse-blue text-center">Physics</h2>
+                        <p class="text-sm text-gray-600 text-center mt-1">(Motion, Force, Gravitation, Work, Sound)</p>
                     </div>
-
-                    <div class="book-card bg-white p-6 rounded-xl border-t-4 border-accent-green book-select-btn" data-book="Chemistry" data-title="Chemistry: Matter and Atomic Structure" data-color="accent-green">
-                        <span data-lucide="atom" class="w-10 h-10 text-accent-green mb-3"></span>
-                        <h3 class="text-xl font-bold text-gray-800 mb-1 font-serif">Chemistry</h3>
-                        <p class="text-gray-500 text-sm">Matter in Our Surroundings, Atoms, Molecules, and Structure of the Atom.</p>
-                    </div>
-
-                    <div class="book-card bg-white p-6 rounded-xl border-t-4 border-accent-red book-select-btn" data-book="Biology" data-title="Biology: Cell, Tissues, and Food Resources" data-color="accent-red">
-                        <span data-lucide="dna" class="w-10 h-10 text-accent-red mb-3"></span>
-                        <h3 class="text-xl font-bold text-gray-800 mb-1 font-serif">Biology</h3>
-                        <p class="text-gray-500 text-sm">The Fundamental Unit of Life, Tissues, and Improvement in Food Resources.</p>
-                    </div>
-
                 </div>
 
-                <section id="mock-test" class="bg-white p-8 rounded-xl shadow-lg border-t-2 border-b-2 border-cbse-blue mt-12 flex flex-col items-center text-center">
-                    <h4 class="text-3xl font-extrabold text-cbse-blue mb-2 font-serif">Full Science Mock Test</h4>
-                    <p class="text-gray-600 text-lg mb-4">Test your readiness with a full-length examination covering Physics, Chemistry, and Biology chapters.</p>
-                    <button class="px-8 py-3 bg-cbse-blue text-white font-bold rounded-lg shadow-xl hover:bg-cbse-blue/90 transition duration-150 text-xl quiz-start-btn" data-chapter="Class 9 Full Science Quiz">
-                        Start Master Quiz
-                    </button>
-                </section>
-            </div>
+                <div class="book-card bg-accent-green/10 p-6 rounded-xl shadow-lg" 
+                     data-book="Chemistry" 
+                     data-title="Chemistry" 
+                     data-color="#059669">
+                    <div class="flex flex-col items-center justify-center h-full">
+                        <span data-lucide="atom" class="w-12 h-12 text-accent-green mb-3"></span>
+                        <h2 class="text-xl font-bold text-cbse-blue text-center">Chemistry</h2>
+                        <p class="text-sm text-gray-600 text-center mt-1">Status: Coming Soon</p>
+                    </div>
+                </div>
 
-            <div id="units-view" class="view hidden">
-                <button id="back-to-books-btn" class="back-btn">
-                    <span data-lucide="arrow-left" class="w-5 h-5 mr-2"></span> Back to Subjects
-                </button>
-                <h2 id="units-view-title" class="text-3xl font-bold text-gray-800 mb-6 border-b-2 pb-2 font-serif"></h2>
-                <div id="units-list">
+                <div class="book-card bg-accent-red/10 p-6 rounded-xl shadow-lg" 
+                     data-book="Biology" 
+                     data-title="Biology" 
+                     data-color="#dc2626">
+                    <div class="flex flex-col items-center justify-center h-full">
+                        <span data-lucide="dna" class="w-12 h-12 text-accent-red mb-3"></span>
+                        <h2 class="text-xl font-bold text-cbse-blue text-center">Biology</h2>
+                        <p class="text-sm text-gray-600 text-center mt-1">Status: Coming Soon</p>
+                    </div>
                 </div>
             </div>
-        </div>
-        </main>
+        </section>
 
-    <!-- Authentication Modal (Hidden by default) -->
-    <div id="auth-modal" class="modal-overlay hidden">
-        <div id="auth-view" class="auth-container bg-white relative">
-            <button id="close-modal-btn" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition">
-                <span data-lucide="x" class="w-6 h-6"></span>
+        <section id="unit-select-view" class="hidden space-y-6">
+            <button id="back-to-books-btn" class="text-cbse-blue hover:text-cbse-blue/80 flex items-center mb-6 transition">
+                <span data-lucide="arrow-left" class="w-5 h-5 mr-2"></span> Back to Subject Selection
             </button>
-            <h2 id="auth-header" class="text-2xl font-bold text-center mb-6 text-cbse-blue font-serif">
-                Login to Access Quizzes
-            </h2>
+            
+            <h2 id="unit-title" class="text-3xl font-bold text-cbse-blue mb-6 border-l-4 pl-3 pb-1 border-cbse-blue"></h2>
+            
+            <div id="unit-content" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                </div>
+        </section>
 
-            <div class="mt-4">
-                <button id="google-sign-in-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition flex items-center justify-center space-x-3 shadow-md">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/4/4a/Logo_google_g_standard.png" alt="Google logo" class="w-6 h-6 bg-white rounded-full">
-                    <span>Sign in with Google</span>
-                </button>
-            </div>
-
-            <p id="error-message" class="mt-4 text-center text-red-500 font-medium"></p>
-        </div>
-    </div>
-
-    <footer class="bg-cbse-blue mt-12 py-6">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
-            <small class="text-sm opacity-80">© 2025 CBSE Class 9 Academic Portal | Science Sub-Topics</small>
-        </div>
-    </footer>
-
-    <!-- Firebase Imports (Required for auth/firestore logic) -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
+    </main>
 
     <script>
-        // NOTE: Firebase/Auth is for structure only. Actual login is simulated.
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { /* Default values if run outside Canvas */ };
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        let app, auth, db;
-        try {
-            app = firebase.initializeApp(firebaseConfig);
-            auth = app.auth();
-            db = app.firestore();
-        } catch (e) {
-            auth = { currentUser: null, signOut: () => Promise.resolve(), onAuthStateChanged: (cb) => { cb(null); return () => {}; } };
-            db = { collection: () => ({ add: () => Promise.resolve() }) };
-        }
-
-        let isUserLoggedIn = false;
-        let userId = 'anonymous';
-
-
-        // --- DOM Elements ---
-        const authModal = document.getElementById('auth-modal');
-        const unitsList = document.getElementById('units-list');
-        const unitsViewTitle = document.getElementById('units-view-title');
+        
+        const unitSelectView = document.getElementById('unit-select-view');
+        const bookSelectView = document.getElementById('book-select-view');
         const backToBooksBtn = document.getElementById('back-to-books-btn');
-        const googleSignInBtn = document.getElementById('google-sign-in-btn');
+        const headerHomeBtn = document.getElementById('header-home-btn');
 
-        // --- AUTH/MODAL FUNCTIONS (Disabled/Simulated) ---
 
-        function showAuthModal() {
-            authModal.classList.remove('hidden');
-        }
-        function hideAuthModal() {
-            authModal.classList.add('hidden');
-        }
+        // --- Core View Management ---
 
-        // SIMULATED AUTH BUTTON
-        googleSignInBtn.addEventListener('click', async () => {
-             alert("Sign-in is simulated for this environment. Please authenticate via the platform's main dialog.");
-        });
+        function showView(viewName) {
+            bookSelectView.classList.add('hidden');
+            unitSelectView.classList.add('hidden');
 
-        // --- QUIZ DATA & LOGIC (Final Updated Syllabus with Sequential Numbering) ---
-
-        const bookData = {
-            'Physics': [
-                // Chapters 7, 8, 9 now cover Motion, Force, and Gravitation
-                { unit: 'UNIT I: Motion & Force', chapters: ['7. Motion', '8. Force and Laws of Motion', '9. Gravitation'] },
-                // Chapters 10, 11 now cover Work and Sound
-                { unit: 'UNIT II: Work & Sound', chapters: ['10. Work and Energy', '11. Sound'] },
-            ],
-            'Chemistry': [
-                // Chapters 1-4 remain unchanged
-                { unit: 'UNIT III: Matter & Structure', chapters: ['1. Matter in Our Surroundings', '2. Is Matter Around Us Pure', '3. Atoms and Molecules', '4. Structure of the Atom'] }
-            ],
-            'Biology': [
-                // Chapters 5, 6 remain unchanged
-                // Chapter 15 is now Chapter 12 (Improvement in Food Resources)
-                { unit: 'UNIT IV: Cell, Tissues, and Food Resources', chapters: ['5. The Fundamental Unit of Life', '6. Tissues', '12. Improvement in Food Resources'] }
-            ]
-        };
-
-        function startQuiz(chapterName) {
-            // Authentication check is REMOVED to allow quizzes to function immediately.
-            const cleanedChapterName = chapterName.trim();
-            console.log(`Simulated Quiz Start for: ${cleanedChapterName}`);
-
-            // Placeholder for actual quiz navigation
-            alert(`Quiz ready for: ${cleanedChapterName}! (A full quiz page would load here.)`);
-        }
-
-        function showView(viewId) {
-            document.querySelectorAll('#quiz-content-wrapper .view').forEach(view => {
-                view.classList.add('hidden');
-            });
-            document.getElementById(viewId + '-view').classList.remove('hidden');
-            window.scrollTo(0, 0);
-        }
-
-        function showUnits(bookKey, title, color) {
-            const units = bookData[bookKey];
-
-            unitsViewTitle.textContent = title;
-            unitsViewTitle.style.borderColor = `var(--tw-colors-${color.replace('accent-', '')})`; // Use the custom color variable
-
-            let html = '';
-            units.forEach((unitItem, index) => {
-                const unitId = `${bookKey}-unit-${index}`;
-
-                let chaptersHtml = unitItem.chapters.map((chapter) => `
-                    <div class="chapter-card bg-white p-4 rounded-lg shadow border-l-4 border-current flex justify-between items-center" style="border-color: var(--tw-colors-${color});">
-                        <span class="text-gray-700 font-medium">${chapter}</span>
-                        <button class="quiz-btn bg-cbse-blue text-white px-4 py-2 text-sm font-semibold rounded-lg hover:bg-cbse-blue/90 transition quiz-start-btn" data-chapter="${chapter.replace(/'/g, '\\\'')}">Start Quiz</button>
-                    </div>
-                `).join('');
-
-                html += `
-                    <div class="border border-gray-200 rounded-xl overflow-hidden mb-6">
-                        <div class="unit-header bg-unit-bg p-4 flex justify-between items-center font-bold text-gray-700 hover:bg-unit-bg/80 active cursor-pointer transition duration-150" data-target="${unitId}">
-                            <span>${unitItem.unit}</span>
-                            <span data-lucide="chevron-down" class="icon-rotate w-5 h-5 transition-transform duration-300"></span>
-                        </div>
-                        <div id="${unitId}" class="unit-content p-4 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-                            ${chaptersHtml}
-                        </div>
-                    </div>
-                `;
-            });
-
-            unitsList.innerHTML = html;
-            lucide.createIcons();
-            showView('units');
-
-            attachEventListeners();
-            setTimeout(initAccordion, 10);
-        }
-
-        function initAccordion() {
-            document.querySelectorAll('.unit-header').forEach(header => {
-                const content = document.getElementById(header.dataset.target);
-                if (content) {
-                    // Set initial state to open
-                    content.style.maxHeight = content.scrollHeight + "px";
-                    header.classList.add('active');
-
-                    header.removeEventListener('click', handleAccordionClick);
-                    header.addEventListener('click', handleAccordionClick);
-                }
-            });
-        }
-
-        function handleAccordionClick(event) {
-            const header = event.currentTarget;
-            const content = document.getElementById(header.dataset.target);
-
-            header.classList.toggle('active');
-            if (header.classList.contains('active')) {
-                content.style.maxHeight = content.scrollHeight + "px";
-            } else {
-                content.style.maxHeight = '0';
+            if (viewName === 'book-select') {
+                bookSelectView.classList.remove('hidden');
+                // Clean up title on return
+                document.getElementById('unit-title').classList.remove('border-cbse-blue', 'border-accent-green', 'border-accent-red', 'border-[#2563eb]'); 
+            } else if (viewName === 'unit-select') {
+                unitSelectView.classList.remove('hidden');
             }
         }
 
-        // --- ATTACH EVENT LISTENERS (Consolidated) ---
 
-        function attachEventListeners() {
-            document.querySelectorAll('.quiz-start-btn').forEach(button => {
-                button.removeEventListener('click', handleQuizButtonClick);
-                button.addEventListener('click', handleQuizButtonClick);
-            });
+        // --- Physics Chapter Rendering Logic ---
 
-            document.querySelectorAll('.book-select-btn').forEach(card => {
-                if (!card.hasAttribute('data-listener-attached')) {
-                    card.addEventListener('click', handleBookSelectClick);
-                    card.setAttribute('data-listener-attached', 'true');
-                }
-            });
+        function getPhysicsChaptersHTML(color) {
+            const chapters = [
+                { name: "Motion", file: "motion_quiz.html", concepts: "Displacement, Velocity, Acceleration, Graphical Representation of Motion." },
+                { name: "Force and Laws of Motion", file: "force_quiz.html", concepts: "Balanced/Unbalanced Forces, Newton's Laws, Momentum." },
+                { name: "Gravitation", file: "gravitation_quiz.html", concepts: "Universal Law of Gravitation, Free Fall, Mass, Weight, Buoyancy." },
+                { name: "Work and Energy", file: "work_quiz.html", concepts: "Work Done, Kinetic Energy, Potential Energy, Conservation of Energy, Power." },
+                { name: "Sound", file: "sound_quiz.html", concepts: "Production, Propagation, Characteristics (Pitch, Loudness), Reflection, Echo, SONAR." }
+            ];
+
+            // Use a standard anchor tag <a> for navigation. This replaces the old button/alert logic.
+            return chapters.map(chapter => `
+                <a href="${chapter.file}" class="chapter-card block p-6 bg-white rounded-lg border-l-4 border-[${color}] shadow-md hover:bg-gray-50 transition duration-150 ease-in-out">
+                    <h3 class="text-xl font-semibold text-cbse-blue">Chapter: ${chapter.name}</h3>
+                    <p class="text-sm text-gray-600 mt-2">Concepts: ${chapter.concepts}</p>
+                    <div class="mt-4 text-[${color}] hover:text-cbse-blue font-medium flex items-center">
+                        Start Quiz <span data-lucide="chevron-right" class="w-4 h-4 ml-1"></span>
+                    </div>
+                </a>
+            `).join('');
+        }
+
+        // --- Unit Selection Function ---
+
+        function showUnits(book, title, color) {
+            showView('unit-select');
+
+            // Update title and color
+            const unitTitle = document.getElementById('unit-title');
+            unitTitle.textContent = title + ' Chapters';
+            
+            // Clear previous border color and apply new one
+            unitTitle.className = 'text-3xl font-bold text-cbse-blue mb-6 border-l-4 pl-3 pb-1';
+            unitTitle.classList.add(`border-[${color}]`);
+            
+            const unitContent = document.getElementById('unit-content');
+            
+            if (book === 'Physics') {
+                // Render the dedicated Physics chapter list
+                unitContent.innerHTML = getPhysicsChaptersHTML(color);
+                lucide.createIcons(); // Re-render icons after DOM update
+                
+            } else {
+                // Placeholder for other subjects
+                unitContent.innerHTML = `<div class="text-gray-700 p-4 rounded-lg bg-yellow-50 border-l-4 border-yellow-500 col-span-full">
+                    Chapter list for **${title}** is currently under development. Please check back later.
+                </div>`;
+            }
         }
 
         // --- Event Handlers that use Data Attributes ---
-
-        function handleQuizButtonClick(event) {
-            const chapterName = event.currentTarget.dataset.chapter;
-            startQuiz(chapterName);
-        }
 
         function handleBookSelectClick(event) {
             const card = event.currentTarget;
@@ -346,20 +202,34 @@
             showUnits(book, title, color);
         }
 
+        function attachEventListeners() {
+            // Attach listener to the book cards in the selection view
+            document.querySelectorAll('.book-select-btn').forEach(card => {
+                // Prevent attaching multiple listeners
+                if (!card.hasAttribute('data-listener-attached')) {
+                    card.addEventListener('click', handleBookSelectClick);
+                    card.setAttribute('data-listener-attached', 'true');
+                }
+            });
+            // NOTE: Removed handleQuizButtonClick logic as navigation is now pure HTML <a> tag
+        }
+        
         // --- Initialization on Document Load ---
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
-
-            attachEventListeners();
-
-            // Link to the main Class 9 index
-            document.querySelector('header h1').parentNode.addEventListener('click', () => {
-                window.location.href='index_class_9.html';
+            
+            // Apply standard Tailwind classes to nav links
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.add('px-3', 'py-1', 'rounded-lg', 'text-gray-600', 'hover:bg-cbse-light', 'hover:text-cbse-blue', 'transition');
             });
 
+            attachEventListeners();
+            
+            // Navigation buttons
+            headerHomeBtn.addEventListener('click', () => showView('book-select'));
             backToBooksBtn.addEventListener('click', () => showView('book-select'));
         });
-
+        
     </script>
 </body>
 </html>
