@@ -4,7 +4,6 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CBSE Class 9 Science Curriculum</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     
     <script>
@@ -14,14 +13,13 @@
                 extend: {
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
-                        serif: ['Merriweather', 'serif'],
                     },
                     colors: {
                         'cbse-blue': '#1a3e6a',      // Primary dark blue
                         'cbse-light': '#f0f4f8',     // Light background
-                        'accent-green': '#059669',  // Chemistry/Bio (Emerald 600)
-                        'accent-red': '#dc2626',    // Biology (Red 600)
-                        'accent-blue': '#2563eb',   // Physics (Blue 600)
+                        'accent-green': '#059669',  // Chemistry/Bio
+                        'accent-red': '#dc2626',    // Biology
+                        'accent-blue': '#2563eb',   // Physics
                         'unit-bg': '#e3f2fd',
                     }
                 }
@@ -34,16 +32,10 @@
         .book-card {
             transition: all 0.3s ease;
             cursor: pointer;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
-            transform: translate(0);
         }
-        .book-card:hover {
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-            transform: translateY(-5px);
+        .chapter-card {
+            border-left-width: 4px;
         }
-        /* Custom Utility for dynamic border colors (Tailwind JIT replacement) */
-        .border-\[\#2563eb\] { border-color: #2563eb; }
-        .text-\[\#2563eb\] { color: #2563eb; }
     </style>
 </head>
 
@@ -56,8 +48,8 @@
                 <h1 class="text-xl font-bold text-cbse-blue">Class 9 Science</h1>
             </a>
             <nav>
-                <a href="#" class="nav-link">Home</a>
-                <a href="#" class="nav-link">Quizzes</a>
+                <a href="#" class="px-3 py-1 rounded-lg text-gray-600 hover:bg-cbse-light hover:text-cbse-blue transition">Home</a>
+                <a href="#" class="px-3 py-1 rounded-lg text-gray-600 hover:bg-cbse-light hover:text-cbse-blue transition">Quizzes</a>
             </nav>
         </div>
     </header>
@@ -80,10 +72,7 @@
                     </div>
                 </div>
 
-                <div class="book-card bg-accent-green/10 p-6 rounded-xl shadow-lg" 
-                     data-book="Chemistry" 
-                     data-title="Chemistry" 
-                     data-color="#059669">
+                <div class="book-card bg-accent-green/10 p-6 rounded-xl shadow-lg">
                     <div class="flex flex-col items-center justify-center h-full">
                         <span data-lucide="atom" class="w-12 h-12 text-accent-green mb-3"></span>
                         <h2 class="text-xl font-bold text-cbse-blue text-center">Chemistry</h2>
@@ -91,10 +80,7 @@
                     </div>
                 </div>
 
-                <div class="book-card bg-accent-red/10 p-6 rounded-xl shadow-lg" 
-                     data-book="Biology" 
-                     data-title="Biology" 
-                     data-color="#dc2626">
+                <div class="book-card bg-accent-red/10 p-6 rounded-xl shadow-lg">
                     <div class="flex flex-col items-center justify-center h-full">
                         <span data-lucide="dna" class="w-12 h-12 text-accent-red mb-3"></span>
                         <h2 class="text-xl font-bold text-cbse-blue text-center">Biology</h2>
@@ -133,8 +119,6 @@
 
             if (viewName === 'book-select') {
                 bookSelectView.classList.remove('hidden');
-                // Clean up title on return
-                document.getElementById('unit-title').classList.remove('border-cbse-blue', 'border-accent-green', 'border-accent-red', 'border-[#2563eb]'); 
             } else if (viewName === 'unit-select') {
                 unitSelectView.classList.remove('hidden');
             }
@@ -152,16 +136,23 @@
                 { name: "Sound", file: "sound_quiz.html", concepts: "Production, Propagation, Characteristics (Pitch, Loudness), Reflection, Echo, SONAR." }
             ];
 
-            // Use a standard anchor tag <a> for navigation. This replaces the old button/alert logic.
             return chapters.map(chapter => `
-                <a href="${chapter.file}" class="chapter-card block p-6 bg-white rounded-lg border-l-4 border-[${color}] shadow-md hover:bg-gray-50 transition duration-150 ease-in-out">
+                <div class="chapter-card block p-6 bg-white rounded-lg border-l-4 border-[${color}] shadow-md hover:bg-gray-50 transition duration-150 ease-in-out">
                     <h3 class="text-xl font-semibold text-cbse-blue">Chapter: ${chapter.name}</h3>
                     <p class="text-sm text-gray-600 mt-2">Concepts: ${chapter.concepts}</p>
-                    <div class="mt-4 text-[${color}] hover:text-cbse-blue font-medium flex items-center">
+                    <button class="quiz-button mt-4 text-[${color}] hover:text-cbse-blue font-medium flex items-center" 
+                            data-chapter="${chapter.name}" 
+                            data-file="${chapter.file}">
                         Start Quiz <span data-lucide="chevron-right" class="w-4 h-4 ml-1"></span>
-                    </div>
-                </a>
+                    </button>
+                </div>
             `).join('');
+        }
+
+        // === FIX: This function now correctly navigates to the quiz page ===
+        function startQuiz(file) {
+            // Use the file name stored in the button's data attribute to navigate
+            window.location.href = file;
         }
 
         // --- Unit Selection Function ---
@@ -169,23 +160,19 @@
         function showUnits(book, title, color) {
             showView('unit-select');
 
-            // Update title and color
             const unitTitle = document.getElementById('unit-title');
             unitTitle.textContent = title + ' Chapters';
             
-            // Clear previous border color and apply new one
             unitTitle.className = 'text-3xl font-bold text-cbse-blue mb-6 border-l-4 pl-3 pb-1';
             unitTitle.classList.add(`border-[${color}]`);
             
             const unitContent = document.getElementById('unit-content');
             
             if (book === 'Physics') {
-                // Render the dedicated Physics chapter list
                 unitContent.innerHTML = getPhysicsChaptersHTML(color);
                 lucide.createIcons(); // Re-render icons after DOM update
-                
+                attachQuizButtonListeners(); // Re-attach listeners to the new buttons
             } else {
-                // Placeholder for other subjects
                 unitContent.innerHTML = `<div class="text-gray-700 p-4 rounded-lg bg-yellow-50 border-l-4 border-yellow-500 col-span-full">
                     Chapter list for **${title}** is currently under development. Please check back later.
                 </div>`;
@@ -193,6 +180,12 @@
         }
 
         // --- Event Handlers that use Data Attributes ---
+
+        // FIX: The event handler now calls startQuiz with the chapter file
+        function handleQuizButtonClick(event) {
+            const chapterFile = event.currentTarget.dataset.file;
+            startQuiz(chapterFile);
+        }
 
         function handleBookSelectClick(event) {
             const card = event.currentTarget;
@@ -202,29 +195,29 @@
             showUnits(book, title, color);
         }
 
-        function attachEventListeners() {
-            // Attach listener to the book cards in the selection view
-            document.querySelectorAll('.book-select-btn').forEach(card => {
-                // Prevent attaching multiple listeners
-                if (!card.hasAttribute('data-listener-attached')) {
-                    card.addEventListener('click', handleBookSelectClick);
-                    card.setAttribute('data-listener-attached', 'true');
+        // FIX: A separate function to attach listeners to the quiz buttons
+        function attachQuizButtonListeners() {
+            document.querySelectorAll('.quiz-button').forEach(button => {
+                // Ensure listener is not attached multiple times
+                if (!button.hasAttribute('data-listener-attached')) {
+                    button.addEventListener('click', handleQuizButtonClick);
+                    button.setAttribute('data-listener-attached', 'true');
                 }
             });
-            // NOTE: Removed handleQuizButtonClick logic as navigation is now pure HTML <a> tag
         }
         
         // --- Initialization on Document Load ---
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
-            
-            // Apply standard Tailwind classes to nav links
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.add('px-3', 'py-1', 'rounded-lg', 'text-gray-600', 'hover:bg-cbse-light', 'hover:text-cbse-blue', 'transition');
+
+            // Attach listeners for the subject cards
+            document.querySelectorAll('.book-select-btn').forEach(card => {
+                if (!card.hasAttribute('data-listener-attached')) {
+                    card.addEventListener('click', handleBookSelectClick);
+                    card.setAttribute('data-listener-attached', 'true');
+                }
             });
 
-            attachEventListeners();
-            
             // Navigation buttons
             headerHomeBtn.addEventListener('click', () => showView('book-select'));
             backToBooksBtn.addEventListener('click', () => showView('book-select'));
