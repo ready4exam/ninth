@@ -4,15 +4,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CBSE Class 9 Science Curriculum</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <script>
-        // Tailwind Configuration
+        // Consolidated Tailwind Configuration
         tailwind.config = {
             theme: {
                 extend: {
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
+                        serif: ['Merriweather', 'serif'],
                     },
                     colors: {
                         'cbse-blue': '#1a3e6a',      // Primary dark blue
@@ -27,14 +28,29 @@
         }
     </script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    
     <style>
         .book-card {
             transition: all 0.3s ease;
             cursor: pointer;
+            /* Added Box Shadow to match the economics (1).html template */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+        }
+        .book-card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
         }
         .chapter-card {
             border-left-width: 4px;
+        }
+        .nav-link {
+            /* Styles to match economics (1).html navigation */
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.5rem;
+            color: #4b5563; /* gray-600 */
+            transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
+        }
+        .nav-link:hover {
+            background-color: #f0f4f8; /* cbse-light */
+            color: #1a3e6a; /* cbse-blue */
         }
     </style>
 </head>
@@ -48,20 +64,20 @@
                 <h1 class="text-xl font-bold text-cbse-blue">Class 9 Science</h1>
             </a>
             <nav>
-                <a href="#" class="px-3 py-1 rounded-lg text-gray-600 hover:bg-cbse-light hover:text-cbse-blue transition">Home</a>
-                <a href="#" class="px-3 py-1 rounded-lg text-gray-600 hover:bg-cbse-light hover:text-cbse-blue transition">Quizzes</a>
+                <a href="#" class="nav-link">Home</a>
+                <a href="#" class="nav-link">Quizzes</a>
             </nav>
         </div>
     </header>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
-        <section id="book-select-view" class="space-y-6">
+        <section id="book-select-view" class="space-y-8">
             <h2 class="text-3xl font-bold text-cbse-blue mb-6 border-b-2 pb-2">Select a Science Stream 🚀</h2>
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 
-                <div class="book-card book-select-btn bg-accent-blue/10 p-6 rounded-xl shadow-lg" 
+                <div class="book-card book-select-btn bg-accent-blue/10 p-6 rounded-xl" 
                      data-book="Physics" 
                      data-title="Physics" 
                      data-color="#2563eb">
@@ -72,7 +88,7 @@
                     </div>
                 </div>
 
-                <div class="book-card bg-accent-green/10 p-6 rounded-xl shadow-lg">
+                <div class="book-card bg-accent-green/10 p-6 rounded-xl">
                     <div class="flex flex-col items-center justify-center h-full">
                         <span data-lucide="atom" class="w-12 h-12 text-accent-green mb-3"></span>
                         <h2 class="text-xl font-bold text-cbse-blue text-center">Chemistry</h2>
@@ -80,7 +96,7 @@
                     </div>
                 </div>
 
-                <div class="book-card bg-accent-red/10 p-6 rounded-xl shadow-lg">
+                <div class="book-card bg-accent-red/10 p-6 rounded-xl">
                     <div class="flex flex-col items-center justify-center h-full">
                         <span data-lucide="dna" class="w-12 h-12 text-accent-red mb-3"></span>
                         <h2 class="text-xl font-bold text-cbse-blue text-center">Biology</h2>
@@ -101,26 +117,42 @@
                 </div>
         </section>
 
+        <section id="difficulty-select-view" class="hidden space-y-6">
+            <button id="back-to-chapters-btn" class="text-cbse-blue hover:text-cbse-blue/80 flex items-center mb-6 transition">
+                <span data-lucide="arrow-left" class="w-5 h-5 mr-2"></span> Back to Chapter List
+            </button>
+            
+            <div id="difficulty-content" class="text-center p-8 bg-white rounded-lg shadow-xl">
+                 <h2 id="difficulty-title" class="text-2xl font-bold mb-8 text-cbse-blue">Select Difficulty</h2>
+                 </div>
+        </section>
+
     </main>
 
     <script>
         
         const unitSelectView = document.getElementById('unit-select-view');
         const bookSelectView = document.getElementById('book-select-view');
+        const difficultySelectView = document.getElementById('difficulty-select-view'); // NEW View
         const backToBooksBtn = document.getElementById('back-to-books-btn');
+        const backToChaptersBtn = document.getElementById('back-to-chapters-btn'); // NEW Button
         const headerHomeBtn = document.getElementById('header-home-btn');
 
+        let currentBookTitle = ''; // To remember the book to go back
 
         // --- Core View Management ---
 
         function showView(viewName) {
             bookSelectView.classList.add('hidden');
             unitSelectView.classList.add('hidden');
+            difficultySelectView.classList.add('hidden'); // NEW
 
             if (viewName === 'book-select') {
                 bookSelectView.classList.remove('hidden');
             } else if (viewName === 'unit-select') {
                 unitSelectView.classList.remove('hidden');
+            } else if (viewName === 'difficulty-select') { // NEW
+                difficultySelectView.classList.remove('hidden');
             }
         }
 
@@ -129,6 +161,7 @@
 
         function getPhysicsChaptersHTML(color) {
             const chapters = [
+                // The data-file attribute is now correct for navigation to the quiz page
                 { name: "Motion", file: "motion_quiz.html", concepts: "Displacement, Velocity, Acceleration, Graphical Representation of Motion." },
                 { name: "Force and Laws of Motion", file: "force_quiz.html", concepts: "Balanced/Unbalanced Forces, Newton's Laws, Momentum." },
                 { name: "Gravitation", file: "gravitation_quiz.html", concepts: "Universal Law of Gravitation, Free Fall, Mass, Weight, Buoyancy." },
@@ -138,8 +171,8 @@
 
             return chapters.map(chapter => `
                 <div class="chapter-card block p-6 bg-white rounded-lg border-l-4 border-[${color}] shadow-md hover:bg-gray-50 transition duration-150 ease-in-out">
-                    <h3 class="text-xl font-semibold text-cbse-blue">Chapter: ${chapter.name}</h3>
-                    <p class="text-sm text-gray-600 mt-2">Concepts: ${chapter.concepts}</p>
+                    <h3 class="text-xl font-semibold text-cbse-blue font-serif">Chapter: ${chapter.name}</h3>
+                    <p class="text-sm text-gray-600 mt-2">${chapter.concepts}</p>
                     <button class="quiz-button mt-4 text-[${color}] hover:text-cbse-blue font-medium flex items-center" 
                             data-chapter="${chapter.name}" 
                             data-file="${chapter.file}">
@@ -149,29 +182,46 @@
             `).join('');
         }
 
-        // === FIX: This function now correctly navigates to the quiz page ===
-        function startQuiz(file) {
-            // Use the file name stored in the button's data attribute to navigate
-            window.location.href = file;
+        // --- Difficulty Selection Function (NEW) ---
+        function renderDifficultySelection(chapterName, chapterFile) {
+            showView('difficulty-select');
+
+            document.getElementById('difficulty-title').textContent = `Select Difficulty for the ${chapterName} Quiz`;
+
+            const difficulties = ['Simple', 'Medium', 'Advanced'];
+            const buttonColorClass = 'bg-accent-blue/90 hover:bg-accent-blue'; // Using Physics blue
+            
+            const buttonHTML = difficulties.map(difficulty => `
+                <a href="${chapterFile}?difficulty=${difficulty}" 
+                   class="inline-block px-8 py-3 m-2 text-white font-bold rounded-lg shadow-lg ${buttonColorClass} transition transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-accent-blue/50">
+                    ${difficulty} Level
+                </a>
+            `).join('');
+
+            document.getElementById('difficulty-content').innerHTML = `
+                <h2 id="difficulty-title" class="text-2xl font-bold mb-8 text-cbse-blue">${document.getElementById('difficulty-title').textContent}</h2>
+                ${buttonHTML}
+            `;
         }
 
         // --- Unit Selection Function ---
-
         function showUnits(book, title, color) {
             showView('unit-select');
+
+            currentBookTitle = title; // Store the book title for back button logic
 
             const unitTitle = document.getElementById('unit-title');
             unitTitle.textContent = title + ' Chapters';
             
             unitTitle.className = 'text-3xl font-bold text-cbse-blue mb-6 border-l-4 pl-3 pb-1';
-            unitTitle.classList.add(`border-[${color}]`);
+            unitTitle.style.borderColor = color; // Use style for dynamic color application
             
             const unitContent = document.getElementById('unit-content');
             
             if (book === 'Physics') {
                 unitContent.innerHTML = getPhysicsChaptersHTML(color);
-                lucide.createIcons(); // Re-render icons after DOM update
-                attachQuizButtonListeners(); // Re-attach listeners to the new buttons
+                lucide.createIcons();
+                attachEventListeners(); // Re-attach listeners to the new chapter buttons
             } else {
                 unitContent.innerHTML = `<div class="text-gray-700 p-4 rounded-lg bg-yellow-50 border-l-4 border-yellow-500 col-span-full">
                     Chapter list for **${title}** is currently under development. Please check back later.
@@ -181,10 +231,11 @@
 
         // --- Event Handlers that use Data Attributes ---
 
-        // FIX: The event handler now calls startQuiz with the chapter file
+        // FIX: This now leads to the difficulty selection screen
         function handleQuizButtonClick(event) {
+            const chapterName = event.currentTarget.dataset.chapter;
             const chapterFile = event.currentTarget.dataset.file;
-            startQuiz(chapterFile);
+            renderDifficultySelection(chapterName, chapterFile);
         }
 
         function handleBookSelectClick(event) {
@@ -195,14 +246,18 @@
             showUnits(book, title, color);
         }
 
-        // FIX: A separate function to attach listeners to the quiz buttons
-        function attachQuizButtonListeners() {
+        // FIX: Function to attach listeners to all dynamic buttons
+        function attachEventListeners() {
+            // Attach listeners for the subject cards
+            document.querySelectorAll('.book-select-btn').forEach(card => {
+                card.removeEventListener('click', handleBookSelectClick);
+                card.addEventListener('click', handleBookSelectClick);
+            });
+            
+            // Attach listeners for the new chapter quiz buttons
             document.querySelectorAll('.quiz-button').forEach(button => {
-                // Ensure listener is not attached multiple times
-                if (!button.hasAttribute('data-listener-attached')) {
-                    button.addEventListener('click', handleQuizButtonClick);
-                    button.setAttribute('data-listener-attached', 'true');
-                }
+                button.removeEventListener('click', handleQuizButtonClick);
+                button.addEventListener('click', handleQuizButtonClick);
             });
         }
         
@@ -210,17 +265,21 @@
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
 
-            // Attach listeners for the subject cards
-            document.querySelectorAll('.book-select-btn').forEach(card => {
-                if (!card.hasAttribute('data-listener-attached')) {
-                    card.addEventListener('click', handleBookSelectClick);
-                    card.setAttribute('data-listener-attached', 'true');
-                }
-            });
-
+            attachEventListeners();
+            
             // Navigation buttons
-            headerHomeBtn.addEventListener('click', () => showView('book-select'));
+            document.getElementById('header-home-btn').addEventListener('click', (e) => {
+                e.preventDefault(); 
+                showView('book-select');
+            });
             backToBooksBtn.addEventListener('click', () => showView('book-select'));
+            
+            // NEW: Back button from Difficulty to Chapters
+            backToChaptersBtn.addEventListener('click', () => {
+                 // Re-render the chapters view for the current book
+                 // Assuming Physics for now, as it's the only one with content
+                 showUnits('Physics', currentBookTitle, '#2563eb');
+            });
         });
         
     </script>
