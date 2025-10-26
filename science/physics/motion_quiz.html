@@ -7,10 +7,6 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
     <script>
         // Tailwind Configuration
         tailwind.config = {
@@ -42,7 +38,7 @@
 
     <main class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
         <div id="quiz-container" class="container bg-white p-6 md:p-10 rounded-xl shadow-lg">
-            <p class="text-cbse-blue font-semibold">Loading authentication...</p>
+            <p class="text-cbse-blue font-semibold">Loading quiz modules...</p>
         </div>
 
         <div id="config-error" class="hidden error-message mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
@@ -50,93 +46,9 @@
         </div>
     </main>
 
-    <div id="auth-modal" class="modal-overlay hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); display: flex; justify-content: center; align-items: center; z-index: 50;">
-        <div id="auth-view" class="bg-white relative p-8 rounded-lg shadow-xl" style="max-width: 400px;">
-            <h2 class="text-2xl font-bold text-center mb-6 text-cbse-blue">Login to Access Quizzes</h2>
-            <div class="mt-4">
-                <button id="google-sign-in-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition flex items-center justify-center space-x-3 shadow-md">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/4/4a/Logo_google_g_standard.png" alt="Google logo" class="w-6 h-6 bg-white rounded-full">
-                    <span>Sign in with Google</span>
-                </button>
-            </div>
-            <p id="error-message" class="mt-4 text-center text-red-500 font-medium"></p>
-        </div>
-    </div>
-
-
     <script>
         // ==================================================================================
-        // FIREBASE INITIALIZATION AND AUTHENTICATION LOGIC (Working Code Preserved)
-        // ==================================================================================
-        
-        const firebaseConfig = {
-            apiKey: "AIzaSyAXdKiYRxBKAj280YcNuNwlKKDp85xpOWQ",
-            authDomain: "quiz-signon.firebaseapp.com",
-            projectId: "quiz-signon",
-            storageBucket: "quiz-signon.firebasestorage.app",
-            messagingSenderId: "863414222321",
-            appId: "1:863414222321:web:819f5564825308bcd9d850",
-            measurementId: "G-4EFDM0CRYY"
-        };
-
-        const app = firebase.initializeApp(firebaseConfig);
-        const auth = app.auth();
-        const db = app.firestore();
-        
-        const googleSignInBtn = document.getElementById('google-sign-in-btn');
-        const errorMessage = document.getElementById('error-message');
-
-        googleSignInBtn.addEventListener('click', async () => {
-             errorMessage.textContent = 'Signing in with Google...';
-             googleSignInBtn.disabled = true;
-
-            const provider = new firebase.auth.GoogleAuthProvider();
-
-            try {
-                // CRITICAL LOGIC: Set flag before popup to prevent loop
-                localStorage.setItem('auth_in_progress', 'true'); 
-                await auth.signInWithPopup(provider);
-            } catch (error) {
-                let displayMessage = 'Google Sign-in failed: ' + error.message;
-                errorMessage.textContent = displayMessage;
-            } finally {
-                 googleSignInBtn.disabled = false;
-                 // CRITICAL LOGIC: Remove flag after popup is complete/fails
-                 localStorage.removeItem('auth_in_progress'); 
-            }
-        });
-
-        function logFinalQuizScore(score, total, chapterName, difficulty) {
-            const user = auth.currentUser;
-            if (!user) return;
-
-            db.collection("quiz_scores").add({
-                userId: user.uid,
-                email: user.email || 'N/A',
-                chapter: chapterName,
-                difficulty: difficulty,
-                score: score,
-                total: total,
-                percentage: (score / total) * 100,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                action: 'Quiz Completed'
-            });
-        }
-        
-        function renderAccessRestrictedView() {
-            document.getElementById('quiz-container').innerHTML = `
-                <div class="text-center p-6 bg-white rounded-lg shadow-xl">
-                    <h2 class="text-2xl font-bold mb-4 text-cbse-blue">Access Restricted</h2>
-                    <p class="text-gray-700 mb-6">Please sign in to start the **Motion** Chapter Quizzes and track your progress.</p>
-                    <button class="px-6 py-2 text-white font-bold rounded-lg shadow-md bg-red-600 hover:bg-red-700" onclick="document.getElementById('auth-modal').classList.remove('hidden');">
-                        Sign in to Start
-                    </button>
-                </div>`;
-            document.getElementById('auth-modal').classList.remove('hidden'); 
-        }
-
-        // ==================================================================================
-        // QUIZ LOGIC (Refactored for Batch Display and Submission)
+        // QUIZ LOGIC (Batch Display and Submission)
         // ==================================================================================
 
         const TABLE_NAME = 'motion';
@@ -266,18 +178,6 @@
             QUIZ_DATA.difficulty = difficulty;
             QUIZ_DATA.answers = {}; // Initialize user answers object
 
-            // Log attempt to Firestore
-             if (auth.currentUser) {
-                db.collection("quiz_attempts").add({
-                    userId: auth.currentUser.uid,
-                    email: auth.currentUser.email || 'N/A',
-                    chapter: "7. Motion",
-                    difficulty: difficulty,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                    action: 'Quiz Attempted'
-                });
-            }
-
             renderQuiz();
         }
 
@@ -395,17 +295,15 @@
                 });
             });
 
-            const chapterName = "7. Motion";
-            const difficultyLevel = QUIZ_DATA.difficulty || "Medium";
-
-            logFinalQuizScore(score, totalQuestions, chapterName, difficultyLevel);
+            const totalQuestions = QUIZ_DATA.questions.length;
+            const percentage = ((score / totalQuestions) * 100).toFixed(1);
 
             const scoreHtml = `
                 <div class="p-6 md:p-10 mb-8 text-center bg-cbse-blue text-white rounded-lg shadow-2xl">
                     <h3 class="text-4xl font-extrabold mb-2">Quiz Complete!</h3>
                     <p class="text-6xl font-black">${score}/${totalQuestions}</p>
-                    <p class="text-xl font-semibold mt-2">Your Score is: ${((score / totalQuestions) * 100).toFixed(1)}%</p>
-                    <p class="mt-4 text-sm">Review your answers below (Green = Correct, Red = Your selection, Outline = Correct answer).</p>
+                    <p class="text-xl font-semibold mt-2">Your Score is: ${percentage}%</p>
+                    <p class="mt-4 text-sm">Review your answers below (Green = Correct option, Red = Your incorrect selection).</p>
                 </div>
             `;
             document.getElementById('quiz-container').insertAdjacentHTML('afterbegin', scoreHtml);
@@ -416,23 +314,16 @@
 
 
         // ==================================================================================
-        // DOM LOAD LISTENER (AUTHENTICATION GATE)
+        // DOM LOAD LISTENER (Directly initialize Supabase)
         // ==================================================================================
         
         document.addEventListener('DOMContentLoaded', () => {
             const container = document.getElementById('quiz-container');
-            container.innerHTML = `<div class="text-center p-6 bg-white rounded-lg shadow-xl">Initializing Authentication...</div>`;
+            // Initial loading message
+            container.innerHTML = `<div class="text-center p-6 bg-white rounded-lg shadow-xl">Loading Quiz Data...</div>`;
             
-            auth.onAuthStateChanged((user) => {
-                if (user) {
-                    // Authenticated: Hide modal and load data
-                    document.getElementById('auth-modal').classList.add('hidden');
-                    initSupabase(); 
-                } else if (!localStorage.getItem('auth_in_progress')) {
-                    // Unauthenticated: Only show login view if sign-in is NOT actively in progress
-                    renderAccessRestrictedView();
-                }
-            });
+            // Start the quiz process immediately
+            initSupabase(); 
         });
     </script>
 </body>
