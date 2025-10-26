@@ -7,7 +7,8 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script> 
-    <script src="/js/config.js"></script> 
+    
+        <script src="../../js/config.js"></script> 
 
     <style>
         /* Define a max width for the quiz container for better readability */
@@ -21,7 +22,7 @@
             transition: background-color 0.15s ease-in-out;
         }
         .btn-primary:hover { 
-            background-color: #1a3e6a; /* Use the base color from tailwind.config for hover */
+            background-color: #1a3e6a;
             opacity: 0.9;
         }
     </style>
@@ -56,16 +57,14 @@
 
         /**
          * Initializes the Supabase client and starts fetching data.
-         * Assumes SUPABASE_URL and SUPABASE_ANON_KEY are defined on the window object via /js/config.js
+         * NOTE: Variables are accessed via window. to match /js/config.js file structure.
          */
         function initSupabase() {
-            // --- START FIX ---
             if (typeof window.SUPABASE_URL === 'undefined' || typeof window.SUPABASE_ANON_KEY === 'undefined') {
-                document.getElementById('quiz-container').innerHTML = `<p class="error-message text-red-700 bg-red-100 p-4 rounded">Configuration Error: **SUPABASE_URL** or **SUPABASE_ANON_KEY** not defined. Check **/js/config.js**.</p>`;
+                document.getElementById('quiz-container').innerHTML = `<p class="error-message text-red-700 bg-red-100 p-4 rounded">Configuration Error: **SUPABASE_URL** or **SUPABASE_ANON_KEY** not defined. Check **../../js/config.js** and its file path.</p>`;
                 return;
             }
             const supabaseClient = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-            // --- END FIX ---
             
             fetchQuizData(supabaseClient); 
         }
@@ -104,7 +103,7 @@
          */
         function renderDifficultySelection(data) {
             const container = document.getElementById('quiz-container');
-            const difficulties = [...new Set(data.map(q => q.difficulty))].filter(d => d); // Extract unique, non-null difficulties
+            const difficulties = [...new Set(data.map(q => q.difficulty))].filter(d => d); 
 
             if (difficulties.length === 0) {
                  container.innerHTML = `<p class="text-gray-700 p-4 rounded">No difficulties found in the data for table **${TABLE_NAME}**. Ensure your 'difficulty' column is populated.</p>`;
@@ -250,7 +249,7 @@
                     <p class="text-2xl mb-6">Your Score: <span class="font-extrabold text-accent-green">${score} / ${currentQuizQuestions.length}</span></p>
                     <p class="mb-8 text-gray-700">You completed the **${selectedDifficulty.toUpperCase()}** level for the Motion chapter.</p>
                     <button class="btn-primary m-2" onclick="renderDifficultySelection(allQuestions)">Select New Difficulty</button>
-                    <button class="btn-primary m-2 bg-gray-500 hover:bg-gray-600" onclick="window.location.href='../science.html'">Back to Subjects</button>
+                    <button class="btn-primary m-2 bg-gray-500 hover:bg-gray-600" onclick="window.location.href='../../science(1).html'">Back to Subjects</button>
                 </div>
             `;
         }
