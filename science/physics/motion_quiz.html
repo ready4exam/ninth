@@ -42,7 +42,7 @@
 
     <main class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         <div id="quiz-container" class="container bg-white p-6 md:p-10 rounded-xl shadow-lg">
-            <p class="text-cbse-blue font-semibold">Loading authentication...</p>
+            <p class="text-cbse-blue font-semibold">Loading quiz modules...</p>
         </div>
 
         <div id="config-error" class="hidden error-message mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
@@ -86,61 +86,88 @@
         const authModal = document.getElementById('auth-modal');
         const googleSignInBtn = document.getElementById('google-sign-in-btn');
         const errorMessage = document.getElementById('error-message');
-        
-        // --- Sign-in Logic (CHANGED to Redirect) ---
+
         googleSignInBtn.addEventListener('click', async () => {
-            errorMessage.textContent = 'Redirecting for Google Sign-in...';
+             errorMessage.textContent = 'Signing in with Google...';
             googleSignInBtn.disabled = true;
 
             const provider = new firebase.auth.GoogleAuthProvider();
 
             try {
-                // *** CRITICAL CHANGE: Use signInWithRedirect ***
-                await auth.signInWithRedirect(provider);
-                // The page will now redirect. The code below will not execute immediately.
+                // *** CRITICAL LOGIC: Set flag before popup to prevent loop ***
+                localStorage.setItem('auth_in_progress', 'true'); 
+                await auth.signInWithPopup(provider);
             } catch (error) {
                 let displayMessage = 'Google Sign-in failed: ' + error.message;
                 errorMessage.textContent = displayMessage;
-                googleSignInBtn.disabled = false;
+            } finally {
+                 googleSignInBtn.disabled = false;
+                 // *** CRITICAL LOGIC: Remove flag after popup is complete/fails ***
+                 localStorage.removeItem('auth_in_progress'); 
             }
         });
 
+        function logFinalQuizScore(score, total, chapterName, difficulty) {
+            const user = auth.currentUser;
+            if (!user) return;
+
+            db.collection("quiz_scores").add({
+                userId: user.uid,
+                email: user.email || 'N/A',
+                chapter: chapterName,
+                difficulty: difficulty,
+                score: score,
+                total: total,
+                percentage: (score / total) * 100,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                action: 'Quiz Completed'
+            });
+        }
+
         // ==================================================================================
-        // QUIZ LOGIC (Simplified for final structure)
+        // END FIREBASE SETUP
         // ==================================================================================
-        
+
+        // State variables
         let ALL_QUESTIONS = {};
         let QUIZ_DATA = {};
         const TARGET_QUESTION_COUNT = 20;
         const TABLE_NAME = 'motion';
         let quizDataLoaded = false; 
 
-        // Utility functions (shuffleAndSlice, cleanText, etc. are defined here)
+        // Utility functions (shuffleAndSlice, cleanText, etc.)
         function shuffleAndSlice(array, count) {
             const shuffled = array.sort(() => 0.5 - Math.random());
             return shuffled.slice(0, count);
         }
         function cleanText(text) {
             if (!text) return '';
-            let cleaned = text.replace(/\$\\(text)\{([^\}]+)\}\$|\\text\{([^\}]+)\}|(\\\$)|(\\\\)|(\text\{[^\}]+\})/g, (match, p1, p2, p3) => {
-                const matchText = match.match(/\\text\{([^\}]+)\}/);
-                if (matchText) return matchText[1];
-                if (match === '\\$') return '₹';
-                if (match === '\\\\') return '<br>';
-                return match;
-            })
-            .replace(/\$/g, '').replace(/\\(left|right)[\(\)\|\{\}]/g, '');
+            let cleaned = text
+                .replace(/\$\\(text)\{([^\}]+)\}\$|\\text\{([^\}]+)\}|(\\\$)|(\\\\)|(\text\{[^\}]+\})/g, (match, p1, p2, p3) => {
+                    const matchText = match.match(/\\text\{([^\}]+)\}/);
+                    if (matchText) return matchText[1];
+                    if (match === '\\$') return '₹';
+                    if (match === '\\\\') return '<br>';
+                    return match;
+                })
+                .replace(/\$/g, '')
+                .replace(/\\(left|right)[\(\)\|\{\}]/g, '');
             cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
             return cleaned;
         }
 
         function renderDifficultySelection(fullData) {
-            // Logic to filter/set ALL_QUESTIONS (only runs on first data fetch)
+            
             if (Array.isArray(fullData) && fullData.length > 0 && !quizDataLoaded) {
                  const simpleQuestions = fullData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'simple');
-                 const mediumQuestions = fullData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'medium');
-                 const complexQuestions = fullData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'complex');
-                 ALL_QUESTIONS = { simple: simpleQuestions, medium: mediumQuestions, complex: complexQuestions };
+                const mediumQuestions = fullData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'medium');
+                const complexQuestions = fullData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'complex');
+
+                ALL_QUESTIONS = {
+                    simple: simpleQuestions,
+                    medium: mediumQuestions,
+                    complex: complexQuestions
+                };
             }
             
             const container = document.getElementById('quiz-container');
@@ -148,12 +175,11 @@
             if (Object.keys(ALL_QUESTIONS).length === 0 || 
                 (ALL_QUESTIONS.simple?.length === 0 && ALL_QUESTIONS.medium?.length === 0 && ALL_QUESTIONS.complex?.length === 0)) {
                  container.innerHTML = `<p class="text-red-700 p-4 rounded bg-red-100">
-                    **No Quiz Questions Found!** Please ensure your Supabase table **${TABLE_NAME}** contains questions and that the RLS policy permits **SELECT** access.
+                    **No Quiz Questions Found!** Please ensure your Supabase table **${TABLE_NAME}** contains questions and that the RLS (Row Level Security) policy permits **SELECT** access for your authenticated user.
                     </p>`;
                  return;
             }
 
-            // Logic to generate and display difficulty cards (omitted for brevity)
             const html = `
                 <h2 class="text-3xl font-extrabold text-cbse-blue mb-8">Choose Difficulty for Motion Chapter</h2>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -165,12 +191,12 @@
             container.innerHTML = html;
         }
 
-        // createDifficultyCard, startQuiz, renderQuiz, storeAnswer, submitQuiz definitions here... 
-        // (You should keep the full implementation from the previous response)
-
         function createDifficultyCard(level, count, description, colorClass) {
             const actualCount = Math.min(count, TARGET_QUESTION_COUNT);
-            const buttonText = count >= TARGET_QUESTION_COUNT ? `Start Quiz (${TARGET_QUESTION_COUNT} Qs)` : `Start Quiz (${actualCount} Qs)`;
+            const buttonText = count >= TARGET_QUESTION_COUNT
+                ? `Start Quiz (${TARGET_QUESTION_COUNT} Qs)`
+                : `Start Quiz (${actualCount} Qs)`;
+            
             const displayName = level.charAt(0).toUpperCase() + level.slice(1);
             
             return `
@@ -187,7 +213,7 @@
                 </div>
             `;
         }
-
+        
         function startQuiz(difficulty) {
             const allQs = ALL_QUESTIONS[difficulty];
             QUIZ_DATA.questions = shuffleAndSlice(allQs, TARGET_QUESTION_COUNT);
@@ -264,180 +290,3 @@
                 </button>
                 <button
                     class="w-full mt-4 text-sm text-gray-500 hover:text-cbse-blue transition duration-150"
-                    onclick="window.location.reload()">
-                    Restart Quiz
-                </button>
-            `;
-
-            container.innerHTML = quizHtml;
-        }
-
-        function storeAnswer(qIndex, answerKey) {
-            QUIZ_DATA.answers[qIndex] = answerKey;
-        }
-        
-        function submitQuiz() {
-            const totalQuestions = QUIZ_DATA.questions.length;
-            let score = 0;
-
-            QUIZ_DATA.questions.forEach((q, index) => {
-                const userAnswer = QUIZ_DATA.answers[index];
-                const correctAnswer = q.correct_answer_key;
-                const questionCard = document.getElementById(`q-card-${index}`);
-
-                const radios = questionCard.querySelectorAll(`input[name="q_${index}"]`);
-                radios.forEach(radio => radio.disabled = true);
-
-                if (userAnswer === correctAnswer) {
-                    score++;
-                    questionCard.classList.add('border-correct', 'bg-green-50');
-                } else {
-                    questionCard.classList.add('border-incorrect', 'bg-red-50');
-                }
-
-                const optionsContainer = questionCard.querySelector('.options');
-                const options = optionsContainer.querySelectorAll('label');
-
-                options.forEach(label => {
-                    const input = label.querySelector('input');
-                    const optionKey = input.value;
-
-                    if (optionKey === correctAnswer) {
-                        label.classList.add('bg-correct', 'text-white', 'font-bold');
-                        label.classList.remove('hover:bg-cbse-light');
-                    } else if (optionKey === userAnswer && userAnswer !== correctAnswer) {
-                        label.classList.add('bg-incorrect', 'text-white', 'font-bold');
-                        label.classList.remove('hover:bg-cbse-light');
-                    } else {
-                        label.classList.add('opacity-50');
-                    }
-                });
-            });
-
-            const chapterName = "7. Motion";
-            const difficultyLevel = QUIZ_DATA.difficulty || "Medium";
-
-            logFinalQuizScore(score, totalQuestions, chapterName, difficultyLevel);
-
-            const scoreHtml = `
-                <div class="p-6 md:p-10 mb-8 text-center bg-cbse-blue text-white rounded-lg shadow-2xl">
-                    <h3 class="text-4xl font-extrabold mb-2">Quiz Complete!</h3>
-                    <p class="text-6xl font-black">${score}/${totalQuestions}</p>
-                    <p class="text-xl font-semibold mt-2">Your Score is: ${((score / totalQuestions) * 100).toFixed(1)}%</p>
-                </div>
-            `;
-            document.getElementById('quiz-container').insertAdjacentHTML('afterbegin', scoreHtml);
-            document.getElementById('submit-button').remove();
-
-            document.getElementById('quiz-container').scrollIntoView({ behavior: 'smooth' });
-        }
-
-
-        // --- Supabase Connection and Initialization ---
-
-        function initSupabase() {
-            if (quizDataLoaded) { 
-                renderDifficultySelection(null); 
-                return;
-            }
-
-            const configError = document.getElementById('config-error');
-
-            if (typeof window.SUPABASE_URL === 'undefined' || typeof window.SUPABASE_ANON_KEY === 'undefined') {
-                configError.classList.remove('hidden');
-                document.getElementById('quiz-container').innerHTML = ''; 
-            } else {
-                const supabaseClient = supabase.createClient(
-                    window.SUPABASE_URL,
-                    window.SUPABASE_ANON_KEY
-                );
-
-                fetchQuizData(supabaseClient);
-            }
-        }
-
-        async function fetchQuizData(supabaseClient) {
-            const container = document.getElementById('quiz-container');
-            container.innerHTML = `<div class="text-center p-6 bg-white rounded-lg shadow-xl">Fetching Questions from Supabase...</div>`;
-
-            const { data: quizData, error } = await supabaseClient
-                .from(TABLE_NAME)
-                .select('*');
-
-            if (error) {
-                container.innerHTML = `<p class="error-message text-red-700 bg-red-100 p-4 rounded">Error retrieving questions: ${error.message}. Please check RLS policy for the table **${TABLE_NAME}**.</p>`;
-                return;
-            }
-
-            if (quizData) {
-                quizDataLoaded = true;
-                renderDifficultySelection(quizData); 
-            }
-        }
-        
-        function renderAccessRestrictedView() {
-            document.getElementById('quiz-container').innerHTML = `
-                <div class="text-center p-6 bg-white rounded-lg shadow-xl">
-                    <h2 class="text-2xl font-bold mb-4 text-cbse-blue">Access Restricted</h2>
-                    <p class="text-gray-700 mb-6">Please sign in to start the **Motion** Chapter Quizzes and track your progress.</p>
-                    <button class="px-6 py-2 text-white font-bold rounded-lg shadow-md bg-red-600 hover:bg-red-700" onclick="document.getElementById('auth-modal').classList.remove('hidden');">
-                        Sign in to Start
-                    </button>
-                </div>`;
-            document.getElementById('auth-modal').classList.remove('hidden'); 
-        }
-
-
-        // --- Redirect Result Handler ---
-        async function handleRedirectResult() {
-            try {
-                // This checks if the user is returning from a redirect sign-in
-                const result = await auth.getRedirectResult();
-                
-                if (result.user) {
-                    console.log("Redirect login successful:", result.user.email);
-                    // Hide the modal and let the auth.onAuthStateChanged listener handle initSupabase()
-                    // This listener is also responsible for showing the modal if user is null
-                    return true;
-                }
-            } catch (error) {
-                console.error("Error getting redirect result:", error);
-                // Display error but do not re-show the modal; let the main listener handle it.
-                document.getElementById('quiz-container').innerHTML = `<p class="error-message text-red-700 bg-red-100 p-4 rounded">Sign-in error: ${error.message}</p>`;
-                return false;
-            }
-            return false;
-        }
-
-
-        // --- Core State Manager ---
-        document.addEventListener('DOMContentLoaded', async () => {
-            const container = document.getElementById('quiz-container');
-            container.innerHTML = `<div class="text-center p-6 bg-white rounded-lg shadow-xl">Checking session state...</div>`;
-            
-            // 1. Check for redirect result first
-            const isRedirectResult = await handleRedirectResult();
-            
-            if (isRedirectResult) {
-                // If we successfully processed a redirect result, the session is established.
-                // We proceed to load the data immediately and hide the modal.
-                document.getElementById('auth-modal').classList.add('hidden');
-                initSupabase();
-                return;
-            }
-
-            // 2. Fall back to the persistent state listener
-            auth.onAuthStateChanged((user) => {
-                if (user) {
-                    // Authenticated: Hide modal and load data
-                    document.getElementById('auth-modal').classList.add('hidden');
-                    initSupabase(); 
-                } else {
-                    // Unauthenticated: Show login view
-                    renderAccessRestrictedView();
-                }
-            });
-        });
-    </script>
-</body>
-</html>
