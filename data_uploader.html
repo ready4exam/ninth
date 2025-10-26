@@ -29,7 +29,7 @@
         <h1 class="text-3xl font-extrabold text-primary-blue mb-4">CSV Quiz Processor & Uploader</h1>
         <p class="text-gray-600 mb-6">
             **Step 1: Generate CSV.** Use your Gemini prompt to generate the 60 questions and copy the entire CSV output (including the header row).<br>
-            **Step 2: Paste & Upload.** Paste the CSV below, specify the table, and click upload.
+            **Step 2: Paste & Upload.** Paste the CSV below, specify the table, and click upload. **NOTE: If using Gemini output, manually search and replace any instances of 'nan' in the options with an empty string or 'N/A' before pasting.**
         </p>
 
         <div class="space-y-4 mb-6">
@@ -124,23 +124,24 @@
         // --- Robust CSV Parsing Logic ---
 
         // Regex to split by comma while respecting quoted fields.
-        // It correctly captures the content inside the quotes and contents outside.
         const CSV_REGEX = /(?!\s*$",)(?!\s*$)\s*(?:(?:"((?:[^"]|"")*)")|([^",]*))\s*(?:,|$)/g;
 
         function parseCSV(csvString) {
             logMessage('Parsing CSV data...');
-            const lines = csvString.trim().split('\n');
+            
+            // Added check to ensure the string is clean of common non-text issues like BOM
+            const cleanString = csvString.trim().replace(/^\uFEFF/, '');
+            const lines = cleanString.split('\n');
+            
             if (lines.length < 2) {
                 throw new Error("CSV input must contain at least a header row and one data row.");
             }
             
-            // --- 1. Header Check ---
-            // Simple split for header since it should not contain quotes
+            // --- 1. Header Check (Unchanged from last fix) ---
             const headerLine = lines[0];
             const header = headerLine.split(',').map(h => h.trim().replace(/['"]+/g, '').toLowerCase());
             const expectedHeader = DB_COLUMNS.map(col => col.toLowerCase()); 
             
-            // We only check for the presence and order of the first 9 key columns
             const headerMatch = expectedHeader.every((expectedCol, i) => 
                 header[i] && header[i].includes(expectedCol)
             );
@@ -174,16 +175,17 @@
                 // Map the first 9 extracted fields to the 9 DB columns
                 for (let j = 0; j < DB_COLUMNS.length; j++) {
                     const colName = DB_COLUMNS[j];
-                    let field = fields[j];
+                    const field = fields[j];
 
                     // Extract content from regex match groups and remove quotes
+                    // This handles quoted fields and unquoted fields
                     let value = field.match(/"((?:[^"]|"")*)"|([^",]*)/)?.[1] || field.match(/"((?:[^"]|"")*)"|([^",]*)/)?.[2];
                     
                     // Final cleanup for the value
                     value = value ? value.trim().replace(/^"|"$/g, '').replace(/""/g, '"') : "";
-
-                    // If a field is blank, treat it as null for Supabase (especially scenario_reason_text)
-                    if (value === '' || value.toLowerCase() === 'null') {
+                    
+                    // NEW: Explicitly handle 'nan' and 'NaN' as null values
+                    if (value.toLowerCase() === 'nan' || value === '' || value.toLowerCase() === 'null') {
                         value = null;
                     }
 
@@ -285,10 +287,8 @@
 </html>
 ```eof
 
-I have made the following key changes to the CSV parsing logic:
+### Instructions for Final Attempt
 
-1.  **Robust Header Check:** The header checking logic now uses `header[i] && header[i].includes(expectedCol)` to ensure it doesn't try to access `.toLowerCase()` on an undefined or null value, preventing the exact error you saw.
-2.  **Advanced Regex:** The core data extraction uses a more sophisticated regex (`const CSV_REGEX = ...`) designed to handle fields enclosed in double quotes (which the Gemini output often uses for the `Question_Text` and `Scenario_Reason_Text`) without breaking the line.
-3.  **Value Cleanup:** Added logic to better extract the value from the regex groups and remove the surrounding double quotes, which should make the data cleaner.
-
-Please try pasting the CSV data and clicking **"2. Parse CSV & Insert Data into Supabase"** one more time!
+1.  **Update the HTML** with the code above.
+2.  **Manually Inspect the CSV:** Even with the code fix, it's best practice to quickly check the Gemini CSV output in a text editor. If you see lines where `option_a` is `nan`, delete the `nan` and ensure the commas line up correctly.
+3.  **Paste & Run:** Paste the clean CSV into the tool and run the upload. The explicit handling of `nan` as `null` should fix the column shifting problem.
