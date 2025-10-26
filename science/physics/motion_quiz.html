@@ -72,7 +72,7 @@
                 .replace(/\$/g, '')
                 .replace(/\\(left|right)[\(\)\|\{\}]/g, '');
             cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            return cleaned;
+            return cleaned.trim(); // Trim extra whitespace
         }
 
         function shuffleAndSlice(array, count) {
@@ -206,15 +206,14 @@
             QUIZ_DATA.questions.forEach((q, index) => {
                 const questionNumber = index + 1;
                 const questionText = cleanText(q.question_text);
-                const scenarioReasonText = cleanText(q.scenario_reason_text);
-                const showScenario = scenarioReasonText && scenarioReasonText.toUpperCase() !== 'N/A';
-
-                const options = [
-                    { key: 'A', text: cleanText(q.option_a) },
-                    { key: 'B', text: cleanText(q.option_b) },
-                    { key: 'C', text: cleanText(q.option_c) },
-                    { key: 'D', text: cleanText(q.option_d) }
-                ].filter(opt => opt.text !== null && opt.text.trim() !== '');
+                const rawScenarioReasonText = q.scenario_reason_text;
+                
+                // FIX: Check for 'nan', 'n/a', or empty/null text
+                const showScenario = rawScenarioReasonText && 
+                                     rawScenarioReasonText.toUpperCase() !== 'N/A' && 
+                                     rawScenarioReasonText.toUpperCase() !== 'NAN';
+                
+                const scenarioReasonText = cleanText(rawScenarioReasonText);
 
                 quizHtml += `
                     <div id="q-card-${index}" class="question-card p-6 mb-6 bg-white border border-gray-200 rounded-lg shadow-sm">
@@ -225,7 +224,12 @@
                             : ''}
 
                         <div class="options space-y-2">
-                            ${options.map(opt => `
+                            ${[
+                                { key: 'A', text: cleanText(q.option_a) },
+                                { key: 'B', text: cleanText(q.option_b) },
+                                { key: 'C', text: cleanText(q.option_c) },
+                                { key: 'D', text: cleanText(q.option_d) }
+                            ].filter(opt => opt.text !== null && opt.text.trim() !== '').map(opt => `
                                 <label class="block p-3 border border-gray-100 rounded-lg cursor-pointer hover:bg-cbse-light transition duration-150">
                                     <input
                                         type="radio"
