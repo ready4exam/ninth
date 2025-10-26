@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Automation Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    
+    <!-- 
+        *** CONFIGURATION REQUIRED ***
+        Please replace the placeholder values below with your actual Supabase project URL and Anon Public Key.
+        You can find these in your Supabase project settings under "API".
+    -->
+    <script>
+        // --- START USER CONFIGURATION ---
+        const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL_HERE"; 
+        const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_PUBLIC_KEY_HERE";
+        // --- END USER CONFIGURATION ---
+        
+        // This makes the variables accessible globally, mimicking the 'config.js' file
+        window.SUPABASE_URL = SUPABASE_URL;
+        window.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
+    </script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'], },
+                    colors: {
+                        'primary-blue': '#1a3e6a',
+                        'accent-green': '#059669',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 min-h-screen antialiased p-4">
+
+    <div class="max-w-4xl mx-auto bg-white p-6 md:p-10 rounded-xl shadow-2xl border-t-8 border-primary-blue">
+        <h1 class="text-3xl font-extrabold text-primary-blue mb-4">Automated Quiz Generator & Uploader</h1>
+        <p class="text-gray-600 mb-6">
+            Enter the details, and this tool will use the Gemini API to generate 60 unique questions (20 Simple, 20 Medium, 20 Advanced) with the required distribution (10 MCQ, 5 AR, 5 Case) and insert them directly into your Supabase table.
+        </p>
+
+        <!-- Input Fields -->
+        <div class="space-y-4 mb-6">
+            <div>
+                <label for="chapter-name" class="block text-sm font-medium text-gray-700">Chapter Name (e.g., Motion, Light)</label>
+                <input type="text" id="chapter-name" value="Motion" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-accent-green focus:border-accent-green">
+            </div>
+            <div>
+                <label for="table-name" class="block text-sm font-medium text-gray-700">Target Supabase Table Name</label>
+                <input type="text" id="table-name" value="motion" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-accent-green focus:border-accent-green">
+            </div>
+            
+        </div>
+
+        <!-- Conversion Button -->
+        <button id="automate-button" onclick="startAutomation()"
+                class="w-full px-6 py-3 text-lg font-bold text-white bg-primary-blue rounded-lg shadow-md hover:bg-blue-800 transition duration-150">
+            1. Generate & Insert 60 Questions
+        </button>
+
+        <!-- Messages & Log Area -->
+        <div id="status-log" class="mt-8 space-y-2">
+            <h2 class="text-xl font-semibold text-gray-700 mb-3">Process Log:</h2>
+            <p id="log-initial" class="text-gray-500">Ready to start...</p>
+        </div>
+        
+        <!-- Configuration Warning -->
+        <div id="config-error" class="hidden error-message mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+            **Configuration Error 🛑** Supabase credentials (`SUPABASE_URL`, `SUPABASE_ANON_KEY`) were not found. Please update the `SUPABASE_URL` and `SUPABASE_ANON_KEY` variables in the code's `<head>` section.
+        </div>
+    </div>
+
+    <script>
+        const API_MODEL = 'gemini-2.5-flash-preview-09-2025';
+        const API_KEY = ""; // Use empty string for Canvas to provide the key
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${API_MODEL}:generateContent?key=${API_KEY}`;
+        
+        // --- Supabase and Database Constants ---
+        const DB_COLUMNS = [
+            'created_at', 'difficulty', 'question_type', 'question_text', 
+            'scenario_reason_text', 'option_a', 'option_b', 'option_c', 'option_d', 
+            'correct_answer_key'
+        ];
+
+        let supabaseClient;
+        let button;
+        let log;
+
+        // --- Utility Functions ---
+
+        function init() {
+            log = document.getElementById('status-log');
+            button = document.getElementById('automate-button');
+            
+            // Check the globally exposed variables
+            if (typeof window.SUPABASE_URL === 'undefined' || window.SUPABASE_URL.includes("YOUR_SUPABASE_PROJECT_URL_HERE")) {
+                 document.getElementById('log-initial').textContent = "Configuration required...";
+                 document.getElementById('config-error').classList.remove('hidden');
+                 button.disabled = true;
+                 return;
+            }
+            
+            document.getElementById('log-initial').textContent = "Initializing environment...";
+            
+            // Initialize Supabase Client
+            try {
+                supabaseClient = supabase.createClient(
+                    window.SUPABASE_URL,
+                    window.SUPABASE_ANON_KEY
+                );
+                logMessage('Supabase client initialized successfully. Ready to generate.', 'success');
+            } catch (e) {
+                logMessage(`Error initializing Supabase client: ${e.message}`, 'error');
+                button.disabled = true;
+            }
+        }
+
+        function logMessage(message, type = 'info') {
+            const p = document.createElement('p');
+            p.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`; // Use innerHTML for bolding
+            p.className = 'p-2 rounded';
+            
+            if (type === 'info') p.classList.add('bg-gray-100', 'text-gray-700');
+            if (type === 'success') p.classList.add('bg-green-100', 'text-accent-green', 'font-semibold');
+            if (type === 'error') p.classList.add('bg-red-100', 'text-red-700', 'font-semibold');
+            if (type === 'warning') p.classList.add('bg-yellow-100', 'text-yellow-700');
+
+            // Insert new message at the top of the log
+            const logContainer = document.getElementById('status-log');
+            // Find the first non-h2 child element to insert before (the latest log)
+            const firstLogEntry = logContainer.querySelector('h2').nextElementSibling;
+            logContainer.insertBefore(p, firstLogEntry);
+        }
+
+        function setButtonState(disabled, text) {
+            button.disabled = disabled;
+            button.textContent = text;
+        }
+
+        // --- Gemini API Logic ---
+
+        function createGeminiPrompt(chapter) {
+            const prompt = `Generate 60 unique quiz questions for the chapter "${chapter}" in a single JSON array format.
+            
+            **Distribution Rules:**
+            1.  **Simple Difficulty:** 20 questions (10 MCQ, 5 Assertion/Reason (AR), 5 Case-Based).
+            2.  **Medium Difficulty:** 20 questions (10 MCQ, 5 Assertion/Reason (AR), 5 Case-Based).
+            3.  **Advanced Difficulty:** 20 questions (10 MCQ, 5 Assertion/Reason (AR), 5 Case-Based).
+            4.  **Answer Key Variance:** Ensure the correct_answer_key (A, B, C, or D) is NOT the same for more than two consecutive questions to ensure answer diversity.
+            5.  **Uniqueness:** All 60 questions must be unique.
+            6.  **Scenario/Reason:** If a question is NOT AR or Case-Based, set 'scenario_reason_text' to the JSON 'null' value.
+
+            The JSON array must strictly follow this structure (an array of objects):
+            [
+              {
+                "created_at": "ISO 8601 timestamp, e.g., 2024-01-01T12:00:00Z",
+                "difficulty": "Simple | Medium | Advanced",
+                "question_type": "MCQ | AR | Case",
+                "question_text": "The main question content.",
+                "scenario_reason_text": "For AR/Case types, use this for the Assertion/Scenario/Reason text. Use null for MCQ.",
+                "option_a": "Option A text.",
+                "option_b": "Option B text.",
+                "option_c": "Option C text.",
+                "option_d": "Option D text.",
+                "correct_answer_key": "A | B | C | D"
+              },
+              // ... 59 more objects
+            ]
+            `;
+            return prompt;
+        }
+
+        async function fetchQuizDataFromGemini(chapter) {
+            const systemPrompt = "You are a specialized content creator for educational quizzes. Your task is to generate a comprehensive, structured JSON array for a 60-question quiz based on the user's instructions. You MUST use 'null' for any missing or inapplicable field values. Do NOT include any introductory or concluding text outside the JSON array.";
+
+            const payload = {
+                contents: [{ parts: [{ text: createGeminiPrompt(chapter) }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: Object.fromEntries(DB_COLUMNS.map(col => [col, { type: "STRING" }])),
+                            propertyOrdering: DB_COLUMNS,
+                            required: DB_COLUMNS
+                        }
+                    }
+                }
+            };
+            
+            // Note: Exponential backoff implemented by the Canvas environment automatically
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                // Read and log the detailed error message from the response body if available
+                const errorBody = await response.text();
+                throw new Error(`Gemini API call failed with status: ${response.status}. Details: ${errorBody.substring(0, 100)}...`);
+            }
+
+            const result = await response.json();
+            const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+            if (!jsonText) {
+                throw new Error("Gemini returned an empty response or invalid structure.");
+            }
+
+            // The model is instructed to return JSON, so we parse it directly.
+            return JSON.parse(jsonText);
+        }
+
+        // --- Supabase Insertion Logic ---
+
+        async function insertDataIntoSupabase(tableName, data) {
+            logMessage(`Attempting to insert ${data.length} records into table **${tableName}**...`);
+            
+            // Supabase bulk insert
+            const { data: insertedData, error } = await supabaseClient
+                .from(tableName)
+                .insert(data)
+                .select(); 
+
+            if (error) {
+                // Check if the error is related to RLS being disabled (a common issue)
+                if (error.message.includes("permission denied")) {
+                     throw new Error(`Supabase insertion error: Permission Denied. Check that **Row Level Security (RLS)** is enabled for table '${tableName}' and that the Anon key policy allows inserts.`);
+                }
+                throw new Error(`Supabase insertion error: ${error.message}`);
+            }
+
+            return insertedData;
+        }
+
+        // --- Main Automation Workflow ---
+
+        async function startAutomation() {
+            if (!supabaseClient) {
+                logMessage('Initialization failed. Please check configuration and try again.', 'error');
+                return;
+            }
+
+            const chapterName = document.getElementById('chapter-name').value.trim();
+            const tableName = document.getElementById('table-name').value.trim();
+            
+            if (!chapterName || !tableName) {
+                logMessage('Chapter Name and Table Name are required.', 'error');
+                return;
+            }
+
+            setButtonState(true, 'Processing: Generating Content...');
+            
+            try {
+                // 1. Generate Quiz Data
+                logMessage(`1. Requesting 60 questions for chapter: **${chapterName}**...`);
+                const quizData = await fetchQuizDataFromGemini(chapterName);
+                
+                if (!quizData || quizData.length !== 60) {
+                    logMessage(`Warning: Gemini generated ${quizData ? quizData.length : 0} questions, expected 60. Attempting to insert ${quizData.length} anyway.`, 'warning');
+                }
+                logMessage(`Content Generated: **${quizData.length}** records received from Gemini API.`, 'success');
+
+                // 2. Insert Data into Supabase
+                setButtonState(true, 'Processing: Inserting into Supabase...');
+                const insertedRecords = await insertDataIntoSupabase(tableName, quizData);
+                
+                // 3. Complete
+                logMessage(`2. Data successfully inserted! **${insertedRecords.length}** records added to table **${tableName}**.`, 'success');
+                logMessage('Automation Complete.', 'success');
+                setButtonState(false, 'Restart Automation');
+
+            } catch (error) {
+                logMessage(`Automation Failed: ${error.message}`, 'error');
+                setButtonState(false, 'Error. Try Again.');
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', init);
+        
+        // Expose functions to the global scope for use in inline HTML attributes (onclick)
+        window.startAutomation = startAutomation;
+    </script>
+</body>
+</html>
