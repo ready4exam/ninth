@@ -123,7 +123,7 @@
 
     <script>
         // --- Configuration ---
-        // NOTE: SUPABASE_URL and SUPABASE_ANON_KEY are loaded from 'js/config.js'.
+        // NOTE: SUPABASE_URL and SUPABASE_ANON_KEY are loaded from 'JS/config.js'.
         // This variable remains local to the quiz script:
         const SUPABASE_TABLE = 'force'; 
         // ---------------------
@@ -153,7 +153,7 @@
             // The variables SUPABASE_URL and SUPABASE_ANON_KEY are expected to be loaded 
             // from the external file js/config.js and should be globally accessible.
             if (typeof SUPABASE_URL === 'undefined' || typeof SUPABASE_ANON_KEY === 'undefined') {
-                statusMessage.textContent = 'Configuration Error: SUPABASE_URL or SUPABASE_ANON_KEY is undefined. Please ensure "js/config.js" is correctly loaded and defines these global variables.';
+                statusMessage.textContent = 'Configuration Error: SUPABASE_URL or SUPABASE_ANON_KEY is undefined. Please ensure "JS/config.js" is correctly loaded and defines these global variables.';
                 statusMessage.className = 'text-center p-4 rounded-lg bg-red-100 text-red-700 font-medium mb-6';
                 return;
             }
