@@ -117,10 +117,13 @@
 
             if (quizData) {
                 quizDataLoaded = true;
-                // Filter by 'complex' (assuming this is the DB value) but store under the new key 'advanced'
+                
+                // Filtering is now explicitly for 'advanced' to match your table data
                 const simpleQuestions = quizData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'simple');
                 const mediumQuestions = quizData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'medium');
-                const advancedQuestions = quizData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'complex'); 
+                const advancedQuestions = quizData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'advanced'); 
+                
+                // The key in ALL_QUESTIONS is 'advanced'
                 ALL_QUESTIONS = { simple: simpleQuestions, medium: mediumQuestions, advanced: advancedQuestions };
                 
                 renderDifficultySelection(quizData); 
