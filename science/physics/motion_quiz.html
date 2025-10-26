@@ -1,271 +1,274 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Motion Chapter Quiz</title>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script> 
-    <script src="/js/config.js"></script> 
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motion Chapter Quiz</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script> 
+    <script src="/js/config.js"></script> 
 
-    <style>
-        /* Define a max width for the quiz container for better readability */
-        .quiz-container { max-width: 800px; }
-        /* Style for the primary button */
-        .btn-primary { 
-            background-color: #1a3e6a; 
-            color: white; 
-            padding: 0.5rem 1rem; 
-            border-radius: 0.5rem; 
-            transition: background-color 0.15s ease-in-out;
-        }
-        .btn-primary:hover { 
-            background-color: #1a3e6a; /* Use the base color from tailwind.config for hover */
-            opacity: 0.9;
-        }
-    </style>
+    <style>
+        /* Define a max width for the quiz container for better readability */
+        .quiz-container { max-width: 800px; }
+        /* Style for the primary button */
+        .btn-primary { 
+            background-color: #1a3e6a; 
+            color: white; 
+            padding: 0.5rem 1rem; 
+            border-radius: 0.5rem; 
+            transition: background-color 0.15s ease-in-out;
+        }
+        .btn-primary:hover { 
+            background-color: #1a3e6a; /* Use the base color from tailwind.config for hover */
+            opacity: 0.9;
+        }
+    </style>
 
-    <script>
-        // Tailwind Configuration
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'], },
-                    colors: {
-                        'cbse-blue': '#1a3e6a', 
-                        'cbse-light': '#f0f4f8', 
-                        'accent-green': '#059669', 
-                        'correct': '#10b981', 
-                        'incorrect': '#ef4444', 
-                    }
-                }
-            }
-        }
+    <script>
+        // Tailwind Configuration
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'], },
+                    colors: {
+                        'cbse-blue': '#1a3e6a', 
+                        'cbse-light': '#f0f4f8', 
+                        'accent-green': '#059669', 
+                        'correct': '#10b981', 
+                        'incorrect': '#ef4444', 
+                    }
+                }
+            }
+        }
 
-        // === START: Quiz Specific Configuration ===
-        const TABLE_NAME = 'motion'; 
-        // === END: Quiz Specific Configuration ===
+        // === START: Quiz Specific Configuration ===
+        const TABLE_NAME = 'motion'; 
+        // === END: Quiz Specific Configuration ===
 
-        // State variables
-        let allQuestions = [];
-        let currentQuizQuestions = [];
-        let currentQuestionIndex = 0;
-        let score = 0;
-        let selectedDifficulty = '';
+        // State variables
+        let allQuestions = [];
+        let currentQuizQuestions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let selectedDifficulty = '';
 
-        /**
-         * Initializes the Supabase client and starts fetching data.
-         * Assumes SUPABASE_URL and SUPABASE_KEY are defined in /js/config.js
-         */
-        function initSupabase() {
-            if (typeof SUPABASE_URL === 'undefined' || typeof SUPABASE_KEY === 'undefined') {
-                document.getElementById('quiz-container').innerHTML = `<p class="error-message text-red-700 bg-red-100 p-4 rounded">Configuration Error: **SUPABASE_URL** or **SUPABASE_KEY** not defined. Check **/js/config.js**.</p>`;
-                return;
-            }
-            const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            fetchQuizData(supabaseClient); 
-        }
+        /**
+         * Initializes the Supabase client and starts fetching data.
+         * Assumes SUPABASE_URL and SUPABASE_ANON_KEY are defined on the window object via /js/config.js
+         */
+        function initSupabase() {
+            // --- START FIX ---
+            if (typeof window.SUPABASE_URL === 'undefined' || typeof window.SUPABASE_ANON_KEY === 'undefined') {
+                document.getElementById('quiz-container').innerHTML = `<p class="error-message text-red-700 bg-red-100 p-4 rounded">Configuration Error: **SUPABASE_URL** or **SUPABASE_ANON_KEY** not defined. Check **/js/config.js**.</p>`;
+                return;
+            }
+            const supabaseClient = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+            // --- END FIX ---
+            
+            fetchQuizData(supabaseClient); 
+        }
 
-        /**
-         * Fetches quiz data from the configured Supabase table.
-         * @param {object} supabaseClient - The initialized Supabase client.
-         */
-        async function fetchQuizData(supabaseClient) {
-            const container = document.getElementById('quiz-container');
+        /**
+         * Fetches quiz data from the configured Supabase table.
+         * @param {object} supabaseClient - The initialized Supabase client.
+         */
+        async function fetchQuizData(supabaseClient) {
+            const container = document.getElementById('quiz-container');
 
-            const { data: quizData, error } = await supabaseClient
-                .from(TABLE_NAME) 
-                .select('*'); // Select all columns
+            const { data: quizData, error } = await supabaseClient
+                .from(TABLE_NAME) 
+                .select('*'); // Select all columns
 
-            if (error) {
-                if (container) {
-                    container.innerHTML = `<p class="error-message text-red-700 bg-red-100 p-4 rounded">Error retrieving questions: ${error.message}. Please check RLS policy for the table **${TABLE_NAME}**.</p>`;
-                }
-                return;
-            }
+            if (error) {
+                if (container) {
+                    container.innerHTML = `<p class="error-message text-red-700 bg-red-100 p-4 rounded">Error retrieving questions: ${error.message}. Please check RLS policy for the table **${TABLE_NAME}**.</p>`;
+                }
+                return;
+            }
 
-            if (quizData && quizData.length > 0) {
-                allQuestions = quizData;
-                renderDifficultySelection(quizData);
-            } else {
-                if (container) {
-                    container.innerHTML = `<p class="text-gray-700 p-4 rounded">No questions found for table **${TABLE_NAME}**.</p>`;
-                }
-            }
-        }
+            if (quizData && quizData.length > 0) {
+                allQuestions = quizData;
+                renderDifficultySelection(quizData);
+            } else {
+                if (container) {
+                    container.innerHTML = `<p class="text-gray-700 p-4 rounded">No questions found for table **${TABLE_NAME}**.</p>`;
+                }
+            }
+        }
 
-        /**
-         * Renders the screen allowing the user to select quiz difficulty.
-         * @param {Array} data - All fetched questions.
-         */
-        function renderDifficultySelection(data) {
-            const container = document.getElementById('quiz-container');
-            const difficulties = [...new Set(data.map(q => q.difficulty))]; // Extract unique difficulties
+        /**
+         * Renders the screen allowing the user to select quiz difficulty.
+         * @param {Array} data - All fetched questions.
+         */
+        function renderDifficultySelection(data) {
+            const container = document.getElementById('quiz-container');
+            const difficulties = [...new Set(data.map(q => q.difficulty))].filter(d => d); // Extract unique, non-null difficulties
 
-            if (difficulties.length === 0) {
-                 container.innerHTML = `<p class="text-gray-700 p-4 rounded">No difficulties found in the data for table **${TABLE_NAME}**.</p>`;
-                 return;
-            }
+            if (difficulties.length === 0) {
+                 container.innerHTML = `<p class="text-gray-700 p-4 rounded">No difficulties found in the data for table **${TABLE_NAME}**. Ensure your 'difficulty' column is populated.</p>`;
+                 return;
+            }
 
-            let difficultyOptions = difficulties.map(d => 
-                `<button class="difficulty-btn btn-primary m-2" data-difficulty="${d}">${d.charAt(0).toUpperCase() + d.slice(1)} Quiz</button>`
-            ).join('');
+            let difficultyOptions = difficulties.map(d => 
+                `<button class="difficulty-btn btn-primary m-2" data-difficulty="${d}">${d.charAt(0).toUpperCase() + d.slice(1)} Quiz</button>`
+            ).join('');
 
-            container.innerHTML = `
-                <div class="text-center p-6 bg-white rounded-lg shadow-xl">
-                    <h2 class="text-2xl font-bold mb-4 text-cbse-blue">Select Difficulty for the **Motion** Quiz</h2>
-                    <div class="flex justify-center flex-wrap">
-                        ${difficultyOptions}
-                    </div>
-                </div>
-            `;
+            container.innerHTML = `
+                <div class="text-center p-6 bg-white rounded-lg shadow-xl">
+                    <h2 class="text-2xl font-bold mb-4 text-cbse-blue">Select Difficulty for the **Motion** Quiz</h2>
+                    <div class="flex justify-center flex-wrap">
+                        ${difficultyOptions}
+                    </div>
+                </div>
+            `;
 
-            // Attach event listeners to the new difficulty buttons
-            document.querySelectorAll('.difficulty-btn').forEach(button => {
-                button.addEventListener('click', (e) => startQuiz(e.target.dataset.difficulty));
-            });
-        }
+            // Attach event listeners to the new difficulty buttons
+            document.querySelectorAll('.difficulty-btn').forEach(button => {
+                button.addEventListener('click', (e) => startQuiz(e.target.dataset.difficulty));
+            });
+        }
 
-        /**
-         * Filters questions by difficulty, shuffles them, and begins the quiz.
-         * @param {string} difficulty - The selected difficulty level.
-         */
-        function startQuiz(difficulty) {
-            selectedDifficulty = difficulty;
-            currentQuizQuestions = allQuestions.filter(q => q.difficulty.toLowerCase() === difficulty.toLowerCase());
-            
-            if (currentQuizQuestions.length === 0) {
-                alert(`No ${difficulty} questions found.`);
-                renderDifficultySelection(allQuestions);
-                return;
-            }
+        /**
+         * Filters questions by difficulty, shuffles them, and begins the quiz.
+         * @param {string} difficulty - The selected difficulty level.
+         */
+        function startQuiz(difficulty) {
+            selectedDifficulty = difficulty;
+            currentQuizQuestions = allQuestions.filter(q => q.difficulty && q.difficulty.toLowerCase() === difficulty.toLowerCase());
+            
+            if (currentQuizQuestions.length === 0) {
+                alert(`No ${difficulty} questions found.`);
+                renderDifficultySelection(allQuestions);
+                return;
+            }
 
-            currentQuizQuestions.sort(() => Math.random() - 0.5); // Shuffle the questions
-            currentQuestionIndex = 0;
-            score = 0;
-            renderQuestion();
-        }
+            currentQuizQuestions.sort(() => Math.random() - 0.5); // Shuffle the questions
+            currentQuestionIndex = 0;
+            score = 0;
+            renderQuestion();
+        }
 
-        /**
-         * Renders the current question and its options.
-         */
-        function renderQuestion() {
-            const container = document.getElementById('quiz-container');
-            if (currentQuestionIndex >= currentQuizQuestions.length) {
-                renderResults(); // Go to results screen
-                return;
-            }
+        /**
+         * Renders the current question and its options.
+         */
+        function renderQuestion() {
+            const container = document.getElementById('quiz-container');
+            if (currentQuestionIndex >= currentQuizQuestions.length) {
+                renderResults(); // Go to results screen
+                return;
+            }
 
-            const q = currentQuizQuestions[currentQuestionIndex];
-            
-            // Collect existing options
-            const options = [];
-            if (q.option_a) options.push({ key: 'A', text: q.option_a });
-            if (q.option_b) options.push({ key: 'B', text: q.option_b });
-            if (q.option_c) options.push({ key: 'C', text: q.option_c });
-            if (q.option_d) options.push({ key: 'D', text: q.option_d });
+            const q = currentQuizQuestions[currentQuestionIndex];
+            
+            // Collect existing options
+            const options = [];
+            if (q.option_a) options.push({ key: 'A', text: q.option_a });
+            if (q.option_b) options.push({ key: 'B', text: q.option_b });
+            if (q.option_c) options.push({ key: 'C', text: q.option_c });
+            if (q.option_d) options.push({ key: 'D', text: q.option_d });
 
-            const optionButtons = options.map(opt => `
-                <button class="option-btn w-full text-left p-3 my-2 border rounded-lg bg-cbse-light hover:bg-cbse-blue/20 transition duration-100 ease-in-out focus:outline-none focus:ring-2 focus:ring-cbse-blue" data-key="${opt.key}">
-                    <span class="font-semibold text-cbse-blue mr-2">${opt.key}.</span> ${opt.text}
-                </button>
-            `).join('');
-            
-            container.innerHTML = `
-                <div class="p-6 bg-white rounded-lg shadow-xl">
-                    <div class="text-sm font-medium mb-2 text-cbse-blue">Question ${currentQuestionIndex + 1} of ${currentQuizQuestions.length} (Difficulty: ${selectedDifficulty.toUpperCase()})</div>
-                    <h3 class="text-lg font-bold mb-4">${q.question_text}</h3>
-                    ${q.scenario_reason_text ? `<p class="text-sm italic mb-4 p-2 bg-gray-100 rounded">${q.scenario_reason_text}</p>` : ''}
-                    <div id="options-container">
-                        ${optionButtons}
-                    </div>
-                    <div id="feedback-container" class="mt-4 text-center"></div>
-                </div>
-            `;
+            const optionButtons = options.map(opt => `
+                <button class="option-btn w-full text-left p-3 my-2 border rounded-lg bg-cbse-light hover:bg-cbse-blue/20 transition duration-100 ease-in-out focus:outline-none focus:ring-2 focus:ring-cbse-blue" data-key="${opt.key}">
+                    <span class="font-semibold text-cbse-blue mr-2">${opt.key}.</span> ${opt.text}
+                </button>
+            `).join('');
+            
+            container.innerHTML = `
+                <div class="p-6 bg-white rounded-lg shadow-xl">
+                    <div class="text-sm font-medium mb-2 text-cbse-blue">Question ${currentQuestionIndex + 1} of ${currentQuizQuestions.length} (Difficulty: ${selectedDifficulty.toUpperCase()})</div>
+                    <h3 class="text-lg font-bold mb-4">${q.question_text}</h3>
+                    ${q.scenario_reason_text ? `<p class="text-sm italic mb-4 p-2 bg-gray-100 rounded">${q.scenario_reason_text}</p>` : ''}
+                    <div id="options-container">
+                        ${optionButtons}
+                    </div>
+                    <div id="feedback-container" class="mt-4 text-center"></div>
+                </div>
+            `;
 
-            // Attach click handler to all option buttons
-            document.querySelectorAll('.option-btn').forEach(button => {
-                button.addEventListener('click', handleAnswerClick);
-            });
-        }
+            // Attach click handler to all option buttons
+            document.querySelectorAll('.option-btn').forEach(button => {
+                button.addEventListener('click', handleAnswerClick);
+            });
+        }
 
-        /**
-         * Handles the user's answer selection, provides feedback, and sets up the next question button.
-         * @param {Event} event - The click event from the option button.
-         */
-        function handleAnswerClick(event) {
-            const selectedButton = event.target.closest('.option-btn');
-            const selectedKey = selectedButton.dataset.key;
-            const currentQuestion = currentQuizQuestions[currentQuestionIndex];
-            const correctKey = currentQuestion.correct_answer_key;
-            const feedbackContainer = document.getElementById('feedback-container');
+        /**
+         * Handles the user's answer selection, provides feedback, and sets up the next question button.
+         * @param {Event} event - The click event from the option button.
+         */
+        function handleAnswerClick(event) {
+            const selectedButton = event.target.closest('.option-btn');
+            const selectedKey = selectedButton.dataset.key;
+            const currentQuestion = currentQuizQuestions[currentQuestionIndex];
+            const correctKey = currentQuestion.correct_answer_key;
+            const feedbackContainer = document.getElementById('feedback-container');
 
-            // Disable all options after selection
-            document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true);
+            // Disable all options after selection
+            document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true);
 
-            // Style the buttons based on the result
-            document.querySelectorAll('.option-btn').forEach(btn => {
-                // Highlight user's choice
-                if (btn.dataset.key === selectedKey) {
-                    btn.style.backgroundColor = (selectedKey === correctKey) ? '#10b981' : '#ef4444'; // correct or incorrect color
-                    btn.style.color = 'white';
-                }
-                // Highlight the correct answer if the user was wrong
-                if (btn.dataset.key === correctKey && selectedKey !== correctKey) {
-                    btn.style.border = '2px solid #10b981'; // Green border for correct answer
-                }
-            });
+            // Style the buttons based on the result
+            document.querySelectorAll('.option-btn').forEach(btn => {
+                // Highlight user's choice
+                if (btn.dataset.key === selectedKey) {
+                    btn.style.backgroundColor = (selectedKey === correctKey) ? '#10b981' : '#ef4444'; // correct or incorrect color
+                    btn.style.color = 'white';
+                }
+                // Highlight the correct answer if the user was wrong
+                if (btn.dataset.key === correctKey && selectedKey !== correctKey) {
+                    btn.style.border = '2px solid #10b981'; // Green border for correct answer
+                }
+            });
 
-            // Update score and feedback text
-            if (selectedKey === correctKey) {
-                score++;
-                feedbackContainer.innerHTML = `<p class="text-correct font-bold text-lg">Correct! ✅</p>`;
-            } else {
-                feedbackContainer.innerHTML = `<p class="text-incorrect font-bold text-lg">Incorrect. The correct answer was **${correctKey}**. ❌</p>`;
-            }
+            // Update score and feedback text
+            if (selectedKey === correctKey) {
+                score++;
+                feedbackContainer.innerHTML = `<p class="text-correct font-bold text-lg">Correct! ✅</p>`;
+            } else {
+                feedbackContainer.innerHTML = `<p class="text-incorrect font-bold text-lg">Incorrect. The correct answer was **${correctKey}**. ❌</p>`;
+            }
 
-            // Create and append the Next button
-            const nextButton = document.createElement('button');
-            nextButton.textContent = 'Next Question';
-            nextButton.className = 'btn-primary mt-4';
-            nextButton.onclick = () => {
-                currentQuestionIndex++;
-                renderQuestion();
-            };
-            feedbackContainer.appendChild(nextButton);
-        }
+            // Create and append the Next button
+            const nextButton = document.createElement('button');
+            nextButton.textContent = 'Next Question';
+            nextButton.className = 'btn-primary mt-4';
+            nextButton.onclick = () => {
+                currentQuestionIndex++;
+                renderQuestion();
+            };
+            feedbackContainer.appendChild(nextButton);
+        }
 
-        /**
-         * Renders the final results screen.
-         */
-        function renderResults() {
-            const container = document.getElementById('quiz-container');
-            container.innerHTML = `
-                <div class="text-center p-8 bg-white rounded-lg shadow-xl">
-                    <h2 class="text-3xl font-bold mb-4 text-cbse-blue">Quiz Complete! 🏆</h2>
-                    <p class="text-2xl mb-6">Your Score: <span class="font-extrabold text-accent-green">${score} / ${currentQuizQuestions.length}</span></p>
-                    <p class="mb-8 text-gray-700">You completed the **${selectedDifficulty.toUpperCase()}** level for the Motion chapter.</p>
-                    <button class="btn-primary m-2" onclick="renderDifficultySelection(allQuestions)">Select New Difficulty</button>
-                    <button class="btn-primary m-2 bg-gray-500 hover:bg-gray-600" onclick="window.location.href='science.html'">Back to Subjects</button>
-                </div>
-            `;
-        }
+        /**
+         * Renders the final results screen.
+         */
+        function renderResults() {
+            const container = document.getElementById('quiz-container');
+            container.innerHTML = `
+                <div class="text-center p-8 bg-white rounded-lg shadow-xl">
+                    <h2 class="text-3xl font-bold mb-4 text-cbse-blue">Quiz Complete! 🏆</h2>
+                    <p class="text-2xl mb-6">Your Score: <span class="font-extrabold text-accent-green">${score} / ${currentQuizQuestions.length}</span></p>
+                    <p class="mb-8 text-gray-700">You completed the **${selectedDifficulty.toUpperCase()}** level for the Motion chapter.</p>
+                    <button class="btn-primary m-2" onclick="renderDifficultySelection(allQuestions)">Select New Difficulty</button>
+                    <button class="btn-primary m-2 bg-gray-500 hover:bg-gray-600" onclick="window.location.href='../science.html'">Back to Subjects</button>
+                </div>
+            `;
+        }
 
-        // Start the application when the page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            const container = document.getElementById('quiz-container');
-            if (container) {
-                // Initial loading message
-                container.innerHTML = `<div class="text-center p-6 bg-white rounded-lg shadow-xl">Loading Motion Quiz Data...</div>`;
-            }
-            initSupabase();
-        });
+        // Start the application when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('quiz-container');
+            if (container) {
+                // Initial loading message
+                container.innerHTML = `<div class="text-center p-6 bg-white rounded-lg shadow-xl">Loading Motion Quiz Data...</div>`;
+            }
+            initSupabase();
+        });
 
-    </script>
+    </script>
 </head>
 <body class="bg-cbse-light min-h-screen flex items-center justify-center p-4 font-sans">
-    <div id="quiz-container" class="quiz-container w-full">
-        </div>
+    <div id="quiz-container" class="quiz-container w-full">
+        </div>
 </body>
 </html>
