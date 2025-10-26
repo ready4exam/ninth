@@ -3,25 +3,23 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CBSE Class 9 Science Curriculum</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+    <title>CBSE Class 11 Economics Curriculum</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        // Consolidated Tailwind Configuration
         tailwind.config = {
             theme: {
                 extend: {
                     fontFamily: {
+                        // Removed 'serif' font import to match economics(1).html
                         sans: ['Inter', 'sans-serif'],
-                        serif: ['Merriweather', 'serif'],
                     },
                     colors: {
-                        'cbse-blue': '#1a3e6a',      // Primary dark blue
-                        'cbse-light': '#f0f4f8',     // Light background
-                        'accent-green': '#059669',  // Chemistry/Bio
-                        'accent-red': '#dc2626',    // Biology
-                        'accent-blue': '#2563eb',   // Physics
-                        'unit-bg': '#e3f2fd',
+                        'cbse-blue': '#1a3e6a', 
+                        'cbse-light': '#f0f4f8', 
+                        'accent-green': '#059669', 
+                        'accent-red': '#dc2626', 
+                        'accent-orange': '#ea580c', 
+                        'unit-bg': '#e3f2fd', 
                     }
                 }
             }
@@ -33,26 +31,12 @@
             transition: all 0.3s ease;
             cursor: pointer;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+            transform: translate(0);
         }
         .book-card:hover {
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-            transform: translateY(-4px); 
+            transform: translateY(-4px);
         }
-        .chapter-card {
-            border-left-width: 4px;
-        }
-        .nav-link {
-            padding: 0.25rem 0.75rem;
-            border-radius: 0.5rem;
-            color: #4b5563; 
-            transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
-        }
-        .nav-link:hover {
-            background-color: #f0f4f8; 
-            color: #1a3e6a; 
-        }
-
-        /* --- ACCORDION STYLES --- */
         .unit-content {
             max-height: 0;
             overflow: hidden;
@@ -61,244 +45,331 @@
         .unit-header.active .icon-rotate {
             transform: rotate(180deg);
         }
-        
-        /* Mock Test Card Styling */
-        .mock-test-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            transition: all 0.3s ease;
-            cursor: pointer;
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: #1a3e6a;
+            margin-bottom: 1.5rem;
+            transition: color 150ms;
         }
-        .mock-test-card:hover {
-            transform: translateY(-4px) scale(1.02);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+        .back-btn:hover {
+            color: rgba(26, 62, 106, 0.8);
+        }
+        .auth-container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
         }
     </style>
 </head>
+<body class="bg-cbse-light min-h-screen antialiased">
 
-<body class="bg-cbse-light min-h-screen font-sans">
-
-    <header class="bg-white shadow-md sticky top-0 z-10">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-            <a href="#" id="header-home-btn" class="flex items-center space-x-2 cursor-pointer">
-                <span data-lucide="book-open-text" class="w-8 h-8 text-cbse-blue"></span>
-                <h1 class="text-xl font-bold text-cbse-blue">Class 9 Science</h1>
-            </a>
-            <nav>
-                <a href="#" class="nav-link">Home</a>
-                <a href="#" class="nav-link">Quizzes</a>
+    <header class="bg-white shadow-lg sticky top-0 z-10 border-t-8 border-cbse-blue">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row justify-between items-center">
+            <div class="flex items-center space-x-3 mb-4 md:mb-0 cursor-pointer" id="header-home-btn">
+                <span data-lucide="book-open-check" class="text-cbse-blue w-8 h-8"></span>
+                <h1 class="text-2xl font-extrabold text-cbse-blue">CBSE Class 11 Economics Portal</h1>
+            </div>
+            <nav class="flex space-x-2 sm:space-x-4">
+                <button id="logout-nav-btn" class="nav-link hidden">🚪 Logout</button>
             </nav>
         </div>
     </header>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
-        <!-- Book Selection View -->
-        <section id="book-select-view" class="space-y-8">
-            <h2 class="text-3xl font-bold text-cbse-blue mb-6 border-b-2 pb-2">Select a Science Stream 🚀</h2>
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div id="quiz-content-wrapper"> 
+            <div id="book-select-view" class="view">
+                <h2 class="text-3xl font-bold text-gray-800 mb-8 border-b-2 border-cbse-blue pb-2">Select Your Book</h2>
+                <div class="grid md:grid-cols-3 gap-8">
+                    
+                    <div class="book-card bg-white p-6 rounded-xl border-t-4 border-accent-green book-select-btn" data-book="Stats" data-title="Book 1: Statistics for Economics" data-color="accent-green">
+                        <span data-lucide="bar-chart-3" class="w-10 h-10 text-accent-green mb-3"></span>
+                        <h3 class="text-xl font-bold text-gray-800 mb-1">Statistics for Economics</h3>
+                        <p class="text-gray-500 text-sm">Units 1-3 | Data Analysis and Interpretation</p>
+                    </div>
+
+                    <div class="book-card bg-white p-6 rounded-xl border-t-4 border-cbse-blue book-select-btn" data-book="Micro" data-title="Book 2: Introductory Microeconomics" data-color="cbse-blue">
+                        <span data-lucide="dollar-sign" class="w-10 h-10 text-cbse-blue mb-3"></span>
+                        <h3 class="text-xl font-bold text-gray-800 mb-1">Introductory Microeconomics</h3>
+                        <p class="text-gray-500 text-sm">Units 4-7 | Consumer, Producer, and Market Theory</p>
+                    </div>
+
+                    <div class="book-card bg-white p-6 rounded-xl border-t-4 border-accent-red book-select-btn" data-book="IED" data-title="Book 3: Indian Economic Development" data-color="accent-red">
+                        <span data-lucide="factory" class="w-10 h-10 text-accent-red mb-3"></span>
+                        <h3 class="text-xl font-bold text-gray-800 mb-1">Indian Economic Development</h3>
+                        <p class="text-gray-500 text-sm">Units 1-3 | Economic History and Current Challenges</p>
+                    </div>
+                    
+                </div>
                 
-                <!-- Physics Card -->
-                <div class="book-card book-select-btn bg-accent-blue/10 p-6 rounded-xl" 
-                    data-book="Physics" 
-                    data-title="Physics" 
-                    data-color="#2563eb">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <span data-lucide="zap" class="w-12 h-12 text-accent-blue mb-3"></span>
-                        <h2 class="text-xl font-bold text-cbse-blue text-center">Physics</h2>
-                        <p class="text-sm text-gray-600 text-center mt-1">(Motion, Force, Gravitation, Work, Sound)</p>
-                    </div>
-                </div>
+                <section id="mock-test" class="bg-white p-8 rounded-xl shadow-lg border-t-2 border-b-2 border-cbse-blue mt-12 flex flex-col items-center text-center">
+                    <h4 class="text-3xl font-extrabold text-cbse-blue mb-2">Full Syllabus Mock Test</h4>
+                    <p class="text-gray-600 text-lg mb-4">Test your readiness with a full-length, 90-minute examination covering all CBSE Class 11 Economics chapters.</p>
+                    <button class="px-8 py-3 bg-accent-red text-white font-bold rounded-lg shadow-xl hover:bg-red-700 transition duration-150 text-xl quiz-start-btn" data-chapter="Master Quiz">
+                        Start Master Quiz
+                    </button>
+                </section>
+            </div>
 
-                <!-- Chemistry Card -->
-                <div class="book-card book-select-btn bg-accent-green/10 p-6 rounded-xl"
-                    data-book="Chemistry" 
-                    data-title="Chemistry" 
-                    data-color="#059669">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <span data-lucide="atom" class="w-12 h-12 text-accent-green mb-3"></span>
-                        <h2 class="text-xl font-bold text-cbse-blue text-center">Chemistry</h2>
-                        <p class="text-sm text-gray-600 text-center mt-1">(Matter, Atoms, Molecules, Structure of Atom)</p>
-                    </div>
-                </div>
-
-                <!-- Biology Card -->
-                <div class="book-card book-select-btn bg-accent-red/10 p-6 rounded-xl"
-                    data-book="Biology" 
-                    data-title="Biology" 
-                    data-color="#dc2626">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <span data-lucide="dna" class="w-12 h-12 text-accent-red mb-3"></span>
-                        <h2 class="text-xl font-bold text-cbse-blue text-center">Biology</h2>
-                        <p class="text-sm text-gray-600 text-center mt-1">(Cell, Tissues, Food Resources)</p>
-                    </div>
+            <div id="units-view" class="view hidden">
+                <button id="back-to-books-btn" class="back-btn">
+                    <span data-lucide="arrow-left" class="w-5 h-5 mr-2"></span> Back to Books
+                </button>
+                <h2 id="units-view-title" class="text-3xl font-bold text-gray-800 mb-6 border-b-2 pb-2"></h2>
+                <div id="units-list">
                 </div>
             </div>
-            
-            <!-- Full Mock Test Card -->
-            <div class="mt-12">
-                <div class="mock-test-card p-8 rounded-2xl shadow-xl text-white">
-                    <div class="flex flex-col md:flex-row items-center justify-between">
-                        <div class="mb-4 md:mb-0">
-                            <h3 class="text-2xl font-bold mb-2 flex items-center">
-                                <span data-lucide="award" class="w-8 h-8 mr-3"></span>
-                                Full Science Mock Test
-                            </h3>
-                            <p class="text-white/90">Test your readiness with a full-length examination covering Physics, Chemistry, and Biology chapters.</p>
-                        </div>
-                        <button id="mock-test-btn" class="bg-white text-purple-700 px-8 py-3 rounded-lg font-bold hover:bg-purple-50 transition transform hover:scale-105 shadow-lg">
-                            Start Mock Test
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </section>
+        </div>
+        </main>
 
-        <!-- Unit Selection View -->
-        <section id="unit-select-view" class="hidden space-y-6">
-            <button id="back-to-books-btn" class="text-cbse-blue hover:text-cbse-blue/80 flex items-center mb-6 transition">
-                <span data-lucide="arrow-left" class="w-5 h-5 mr-2"></span> Back to Subject Selection
+    <div id="auth-modal" class="modal-overlay hidden">
+        <div id="auth-view" class="auth-container bg-white relative">
+            <button id="close-modal-btn" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition">
+                <span data-lucide="x" class="w-6 h-6"></span>
             </button>
-            
-            <h2 id="unit-title" class="text-3xl font-bold text-cbse-blue mb-6 border-l-4 pl-3 pb-1 border-cbse-blue"></h2>
-            
-            <div id="unit-content" class="space-y-4">
-            </div>
-        </section>
+            <h2 id="auth-header" class="text-2xl font-bold text-center mb-6 text-cbse-blue">
+                Login to Access Quizzes
+            </h2>
 
-        <!-- Difficulty Selection View -->
-        <section id="difficulty-select-view" class="hidden space-y-6">
-            <button id="back-to-chapters-btn" class="text-cbse-blue hover:text-cbse-blue/80 flex items-center mb-6 transition">
-                <span data-lucide="arrow-left" class="w-5 h-5 mr-2"></span> Back to Chapter List
-            </button>
-            
-            <div id="difficulty-content" class="text-center p-8 bg-white rounded-lg shadow-xl">
-                 <h2 id="difficulty-title" class="text-2xl font-bold mb-8 text-cbse-blue">Select Difficulty</h2>
+            <div class="mt-4">
+                <button id="google-sign-in-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition flex items-center justify-center space-x-3 shadow-md">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/4/4a/Logo_google_g_standard.png" alt="Google logo" class="w-6 h-6 bg-white rounded-full">
+                    <span>Sign in with Google</span>
+                </button>
             </div>
-        </section>
 
-    </main>
+            <p id="error-message" class="mt-4 text-center text-red-500 font-medium"></p>
+        </div>
+    </div>
+
+    <footer class="bg-cbse-blue mt-12 py-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
+            <small class="text-sm opacity-80">© 2025 CBSE Class 11 Academic Portal | Redesigned Curriculum View</small>
+        </div>
+    </footer>
+
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
 
     <script>
+        // REPLACED WITH ECONOMICS (1) JAVASCRIPT BLOCK
+
+        // YOUR FIREBASE CONFIGURATION (Copied from economics(1).html)
+        const firebaseConfig = {
+            apiKey: "AIzaSyAXdKiYRxBKAj280YcNuNwlKKDp85xpOWQ",
+            authDomain: "quiz-signon.firebaseapp.com",
+            projectId: "quiz-signon",
+            storageBucket: "quiz-signon.firebasestorage.app",
+            messagingSenderId: "863414222321",
+            appId: "1:863414222321:web:819f5564825308bcd9d850",
+            measurementId: "G-4EFDM0CRYY"
+        };
+
+        // Initialize Firebase App, Auth, and Firestore using the compatibility layer
+        const app = firebase.initializeApp(firebaseConfig);
+        const auth = app.auth(); 
+        const db = app.firestore(); 
         
-        const unitSelectView = document.getElementById('unit-select-view');
-        const bookSelectView = document.getElementById('book-select-view');
-        const difficultySelectView = document.getElementById('difficulty-select-view');
+        let isUserLoggedIn = false; 
+
+        // --- DOM Elements ---
+        const authModal = document.getElementById('auth-modal');
+        const logoutNavBtn = document.getElementById('logout-nav-btn');
+        const errorMessage = document.getElementById('error-message');
+        const unitsList = document.getElementById('units-list');
+        const unitsViewTitle = document.getElementById('units-view-title');
         const backToBooksBtn = document.getElementById('back-to-books-btn');
-        const backToChaptersBtn = document.getElementById('back-to-chapters-btn');
+        const closeModalBtn = document.getElementById('close-modal-btn');
         const headerHomeBtn = document.getElementById('header-home-btn');
-        const mockTestBtn = document.getElementById('mock-test-btn');
+        const googleSignInBtn = document.getElementById('google-sign-in-btn'); 
 
-        let currentBookTitle = ''; 
-        let currentBookKey = '';
-        let currentBookColor = '';
+        // --- AUTH/MODAL FUNCTIONS ---
 
-        // --- Consolidated Chapter Data (Grouped by Units with NCERT Chapter Numbers) ---
+        function showAuthModal() {
+            authModal.classList.remove('hidden');
+            errorMessage.textContent = '';
+        }
+
+        function hideAuthModal() {
+            authModal.classList.add('hidden');
+        }
+        
+        function updateAuthUI(user) {
+             if (user) {
+                isUserLoggedIn = true;
+                logoutNavBtn.classList.remove('hidden');
+            } else {
+                isUserLoggedIn = false;
+                logoutNavBtn.classList.add('hidden');
+            }
+        }
+
+        // --- GOOGLE SIGN-IN LOGIC ---
+
+        googleSignInBtn.addEventListener('click', async () => {
+            errorMessage.textContent = 'Signing in with Google...';
+            googleSignInBtn.disabled = true;
+
+            const provider = new firebase.auth.GoogleAuthProvider();
+
+            try {
+                await auth.signInWithPopup(provider);
+                hideAuthModal(); 
+                alert("Login successful! You can now access the quizzes."); 
+
+            } catch (error) {
+                console.error("Error signing in with Google:", error);
+                
+                let displayMessage = 'Sign-in failed. Check the console for details.';
+                if (error.code === 'auth/popup-closed-by-user') {
+                    displayMessage = 'Sign-in window closed by user.';
+                } else if (error.code === 'auth/cancelled-popup-request') {
+                    displayMessage = 'Sign-in was blocked by a previous attempt.';
+                } else {
+                    displayMessage = 'Google Sign-in failed: ' + error.message;
+                }
+
+                errorMessage.textContent = displayMessage;
+            } finally {
+                 googleSignInBtn.disabled = false;
+            }
+        });
+
+
+        // --- LOGOUT & AUTH STATE ---
+
+        closeModalBtn.addEventListener('click', hideAuthModal);
+
+        logoutNavBtn.addEventListener('click', async () => {
+            try {
+                await auth.signOut();
+                alert("You have been logged out.");
+            } catch (error) {
+                console.error("Error signing out:", error);
+            }
+        });
+
+        auth.onAuthStateChanged((user) => {
+            updateAuthUI(user);
+        });
+
+        // --- QUIZ DATA & LOGIC (Copied from economics(1).html) ---
+        
         const bookData = {
-            'Physics': [
-                { 
-                    unit: 'UNIT I: Motion, Force & Gravitation', 
-                    chapters: [
-                        { chapter: "Ch 7: Motion", chapterNumber: 7, file: "motion_quiz.html", concepts: "Displacement, Velocity, Acceleration, Graphical Representation of Motion, Equations of Motion." },
-                        { chapter: "Ch 8: Force and Laws of Motion", chapterNumber: 8, file: "force_quiz.html", concepts: "Balanced/Unbalanced Forces, Newton's Three Laws, Momentum, Conservation of Momentum." },
-                        { chapter: "Ch 9: Gravitation", chapterNumber: 9, file: "gravitation_quiz.html", concepts: "Universal Law of Gravitation, Free Fall, Mass, Weight, Thrust, Pressure, Buoyancy, Archimedes' Principle." },
-                    ]
-                },
-                { 
-                    unit: 'UNIT II: Work, Energy & Sound', 
-                    chapters: [
-                        { chapter: "Ch 10: Work and Energy", chapterNumber: 10, file: "work_quiz.html", concepts: "Work Done by Force, Energy (Kinetic & Potential), Law of Conservation of Energy, Power, Commercial Unit of Energy." },
-                        { chapter: "Ch 11: Sound", chapterNumber: 11, file: "sound_quiz.html", concepts: "Production and Propagation, Characteristics (Pitch, Loudness, Quality), Reflection, Echo, Range of Hearing, SONAR, Ultrasound." }
-                    ]
-                },
+            'Stats': [
+                { unit: 'UNIT 1: INTRODUCTION', chapters: ['1. Introduction'] },
+                { unit: 'UNIT 2: COLLECTION, ORGANISATION, AND PRESENTATION OF DATA', chapters: ['2. Collection of Data', '3. Organisation of Data', '4. Presentation of Data'] },
+                { unit: 'UNIT 3: STATISTICAL TOOLS AND INTERPRETATION', chapters: ['5. Measures of Central Tendency', '6. Measures of Dispersion', '7. Correlation', '8. Index Numbers', '9. Use of Statistical Tools (Project)'] }
             ],
-            'Chemistry': [
-                { 
-                    unit: 'UNIT III: Matter - Nature and Behaviour',
-                    chapters: [
-                        { chapter: "Ch 1: Matter in Our Surroundings", chapterNumber: 1, file: "matter_surroundings_quiz.html", concepts: "Physical Nature of Matter, Characteristics, States of Matter (Solid, Liquid, Gas), Change of State, Evaporation." },
-                        { chapter: "Ch 2: Is Matter Around Us Pure", chapterNumber: 2, file: "pure_matter_quiz.html", concepts: "Elements, Compounds, Mixtures (Homogeneous & Heterogeneous), Solutions, Suspensions, Colloids, Separation Techniques, Physical & Chemical Changes." },
-                        { chapter: "Ch 3: Atoms and Molecules", chapterNumber: 3, file: "atoms_molecules_quiz.html", concepts: "Laws of Chemical Combination, Dalton's Atomic Theory, Atoms, Molecules, Chemical Formulae, Atomic Mass, Molecular Mass, Mole Concept." },
-                        { chapter: "Ch 4: Structure of the Atom", chapterNumber: 4, file: "atom_structure_quiz.html", concepts: "Charged Particles (Electrons, Protons, Neutrons), Thomson's Model, Rutherford's Model, Bohr's Model, Valency, Atomic Number, Mass Number, Isotopes." }
-                    ]
-                }
+            'Micro': [
+                { unit: 'UNIT 4: INTRODUCTION', chapters: ['1. Introduction'] },
+                { unit: 'UNIT 5: CONSUMER EQUILIBRIUM AND DEMAND', chapters: ['2. Consumer Equilibrium', '3. Demand', '4. Elasticity of Demand'] },
+                { unit: 'UNIT 6: PRODUCER BEHAVIOUR AND SUPPLY', chapters: ['5. Production Function', '6. Cost', '7. Revenue', '8. Producer\'s Equilibrium', '9. Supply'] },
+                { unit: 'UNIT 7: FORMS OF MARKET AND PRICE DETERMINATION UNDER PERFECT COMPETITION WITH SIMPLE APPLICATIONS', chapters: ['10. Main Market Forms', '11. Price Determination and Simple Applications'] },
+                { unit: 'REVISION SECTION', chapters: ['Important Questions', 'Value Based Questions', 'Case Based Questions (CBQs)', 'Last Minute Revision'] }
             ],
-            'Biology': [
-                {
-                    unit: 'UNIT IV: The Living World',
-                    chapters: [
-                        { chapter: "Ch 5: The Fundamental Unit of Life", chapterNumber: 5, file: "cell_quiz.html", concepts: "Cell as Basic Unit, Cell Theory, Prokaryotic vs Eukaryotic Cells, Multicellular Organisms, Cell Membrane, Cell Wall, Nucleus, Cytoplasm, Cell Organelles." },
-                        { chapter: "Ch 6: Tissues", chapterNumber: 6, file: "tissues_quiz.html", concepts: "Plant Tissues (Meristematic & Permanent - Simple & Complex), Animal Tissues (Epithelial, Connective, Muscular, Nervous)." },
-                        { chapter: "Ch 12: Improvement in Food Resources", chapterNumber: 12, file: "food_resources_quiz.html", concepts: "Improvement in Crop Yields, Crop Variety Improvement, Crop Production Management, Crop Protection Management, Animal Husbandry." }
-                    ]
-                }
+            'IED': [
+                { unit: 'UNIT 1: DEVELOPMENT POLICIES AND EXPERIENCE (1947–90)', chapters: ['1. Indian Economy on the Eve of Independence', '2. Indian Economy (1950–1990)', '3. Liberalisation, Privatisation and Globalisation: An Appraisal'] },
+                { unit: 'UNIT 2: CURRENT CHALLENGES FACING THE INDIAN ECONOMY', chapters: ['4. Human Capital Formation in India', '5. Rural Development', '6. Employment: Growth, Informalisation and Other Issues', '7. Infrastructure', '8. Environment and Sustainable Development'] },
+                { unit: 'UNIT 3: DEVELOPMENT EXPERIENCES OF INDIA: A COMPARISON WITH NEIGHBOURS', chapters: ['9. Comparative Development Experiences of India and its Neighbours'] }
             ]
         };
 
-        // --- Core View Management ---
-        function showView(viewName) {
-            bookSelectView.classList.add('hidden');
-            unitSelectView.classList.add('hidden');
-            difficultySelectView.classList.add('hidden');
-
-            if (viewName === 'book-select') {
-                bookSelectView.classList.remove('hidden');
-            } else if (viewName === 'unit-select') {
-                unitSelectView.classList.remove('hidden');
-            } else if (viewName === 'difficulty-select') {
-                difficultySelectView.classList.remove('hidden');
+        function startQuiz(chapterName) {
+            const user = auth.currentUser;
+            
+            if (!user) {
+                showAuthModal();
+                return; 
             }
-            window.scrollTo(0, 0); 
+            
+            const cleanedChapterName = chapterName.trim();
+            
+            // --- LOG THE ATTEMPT TO FIRESTORE (Quiz Start) ---
+            db.collection("quiz_attempts").add({
+                userId: user.uid,
+                email: user.email || 'N/A', 
+                chapter: cleanedChapterName,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(), 
+                action: 'Quiz Attempted'
+            })
+            .then(() => {
+                console.log("Quiz attempt logged successfully for:", cleanedChapterName);
+            })
+            .catch((error) => {
+                console.error("Error logging quiz attempt (Check Firestore Rules!): ", error);
+            });
+            // --- END LOGIC ---
+            
+            // Existing Quiz Navigation Logic
+            if (cleanedChapterName.includes('4. Elasticity of Demand')) {  
+                window.location.href = './quizzes/economics/microeconomics/elasticity/elasticity_quiz.html';
+                return;
+            }
+
+            if (cleanedChapterName.includes("2. Consumer Equilibrium")) {  
+                window.location.href = './quizzes/economics/microeconomics/equilibrium/equilibrium_quiz.html';
+                return;
+            }
+
+            if (cleanedChapterName.includes('3. Demand')) {  
+                window.location.href = './quizzes/economics/microeconomics/demand/demand_quiz.html';
+                return;
+            }
+            
+            // Default alert for unimplemented quizzes
+            const urlSafeName = cleanedChapterName.replace(/[^\w\s]/g, '').replace(/\s+/g, '-').toLowerCase();
+            alert(`Quiz not yet implemented for: ${cleanedChapterName}! (You are logged in) Target URL: /quizzes/${urlSafeName}.html`);
+        }
+        
+        function showView(viewId) {
+            document.querySelectorAll('#quiz-content-wrapper .view').forEach(view => {
+                view.classList.add('hidden');
+            });
+            document.getElementById(viewId + '-view').classList.remove('hidden');
+            window.scrollTo(0, 0);
         }
 
-        // --- Chapter Rendering Logic (Accordion/Unit structure) ---
-        function getUnitsHTML(bookKey, color) {
-            const units = bookData[bookKey] || [];
+        function showUnits(bookKey, title, color) {
+            const units = bookData[bookKey];
+            
+            // Fixed color reference to work with the updated color variables
+            unitsViewTitle.textContent = title;
+            unitsViewTitle.style.borderColor = 'var(--tw-colors-' + color + ')'; 
+
             let html = '';
-
-            if (units.length === 0 || !units[0].unit) {
-                return `<div class="text-gray-700 p-4 rounded-lg bg-yellow-50 border-l-4 border-yellow-500 col-span-full">
-                    Chapter list for <strong>${bookKey}</strong> is currently under development or not grouped by units.
-                </div>`;
-            }
-
             units.forEach((unitItem, index) => {
                 const unitId = `${bookKey}-unit-${index}`;
-
+                
                 let chaptersHtml = unitItem.chapters.map((chapter) => `
-                    <div class="chapter-card bg-white p-5 rounded-xl shadow-md border-l-4 hover:shadow-lg transition-all duration-300" style="border-color: ${color};">
-                        <div class="mb-3">
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="text-gray-800 font-bold text-base">${chapter.chapter}</span>
-                                <span class="text-xs font-semibold px-2 py-1 rounded-full bg-gray-100 text-gray-600">Ch ${chapter.chapterNumber}</span>
-                            </div>
-                            <p class="text-xs text-gray-600 leading-relaxed">${chapter.concepts}</p>
-                        </div>
-                        <button class="quiz-button w-full bg-cbse-blue text-white px-4 py-2.5 text-sm font-semibold rounded-lg hover:bg-cbse-blue/90 transition-all duration-200 hover:shadow-md" 
-                            data-chapter="${chapter.chapter}" 
-                            data-file="${chapter.file}"
-                            data-color="${color}"
-                            data-book="${bookKey}">
-                            <span class="flex items-center justify-center">
-                                <span data-lucide="play-circle" class="w-4 h-4 mr-2"></span>
-                                Start Quiz
-                            </span>
-                        </button>
+                    <div class="chapter-card bg-white p-4 rounded-lg shadow border-l-2 border-current flex justify-between items-center" style="border-color: var(--tw-colors-${color});">
+                        <span class="text-gray-700 font-medium">${chapter}</span>
+                        <button class="quiz-btn bg-cbse-blue text-white px-3 py-1 text-sm rounded-md hover:bg-cbse-blue/90 transition quiz-start-btn" data-chapter="${chapter.replace(/'/g, '\\\'')}">Quiz</button>
                     </div>
                 `).join('');
-Updated the Class 9 Science curriculum with the following improvements based on the economics-2.html template:
-
-1. **Updated Chapter Data**: Added proper NCERT chapter numbers (1-12) and reorganized content to match the official syllabus sequence
-2. **Enhanced Difficulty Selection**: Replaced simple buttons with rich, colorful cards (green for Simple, yellow for Medium, red for Advanced) with descriptions and icons
-3. **Improved Chapter Cards**: Added chapter number badges, better typography, full-width quiz buttons with play icons, and enhanced hover effects
-4. **Correct Chapter Mapping**: 
-   - Chemistry: Chapters 1-4 (Matter, Pure Matter, Atoms & Molecules, Structure of Atom)
-   - Biology: Chapters 5-6, 12 (Cell, Tissues, Food Resources)
-   - Physics: Chapters 7-11 (Motion, Force, Gravitation, Work & Energy, Sound)
 
                 html += `
-                    <div class="border border-gray-200 rounded-xl overflow-hidden mb-6">
-                        <div class="unit-header bg-unit-bg p-4 flex justify-between items-center font-bold text-gray-700 hover:bg-unit-bg/80 active cursor-pointer transition duration-150" data-target="${unitId}">
+                    <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
+                        <div class="unit-header bg-unit-bg p-4 flex justify-between items-center font-semibold text-gray-700 hover:bg-unit-bg/80 active" data-target="${unitId}">
                             <span>${unitItem.unit}</span>
                             <span data-lucide="chevron-down" class="icon-rotate w-5 h-5 transition-transform duration-300"></span>
                         </div>
@@ -309,28 +380,32 @@ Updated the Class 9 Science curriculum with the following improvements based on 
                 `;
             });
 
-            return html;
+            unitsList.innerHTML = html;
+            lucide.createIcons(); 
+            showView('units');
+            
+            attachEventListeners(); 
+            setTimeout(initAccordion, 10);  
         }
 
-        // --- Accordion Logic ---
         function initAccordion() {
             document.querySelectorAll('.unit-header').forEach(header => {
                 const content = document.getElementById(header.dataset.target);
                 if (content) {
-                    // Set initial state to open
-                    content.style.maxHeight = content.scrollHeight + "px";
-                    header.classList.add('active');
-
+                    if (header.classList.contains('active')) {
+                        content.style.maxHeight = content.scrollHeight + "px";
+                    }
+                    
                     header.removeEventListener('click', handleAccordionClick);
                     header.addEventListener('click', handleAccordionClick);
                 }
             });
         }
-
+        
         function handleAccordionClick(event) {
             const header = event.currentTarget;
             const content = document.getElementById(header.dataset.target);
-
+            
             header.classList.toggle('active');
             if (header.classList.contains('active')) {
                 content.style.maxHeight = content.scrollHeight + "px";
@@ -339,86 +414,27 @@ Updated the Class 9 Science curriculum with the following improvements based on 
             }
         }
 
-        // --- Difficulty Selection Function with Rich Cards ---
-        function renderDifficultySelection(chapterName, chapterFile, color) {
-            showView('difficulty-select');
+        // --- ATTACH EVENT LISTENERS (Consolidated) ---
 
-            document.getElementById('difficulty-title').textContent = `Select Difficulty for ${chapterName} Quiz`;
-
-            const difficulties = [
-                { 
-                    level: 'Simple', 
-                    description: 'Perfect for beginners. Covers basic concepts and definitions.',
-                    color: 'bg-green-600 hover:bg-green-700',
-                    icon: 'smile'
-                },
-                { 
-                    level: 'Medium', 
-                    description: 'Moderate difficulty. Application-based questions and problem-solving.',
-                    color: 'bg-yellow-600 hover:bg-yellow-700',
-                    icon: 'brain'
-                },
-                { 
-                    level: 'Advanced', 
-                    description: 'Challenging level. Includes numericals, critical thinking, and HOTS questions.',
-                    color: 'bg-red-600 hover:bg-red-700',
-                    icon: 'trophy'
+        function attachEventListeners() {
+            document.querySelectorAll('.quiz-start-btn').forEach(button => {
+                button.removeEventListener('click', handleQuizButtonClick); 
+                button.addEventListener('click', handleQuizButtonClick);
+            });
+            
+            document.querySelectorAll('.book-select-btn').forEach(card => {
+                if (!card.hasAttribute('data-listener-attached')) {
+                    card.addEventListener('click', handleBookSelectClick);
+                    card.setAttribute('data-listener-attached', 'true');
                 }
-            ];
-            
-            const cardHTML = difficulties.map(diff => `
-                <div class="difficulty-card ${diff.color} text-white p-6 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-2xl cursor-pointer transform" 
-                     onclick="window.location.href='${chapterFile}?difficulty=${diff.level}'">
-                    <div class="flex flex-col items-center text-center">
-                        <span data-lucide="${diff.icon}" class="w-16 h-16 mb-4"></span>
-                        <h3 class="text-2xl font-bold mb-2">${diff.level}</h3>
-                        <p class="text-white/90 text-sm mb-4">${diff.description}</p>
-                        <button class="bg-white/20 hover:bg-white/30 px-6 py-2 rounded-lg font-semibold transition backdrop-blur-sm">
-                            Start Quiz →
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-
-            document.getElementById('difficulty-content').innerHTML = `
-                <h2 class="text-3xl font-bold mb-8 text-cbse-blue text-center">${document.getElementById('difficulty-title').textContent}</h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-                    ${cardHTML}
-                </div>
-            `;
-            
-            // Reinitialize Lucide icons for the difficulty cards
-            lucide.createIcons();
+            });
         }
 
-        // --- Unit Selection Function ---
-        function showUnits(bookKey, title, color) {
-            showView('unit-select');
+        // --- Event Handlers that use Data Attributes ---
 
-            currentBookTitle = title; 
-            currentBookKey = bookKey;
-            currentBookColor = color;
-
-            const unitTitle = document.getElementById('unit-title');
-            unitTitle.textContent = title + ' Chapters';
-            
-            unitTitle.className = 'text-3xl font-bold text-cbse-blue mb-6 border-l-4 pl-3 pb-1';
-            unitTitle.style.borderColor = color; 
-            
-            const unitContent = document.getElementById('unit-content');
-            
-            unitContent.innerHTML = getUnitsHTML(bookKey, color);
-            lucide.createIcons();
-            attachEventListeners();
-            setTimeout(initAccordion, 10); // Initialize accordion after content is loaded
-        }
-
-        // --- Event Handlers ---
         function handleQuizButtonClick(event) {
             const chapterName = event.currentTarget.dataset.chapter;
-            const chapterFile = event.currentTarget.dataset.file;
-            const color = event.currentTarget.dataset.color; 
-            renderDifficultySelection(chapterName, chapterFile, color);
+            startQuiz(chapterName);
         }
 
         function handleBookSelectClick(event) {
@@ -428,46 +444,18 @@ Updated the Class 9 Science curriculum with the following improvements based on 
             const color = card.dataset.color;
             showUnits(book, title, color);
         }
-
-        // --- Function to attach listeners to all dynamic buttons ---
-        function attachEventListeners() {
-            // Attach listeners for the subject cards
-            document.querySelectorAll('.book-select-btn').forEach(card => {
-                card.removeEventListener('click', handleBookSelectClick);
-                card.addEventListener('click', handleBookSelectClick);
-            });
-            
-            // Attach listeners for the chapter quiz buttons
-            document.querySelectorAll('.quiz-button').forEach(button => {
-                button.removeEventListener('click', handleQuizButtonClick);
-                button.addEventListener('click', handleQuizButtonClick);
-            });
-        }
         
         // --- Initialization on Document Load ---
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.add('px-3', 'py-1', 'rounded-lg', 'text-gray-600', 'hover:bg-cbse-light', 'hover:text-cbse-blue', 'transition');
+            });
 
             attachEventListeners();
             
-            // Navigation buttons
-            headerHomeBtn.addEventListener('click', (e) => {
-                e.preventDefault(); 
-                showView('book-select');
-            });
-            
+            headerHomeBtn.addEventListener('click', () => showView('book-select'));
             backToBooksBtn.addEventListener('click', () => showView('book-select'));
-            
-            // Back button from Difficulty to Chapters
-            backToChaptersBtn.addEventListener('click', () => {
-                showUnits(currentBookKey, currentBookTitle, currentBookColor);
-            });
-            
-            // Mock Test button
-            mockTestBtn.addEventListener('click', () => {
-                alert('Mock Test feature coming soon! This will include questions from all subjects.');
-                // You can link to: window.location.href = 'full_science_mock_test.html';
-            });
         });
         
     </script>
