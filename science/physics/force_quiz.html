@@ -8,6 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Load Supabase client library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <!-- Load Configuration from external file as requested by user -->
+    <script src="js/config.js"></script>
     <style>
         /* Custom font and base styling */
         body { font-family: 'Inter', sans-serif; }
@@ -121,14 +123,12 @@
 
     <script>
         // --- Configuration ---
-        // NOTE: Replace these placeholders with your actual Supabase URL and Anon Key
-        const SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE'; // e.g., 'https://your-project-ref.supabase.co'
-        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE'; // e.g., 'eyJhbGciOiJIUzI1NiI...'
-        
-        // This is the specific table for this chapter.
+        // NOTE: SUPABASE_URL and SUPABASE_ANON_KEY are loaded from 'js/config.js'.
+        // This variable remains local to the quiz script:
         const SUPABASE_TABLE = 'force'; 
         // ---------------------
 
+        // SUPABASE_URL and SUPABASE_ANON_KEY are assumed to be accessible globally here.
         let supabaseClient;
         let questions = [];
         let currentQuestionIndex = 0;
@@ -150,13 +150,16 @@
         // --- Initialization ---
 
         function init() {
-            if (SUPABASE_URL === 'YOUR_SUPABASE_URL_HERE' || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY_HERE') {
-                statusMessage.textContent = 'Configuration Error: Please update SUPABASE_URL and SUPABASE_ANON_KEY in the JavaScript section.';
+            // The variables SUPABASE_URL and SUPABASE_ANON_KEY are expected to be loaded 
+            // from the external file js/config.js and should be globally accessible.
+            if (typeof SUPABASE_URL === 'undefined' || typeof SUPABASE_ANON_KEY === 'undefined') {
+                statusMessage.textContent = 'Configuration Error: SUPABASE_URL or SUPABASE_ANON_KEY is undefined. Please ensure "js/config.js" is correctly loaded and defines these global variables.';
                 statusMessage.className = 'text-center p-4 rounded-lg bg-red-100 text-red-700 font-medium mb-6';
                 return;
             }
 
             try {
+                // Accessing the globally defined variables
                 supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 fetchQuestions();
             } catch (e) {
@@ -307,4 +310,3 @@
     </script>
 </body>
 </html>
-
