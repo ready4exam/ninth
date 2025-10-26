@@ -3,15 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Uploader Tool</title>
+    <title>CSV Data Uploader Tool</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     
-    <!-- 
-        *** CONFIGURATION REQUIRED ***
-        The Supabase credentials are now loaded from the external file ./js/config.js.
-        Ensure that file exists and correctly defines SUPABASE_URL and SUPABASE_ANON_KEY.
-    -->
     <script src="./js/config.js"></script>
     
     <script>
@@ -31,50 +26,44 @@
 <body class="bg-gray-50 min-h-screen antialiased p-4">
 
     <div class="max-w-4xl mx-auto bg-white p-6 md:p-10 rounded-xl shadow-2xl border-t-8 border-primary-blue">
-        <h1 class="text-3xl font-extrabold text-primary-blue mb-4">Automated Quiz Generator & Uploader</h1>
+        <h1 class="text-3xl font-extrabold text-primary-blue mb-4">CSV Quiz Processor & Uploader</h1>
         <p class="text-gray-600 mb-6">
-            Enter the details, and this tool will use the Gemini API to generate 60 unique questions (20 Simple, 20 Medium, 20 Advanced) with the required distribution (10 MCQ, 5 AR, 5 Case) and insert them directly into your Supabase table.
+            **Step 1: Generate CSV.** Use your Gemini prompt to generate the 60 questions and copy the entire CSV output (including the header row).<br>
+            **Step 2: Paste & Upload.** Paste the CSV below, specify the table, and click upload.
         </p>
 
-        <!-- Input Fields -->
         <div class="space-y-4 mb-6">
-            <div>
-                <label for="chapter-name" class="block text-sm font-medium text-gray-700">Chapter Name (e.g., Motion, Light)</label>
-                <input type="text" id="chapter-name" value="Motion" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-accent-green focus:border-accent-green">
-            </div>
             <div>
                 <label for="table-name" class="block text-sm font-medium text-gray-700">Target Supabase Table Name</label>
                 <input type="text" id="table-name" value="motion" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-accent-green focus:border-accent-green">
             </div>
-            
+            <div>
+                <label for="csv-input" class="block text-sm font-medium text-gray-700">Paste Gemini CSV Output Here (Including Header)</label>
+                <textarea id="csv-input" rows="10" placeholder="Paste your 60-question CSV output from Gemini here..." class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-accent-green focus:border-accent-green"></textarea>
+            </div>
         </div>
 
-        <!-- Conversion Button -->
         <button id="automate-button" onclick="startAutomation()"
-                class="w-full px-6 py-3 text-lg font-bold text-white bg-primary-blue rounded-lg shadow-md hover:bg-blue-800 transition duration-150">
-            1. Generate & Insert 60 Questions
+                class="w-full px-6 py-3 text-lg font-bold text-white bg-accent-green rounded-lg shadow-md hover:bg-green-700 transition duration-150">
+            2. Parse CSV & Insert Data into Supabase
         </button>
 
-        <!-- Messages & Log Area -->
         <div id="status-log" class="mt-8 space-y-2">
             <h2 class="text-xl font-semibold text-gray-700 mb-3">Process Log:</h2>
             <p id="log-initial" class="text-gray-500">Ready to start...</p>
         </div>
         
-        <!-- Configuration Warning -->
         <div id="config-error" class="hidden error-message mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
             **Configuration Error 🛑** Supabase credentials (`SUPABASE_URL`, `SUPABASE_ANON_KEY`) were not found. Please ensure the file **./js/config.js** exists and contains the correct definitions.
         </div>
     </div>
 
     <script>
-        const API_MODEL = 'gemini-2.5-flash-preview-09-2025';
-        // The base URL, relying on the environment for header-based authentication.
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${API_MODEL}:generateContent`;
-
         // --- Supabase and Database Constants ---
+        // The column order must strictly match the CSV header:
+        // Difficulty, Question_Type, Question_Text, Scenario_Reason_Text, Option_A, Option_B, Option_C, Option_D, Correct_Answer_Key
         const DB_COLUMNS = [
-            'created_at', 'difficulty', 'question_type', 'question_text', 
+            'difficulty', 'question_type', 'question_text', 
             'scenario_reason_text', 'option_a', 'option_b', 'option_c', 'option_d', 
             'correct_answer_key'
         ];
@@ -105,7 +94,7 @@
                     window.SUPABASE_URL,
                     window.SUPABASE_ANON_KEY
                 );
-                logMessage('Supabase client initialized successfully. Ready to generate.', 'success');
+                logMessage('Supabase client initialized successfully. Ready to process CSV.', 'success');
             } catch (e) {
                 logMessage(`Error initializing Supabase client: ${e.message}`, 'error');
                 button.disabled = true;
@@ -124,7 +113,6 @@
 
             // Insert new message at the top of the log
             const logContainer = document.getElementById('status-log');
-            // Find the first non-h2 child element to insert before (the latest log)
             const firstLogEntry = logContainer.querySelector('h2').nextElementSibling;
             logContainer.insertBefore(p, firstLogEntry);
         }
@@ -133,121 +121,70 @@
             button.disabled = disabled;
             button.textContent = text;
         }
+        
+        // --- CSV Parsing Logic ---
 
-        // --- Gemini API Logic ---
-
-        function createGeminiPrompt(chapter) {
-            const prompt = `Generate 60 unique quiz questions for the chapter "${chapter}" in a single JSON array format.
+        function parseCSV(csvString) {
+            logMessage('Parsing CSV data...');
+            const lines = csvString.trim().split('\n');
+            if (lines.length < 2) {
+                throw new Error("CSV input must contain at least a header row and one data row.");
+            }
             
-            **Distribution Rules:**
-            1.  **Simple Difficulty:** 20 questions (10 MCQ, 5 Assertion/Reason (AR), 5 Case-Based).
-            2.  **Medium Difficulty:** 20 questions (10 MCQ, 5 Assertion/Reason (AR), 5 Case-Based).
-            3.  **Advanced Difficulty:** 20 questions (10 MCQ, 5 Assertion/Reason (AR), 5 Case-Based).
-            4.  **Answer Key Variance:** Ensure the correct_answer_key (A, B, C, or D) is NOT the same for more than two consecutive questions to ensure answer diversity.
-            5.  **Uniqueness:** All 60 questions must be unique.
-            6.  **Scenario/Reason:** If a question is NOT AR or Case-Based, set 'scenario_reason_text' to the JSON 'null' value.
+            // Simple split by comma, handling potential quotes for data integrity
+            const header = lines[0].split(',').map(h => h.trim().replace(/['"]+/g, ''));
+            const data = [];
+            
+            // Check if the provided header matches the expected DB columns
+            // We ignore 'created_at' here as we'll add it in the final object.
+            const expectedHeader = DB_COLUMNS.filter(col => col !== 'created_at'); 
+            if (header.length < expectedHeader.length || !header.every((h, i) => h.toLowerCase().includes(expectedHeader[i].toLowerCase()))) {
+                logMessage(`Warning: Header mismatch. Expected columns (in order): ${expectedHeader.join(', ')}`, 'warning');
+                logMessage(`Found header columns: ${header.join(', ')}`, 'warning');
+            }
 
-            The JSON array must strictly follow this structure (an array of objects):
-            [
-              {
-                "created_at": "ISO 8601 timestamp, e.g., 2024-01-01T12:00:00Z",
-                "difficulty": "Simple | Medium | Advanced",
-                "question_type": "MCQ | AR | Case",
-                "question_text": "The main question content.",
-                "scenario_reason_text": "For AR/Case types, use this for the Assertion/Scenario/Reason text. Use null for MCQ.",
-                "option_a": "Option A text.",
-                "option_b": "Option B text.",
-                "option_c": "Option C text.",
-                "option_d": "Option D text.",
-                "correct_answer_key": "A | B | C | D"
-              },
-              // ... 59 more objects
-            ]
-            `;
-            return prompt;
+
+            // Use a regex to robustly split lines by comma while respecting quoted fields
+            const csvRegex = /(".*?"|[^",\n\r]+)(?=\s*,|\s*$)/g;
+
+            // Start from line 1 to skip the header
+            for (let i = 1; i < lines.length; i++) {
+                if (lines[i].trim() === "") continue; // Skip empty lines
+                
+                // Match the values using regex
+                const values = lines[i].match(csvRegex) || [];
+                if (values.length < DB_COLUMNS.length - 1) { // We expect 9 columns from the CSV (excluding created_at)
+                    logMessage(`Skipping line ${i + 1} due to insufficient columns (${values.length} found).`, 'warning');
+                    continue;
+                }
+
+                let rowData = {};
+                const now = new Date().toISOString();
+                rowData['created_at'] = now; // Add the required timestamp
+
+                // Map values to DB_COLUMNS (starting with index 1 because we manually set created_at)
+                for (let j = 0; j < DB_COLUMNS.length - 1; j++) {
+                    const colName = DB_COLUMNS[j];
+                    let value = values[j] ? values[j].trim().replace(/^"|"$/g, '') : ""; // Remove surrounding quotes
+
+                    // Clean up null/empty strings for scenario_reason_text
+                    if (colName === 'scenario_reason_text' && (value === '' || value.toLowerCase() === 'null')) {
+                        value = null; // Supabase prefers actual null, but we'll use an empty string for simplicity here.
+                    }
+
+                    // Map to the correct object key
+                    rowData[colName] = value;
+                }
+                
+                data.push(rowData);
+            }
+            
+            logMessage(`Successfully parsed **${data.length}** records from CSV.`, 'success');
+            return data;
         }
 
-        async function fetchQuizDataFromGemini(chapter) {
-            const systemPrompt = "You are a specialized content creator for educational quizzes. Your task is to generate a comprehensive, structured JSON array for a 60-question quiz based on the user's instructions. You MUST use 'null' for any missing or inapplicable field values. Do NOT include any introductory or concluding text outside the JSON array.";
 
-            const payload = {
-                contents: [{ parts: [{ text: createGeminiPrompt(chapter) }] }],
-                systemInstruction: { parts: [{ text: systemPrompt }] },
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: "ARRAY",
-                        items: {
-                            type: "OBJECT",
-                            properties: Object.fromEntries(DB_COLUMNS.map(col => [col, { type: "STRING" }])),
-                            propertyOrdering: DB_COLUMNS,
-                            required: DB_COLUMNS
-                        }
-                    }
-                }
-            };
-            
-            // --- API Call Logic with Fallback ---
-            let finalApiUrl = API_URL;
-            let headers = { 'Content-Type': 'application/json' };
-            let response;
-            
-            try {
-                logMessage('Attempting Gemini API call using platform-injected authentication...');
-                response = await fetch(finalApiUrl, {
-                    method: 'POST',
-                    headers: headers,
-                    body: JSON.stringify(payload)
-                });
-
-            } catch (initialError) {
-                // This catch handles network errors, but 403 usually doesn't trigger it.
-                // We primarily look for the 403 status below.
-                logMessage(`Initial fetch failed (network or CORS error): ${initialError.message}`, 'error');
-                throw new Error(`Gemini API call failed during initial fetch. Check network connection.`);
-            }
-
-            // Check for the 403 error status after the first attempt
-            if (!response.ok && response.status === 403) {
-                logMessage('First attempt (no explicit key) failed with 403. Trying fallback (checking for __api_key)...', 'warning');
-
-                // Fallback: Check for a globally exposed key (like __api_key)
-                if (typeof window.__api_key !== 'undefined' && window.__api_key) {
-                    logMessage('Fallback key found. Retrying API call with query parameter.', 'warning');
-                    finalApiUrl = `${API_URL}?key=${window.__api_key}`;
-                    
-                    try {
-                        response = await fetch(finalApiUrl, {
-                            method: 'POST',
-                            headers: headers,
-                            body: JSON.stringify(payload)
-                        });
-                    } catch (fallbackError) {
-                        // If the fallback fails, throw the original error (or the fallback error)
-                        throw new Error(`Fallback fetch failed (network or CORS error): ${fallbackError.message}`);
-                    }
-                }
-            }
-
-
-            if (!response.ok) {
-                // This will catch the 403 if the fallback wasn't triggered/successful, or other errors (400, 500, etc.)
-                const errorBody = await response.text();
-                throw new Error(`Gemini API call failed with status: ${response.status}. Details: ${errorBody.substring(0, 100)}...`);
-            }
-
-            const result = await response.json();
-            const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-
-            if (!jsonText) {
-                throw new Error("Gemini returned an empty response or invalid structure.");
-            }
-
-            // The model is instructed to return JSON, so we parse it directly.
-            return JSON.parse(jsonText);
-        }
-
-        // --- Supabase Insertion Logic ---
+        // --- Supabase Insertion Logic (Unchanged) ---
 
         async function insertDataIntoSupabase(tableName, data) {
             logMessage(`Attempting to insert ${data.length} records into table **${tableName}**...`);
@@ -277,27 +214,28 @@
                 return;
             }
             
-            // Removed the manual API key check. The environment should handle injection.
-            
-            const chapterName = document.getElementById('chapter-name').value.trim();
             const tableName = document.getElementById('table-name').value.trim();
+            const csvInput = document.getElementById('csv-input').value.trim();
             
-            if (!chapterName || !tableName) {
-                logMessage('Chapter Name and Table Name are required.', 'error');
+            if (!tableName) {
+                logMessage('Table Name is required.', 'error');
+                return;
+            }
+            if (!csvInput) {
+                logMessage('Please paste the CSV data into the text area.', 'error');
                 return;
             }
 
-            setButtonState(true, 'Processing: Generating Content...');
+            setButtonState(true, 'Processing: Parsing CSV...');
             
             try {
-                // 1. Generate Quiz Data
-                logMessage(`1. Requesting 60 questions for chapter: **${chapterName}**...`);
-                const quizData = await fetchQuizDataFromGemini(chapterName);
+                // 1. Parse CSV Data
+                const quizData = parseCSV(csvInput);
                 
-                if (!quizData || quizData.length !== 60) {
-                    logMessage(`Warning: Gemini generated ${quizData ? quizData.length : 0} questions, expected 60. Attempting to insert ${quizData.length} anyway.`, 'warning');
+                if (!quizData || quizData.length === 0) {
+                    throw new Error("No valid data rows were parsed from the CSV.");
                 }
-                logMessage(`Content Generated: **${quizData.length}** records received from Gemini API.`, 'success');
+                logMessage(`Content Parsed: Ready to insert **${quizData.length}** records.`, 'success');
 
                 // 2. Insert Data into Supabase
                 setButtonState(true, 'Processing: Inserting into Supabase...');
@@ -305,12 +243,12 @@
                 
                 // 3. Complete
                 logMessage(`2. Data successfully inserted! **${insertedRecords.length}** records added to table **${tableName}**.`, 'success');
-                logMessage('Automation Complete.', 'success');
-                setButtonState(false, 'Restart Automation');
+                logMessage('Automation Complete. You can now process another CSV.', 'success');
+                setButtonState(false, 'Upload Another CSV');
 
             } catch (error) {
                 logMessage(`Automation Failed: ${error.message}`, 'error');
-                setButtonState(false, 'Error. Try Again.');
+                setButtonState(false, 'Error. Check Log and Try Again.');
             }
         }
         
@@ -321,3 +259,14 @@
     </script>
 </body>
 </html>
+```eof
+
+### How to use the new file:
+
+1.  **Generate your CSV** using the prompt I provided earlier.
+2.  **Copy the entire CSV text** (including the header row).
+3.  **Paste the text** into the new large text area labeled "Paste Gemini CSV Output Here".
+4.  Ensure your **"Target Supabase Table Name"** is correct.
+5.  Click the **"2. Parse CSV & Insert Data into Supabase"** button.
+
+The script will handle the conversion and insert the data directly into your Supabase table. Good luck!
