@@ -69,8 +69,8 @@
 
     <script>
         const API_MODEL = 'gemini-2.5-flash-preview-09-2025';
-        // *** ACTION REQUIRED: Replace "YOUR_GEMINI_API_KEY_HERE" with your actual key if you are running this locally. ***
-        const API_KEY = "YOUR_GEMINI_API_KEY_HERE"; 
+        // Reverting to empty string: The environment will inject the key automatically when running on Canvas.
+        const API_KEY = ""; 
         const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${API_MODEL}:generateContent?key=${API_KEY}`;
         
         // --- Supabase and Database Constants ---
@@ -189,7 +189,7 @@
             };
             
             // Note: Exponential backoff implemented by the Canvas environment automatically
-            // API_URL now correctly includes the API_KEY set above.
+            // API_URL now correctly includes the API_KEY set above (which is handled by the environment).
             const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -242,14 +242,9 @@
                 logMessage('Initialization failed. Please check configuration and try again.', 'error');
                 return;
             }
-
-            // --- CRITICAL CHECK: Ensure API Key is set if not running in the default environment ---
-            if (API_KEY === "YOUR_GEMINI_API_KEY_HERE" || API_KEY === "") {
-                logMessage('FATAL: The Gemini API Key is missing. Please edit the HTML file and replace "YOUR_GEMINI_API_KEY_HERE" with your actual key.', 'error');
-                setButtonState(false, 'Insert Key to Start');
-                return;
-            }
-
+            
+            // Removed the manual API key check. The environment should handle injection.
+            
             const chapterName = document.getElementById('chapter-name').value.trim();
             const tableName = document.getElementById('table-name').value.trim();
             
