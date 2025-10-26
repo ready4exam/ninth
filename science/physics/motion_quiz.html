@@ -117,11 +117,11 @@
 
             if (quizData) {
                 quizDataLoaded = true;
-                // Separate questions by difficulty for the selection screen. Use 'complex' as the key.
+                // Filter by 'complex' (assuming this is the DB value) but store under the new key 'advanced'
                 const simpleQuestions = quizData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'simple');
                 const mediumQuestions = quizData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'medium');
-                const complexQuestions = quizData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'complex');
-                ALL_QUESTIONS = { simple: simpleQuestions, medium: mediumQuestions, complex: complexQuestions };
+                const advancedQuestions = quizData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'complex'); 
+                ALL_QUESTIONS = { simple: simpleQuestions, medium: mediumQuestions, advanced: advancedQuestions };
                 
                 renderDifficultySelection(quizData); 
             }
@@ -133,7 +133,7 @@
             const container = document.getElementById('quiz-container');
 
             if (Object.keys(ALL_QUESTIONS).length === 0 || 
-                (ALL_QUESTIONS.simple?.length === 0 && ALL_QUESTIONS.medium?.length === 0 && ALL_QUESTIONS.complex?.length === 0)) {
+                (ALL_QUESTIONS.simple?.length === 0 && ALL_QUESTIONS.medium?.length === 0 && ALL_QUESTIONS.advanced?.length === 0)) {
                    container.innerHTML = `<p class="text-red-700 p-4 rounded bg-red-100">
                        **No Quiz Questions Found!** Please ensure your Supabase table **${TABLE_NAME}** contains questions.
                        </p>`;
@@ -145,7 +145,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     ${createDifficultyCard('simple', ALL_QUESTIONS.simple?.length || 0, 'Easy start, covers foundational concepts.', 'bg-accent-green hover:bg-green-700')}
                     ${createDifficultyCard('medium', ALL_QUESTIONS.medium?.length || 0, 'Moderate difficulty, requires application of concepts.', 'bg-yellow-600 hover:bg-yellow-700')}
-                    ${createDifficultyCard('complex', ALL_QUESTIONS.complex?.length || 0, 'High difficulty, includes numericals and critical analysis.', 'bg-red-600 hover:bg-red-700')}
+                    ${createDifficultyCard('advanced', ALL_QUESTIONS.advanced?.length || 0, 'High difficulty, includes numericals and critical analysis.', 'bg-red-600 hover:bg-red-700')}
                 </div>
             `;
             container.innerHTML = html;
@@ -155,12 +155,12 @@
             const actualCount = Math.min(count, TARGET_QUESTION_COUNT);
             const buttonText = count >= TARGET_QUESTION_COUNT ? `Start Quiz (${TARGET_QUESTION_COUNT} Qs)` : `Start Quiz (${actualCount} Qs)`;
             
-            // This displays 'Advanced' for 'complex' in the selection card
+            // This ensures display name is capitalized (e.g., Simple, Medium, Advanced)
             const displayName = level.charAt(0).toUpperCase() + level.slice(1);
             
             return `
                 <div class="p-6 bg-cbse-light rounded-lg shadow-md border border-gray-200">
-                    <h4 class="text-2xl font-bold capitalize text-cbse-blue mb-2">${displayName === 'Complex' ? 'Advanced' : displayName}</h4>
+                    <h4 class="text-2xl font-bold capitalize text-cbse-blue mb-2">${displayName}</h4>
                     <p class="text-gray-600 text-sm mb-4">${description}</p>
                     <p class="text-sm font-semibold mb-4 text-gray-700">Available: ${count} questions. Starting: ${actualCount} questions.</p>
                     <button
@@ -193,15 +193,10 @@
         function renderQuiz() {
             const container = document.getElementById('quiz-container');
 
-            // 🌟 FIX APPLIED HERE: Correctly display 'Advanced' for the 'complex' difficulty
             const rawDifficulty = QUIZ_DATA.difficulty;
-            let titleDifficulty;
             
-            if (rawDifficulty === 'complex') {
-                titleDifficulty = 'Advanced';
-            } else {
-                titleDifficulty = rawDifficulty.charAt(0).toUpperCase() + rawDifficulty.slice(1);
-            }
+            // Capitalize for all, including 'advanced' -> 'Advanced'
+            const titleDifficulty = rawDifficulty.charAt(0).toUpperCase() + rawDifficulty.slice(1);
 
             let quizHtml = `<h2 class="text-3xl font-extrabold text-cbse-blue mb-6">${titleDifficulty} Quiz (${QUIZ_DATA.questions.length} Questions)</h2>`;
 
@@ -264,7 +259,6 @@
         
         // --- Submit Quiz (Scores all questions and displays answers) ---
         function submitQuiz() {
-            // FIX: Declare totalQuestions once.
             const totalQuestions = QUIZ_DATA.questions.length;
             let score = 0;
 
