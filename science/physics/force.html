@@ -1,1 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Force and Laws of Motion Quiz</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Supabase client library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <style>
+        /* Custom font and base styling */
+        body { font-family: 'Inter', sans-serif; }
+        .quiz-card {
+            max-width: 640px;
+            margin: 2rem auto;
+            min-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .option-btn {
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .option-btn:hover:not(.disabled) {
+            background-color: #f3f4f6;
+            border-color: #1a3e6a;
+        }
+        .correct {
+            background-color: #d1fae5 !important;
+            border-color: #059669 !important;
+            color: #065f46 !important;
+            font-weight: 600;
+            pointer-events: none;
+        }
+        .incorrect {
+            background-color: #fee2e2 !important;
+            border-color: #dc2626 !important;
+            color: #991b1b !important;
+            font-weight: 600;
+            pointer-events: none;
+        }
+        .disabled {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#1a3e6a',
+                        'accent-green': '#059669',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-100 p-4">
+
+    <div id="quiz-container" class="quiz-card bg-white p-6 md:p-10 rounded-xl shadow-2xl border-t-8 border-primary-blue">
+        
+        <h1 class="text-3xl font-extrabold text-primary-blue mb-4 text-center">
+            Force and Laws of Motion Quiz
+        </h1>
+        <p class="text-sm text-gray-500 mb-6 text-center">
+            Chapter: **Force and Laws of Motion** | Supabase Table: **force**
+        </p>
+
+        <!-- Loading & Error Status -->
+        <div id="status-message" class="text-center p-4 rounded-lg bg-yellow-100 text-yellow-700 font-medium mb-6">
+            Loading questions...
+        </div>
+
+        <!-- Quiz Content Area -->
+        <div id="quiz-content" class="hidden">
+            
+            <!-- Progress Bar -->
+            <div class="mb-4">
+                <div id="progress-text" class="text-sm text-gray-600 mb-1"></div>
+                <div class="h-2 bg-gray-200 rounded-full">
+                    <div id="progress-bar" class="h-2 bg-accent-green rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Question Card -->
+            <div class="bg-primary-blue text-white p-5 rounded-xl shadow-lg mb-6">
+                <p id="question-text" class="text-lg font-semibold"></p>
+                <p id="scenario-text" class="text-sm mt-2 italic opacity-80"></p>
+            </div>
+
+            <!-- Options -->
+            <div id="options-container" class="space-y-3">
+                <!-- Option buttons will be injected here -->
+            </div>
+
+            <!-- Next Button -->
+            <div class="mt-8">
+                <button id="next-button" onclick="nextQuestion()" disabled
+                        class="w-full px-6 py-3 text-lg font-bold text-white bg-primary-blue rounded-lg shadow-md hover:bg-blue-800 transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Next Question
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="results-screen" class="hidden text-center p-8 bg-white rounded-xl shadow-lg">
+            <h2 class="text-3xl font-bold text-accent-green mb-4">Quiz Complete! 🎉</h2>
+            <p class="text-lg text-gray-700 mb-2">You answered:</p>
+            <p id="score-display" class="text-6xl font-extrabold text-primary-blue mb-6">0 / 0</p>
+            <button onclick="window.location.reload()"
+                    class="px-6 py-3 text-white bg-accent-green rounded-lg shadow-md hover:bg-green-700 transition duration-150">
+                Start Again
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Configuration ---
+        // NOTE: Replace these placeholders with your actual Supabase URL and Anon Key
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE'; // e.g., 'https://your-project-ref.supabase.co'
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE'; // e.g., 'eyJhbGciOiJIUzI1NiI...'
+        
+        // This is the specific table for this chapter.
+        const SUPABASE_TABLE = 'force'; 
+        // ---------------------
+
+        let supabaseClient;
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let isAnswered = false;
+
+        // --- DOM Elements ---
+        const statusMessage = document.getElementById('status-message');
+        const quizContent = document.getElementById('quiz-content');
+        const resultsScreen = document.getElementById('results-screen');
+        const questionText = document.getElementById('question-text');
+        const scenarioText = document.getElementById('scenario-text');
+        const optionsContainer = document.getElementById('options-container');
+        const nextButton = document.getElementById('next-button');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const scoreDisplay = document.getElementById('score-display');
+
+        // --- Initialization ---
+
+        function init() {
+            if (SUPABASE_URL === 'YOUR_SUPABASE_URL_HERE' || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY_HERE') {
+                statusMessage.textContent = 'Configuration Error: Please update SUPABASE_URL and SUPABASE_ANON_KEY in the JavaScript section.';
+                statusMessage.className = 'text-center p-4 rounded-lg bg-red-100 text-red-700 font-medium mb-6';
+                return;
+            }
+
+            try {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                fetchQuestions();
+            } catch (e) {
+                statusMessage.textContent = `Error initializing Supabase: ${e.message}`;
+                statusMessage.className = 'text-center p-4 rounded-lg bg-red-100 text-red-700 font-medium mb-6';
+            }
+        }
+
+        // --- Data Fetching ---
+
+        async function fetchQuestions() {
+            statusMessage.textContent = `Fetching questions from table '${SUPABASE_TABLE}'...`;
+            
+            try {
+                // Fetch all columns from the 'force' table
+                const { data, error } = await supabaseClient
+                    .from(SUPABASE_TABLE)
+                    .select('*');
+
+                if (error) throw error;
+
+                if (data.length === 0) {
+                    statusMessage.textContent = `No questions found in table '${SUPABASE_TABLE}'. Please upload data using the CSV Uploader.`;
+                    statusMessage.className = 'text-center p-4 rounded-lg bg-yellow-100 text-yellow-700 font-medium mb-6';
+                    return;
+                }
+
+                questions = data;
+                statusMessage.classList.add('hidden'); // Hide status on success
+                quizContent.classList.remove('hidden');
+                displayQuestion();
+
+            } catch (error) {
+                console.error('Error fetching questions:', error);
+                statusMessage.textContent = `Error loading questions: ${error.message}`;
+                statusMessage.className = 'text-center p-4 rounded-lg bg-red-100 text-red-700 font-medium mb-6';
+            }
+        }
+
+        // --- Quiz Logic ---
+
+        function displayQuestion() {
+            if (currentQuestionIndex >= questions.length) {
+                showResults();
+                return;
+            }
+
+            const q = questions[currentQuestionIndex];
+            
+            // Reset state
+            isAnswered = false;
+            optionsContainer.innerHTML = '';
+            nextButton.disabled = true;
+            nextButton.textContent = 'Select an answer';
+
+            // Update question and scenario text
+            questionText.textContent = `${currentQuestionIndex + 1}. ${q.question_text || 'Error: Missing question text.'}`;
+            
+            if (q.scenario_reason_text) {
+                scenarioText.textContent = `Context/Reason: ${q.scenario_reason_text}`;
+                scenarioText.classList.remove('hidden');
+            } else {
+                scenarioText.classList.add('hidden');
+            }
+
+            // Shuffle options for better replayability (Optional, but good practice)
+            const optionKeys = ['A', 'B', 'C', 'D'];
+            const options = optionKeys.map(key => ({ 
+                key: key, 
+                text: q[`option_${key.toLowerCase()}`] || `(Option ${key} missing)` 
+            }));
+            
+            // Create option buttons
+            options.forEach(option => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn w-full text-left p-4 border-2 border-gray-300 rounded-xl font-medium text-gray-800 transition duration-100 shadow-sm';
+                btn.textContent = `${option.key}. ${option.text}`;
+                btn.setAttribute('data-key', option.key);
+                btn.onclick = () => handleAnswer(option.key, q.correct_answer_key);
+                optionsContainer.appendChild(btn);
+            });
+            
+            updateProgress();
+        }
+
+        function handleAnswer(selectedKey, correctKey) {
+            if (isAnswered) return;
+            isAnswered = true;
+            nextButton.disabled = false;
+            nextButton.textContent = 'Next Question';
+
+            let isCorrect = (selectedKey === correctKey);
+            
+            if (isCorrect) {
+                score++;
+            }
+
+            // Highlight all buttons
+            Array.from(optionsContainer.children).forEach(btn => {
+                const key = btn.getAttribute('data-key');
+                btn.classList.add('disabled'); // Disable all buttons
+
+                if (key === correctKey) {
+                    // Correct answer
+                    btn.classList.remove('disabled');
+                    btn.classList.add('correct');
+                    btn.innerHTML += ' &nbsp; (Correct)';
+                } else if (key === selectedKey) {
+                    // User's incorrect answer
+                    btn.classList.remove('disabled');
+                    btn.classList.add('incorrect');
+                    btn.innerHTML += ' &nbsp; (Your Answer)';
+                }
+            });
+        }
+
+        function nextQuestion() {
+            if (!isAnswered) {
+                // This shouldn't happen if the button is disabled, but as a safeguard
+                // Use a temporary visual cue instead of alert()
+                nextButton.textContent = 'Please select an answer first!';
+                setTimeout(() => nextButton.textContent = 'Next Question', 1500);
+                return;
+            }
+
+            currentQuestionIndex++;
+            displayQuestion();
+        }
+
+        function updateProgress() {
+            const total = questions.length;
+            const current = currentQuestionIndex + 1;
+            const percent = (currentQuestionIndex / total) * 100;
+            
+            progressText.textContent = `Question ${current} of ${total} | Score: ${score}`;
+            progressBar.style.width = `${percent}%`;
+        }
+
+        function showResults() {
+            quizContent.classList.add('hidden');
+            resultsScreen.classList.remove('hidden');
+            scoreDisplay.textContent = `${score} / ${questions.length}`;
+            progressBar.style.width = `100%`; // Ensure progress bar finishes
+        }
+
+        // Start the quiz when the window loads
+        window.onload = init;
+    </script>
+</body>
+</html>
 
