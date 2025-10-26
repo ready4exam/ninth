@@ -69,10 +69,10 @@
 
     <script>
         const API_MODEL = 'gemini-2.5-flash-preview-09-2025';
-        // Reverting to empty string: The environment will inject the key automatically when running on Canvas.
+        // API_KEY is intentionally empty, relying on the environment for injection.
         const API_KEY = ""; 
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${API_MODEL}:generateContent?key=${API_KEY}`;
-        
+        // Removed global API_URL definition
+
         // --- Supabase and Database Constants ---
         const DB_COLUMNS = [
             'created_at', 'difficulty', 'question_type', 'question_text', 
@@ -187,10 +187,15 @@
                     }
                 }
             };
+
+            // FIX: Construct API_URL dynamically to avoid appending "?key=" if API_KEY is empty.
+            let apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${API_MODEL}:generateContent`;
+            if (API_KEY) {
+                apiUrl += `?key=${API_KEY}`;
+            }
             
             // Note: Exponential backoff implemented by the Canvas environment automatically
-            // API_URL now correctly includes the API_KEY set above (which is handled by the environment).
-            const response = await fetch(API_URL, {
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
