@@ -9,10 +9,10 @@
     
     <!-- 
         *** CONFIGURATION REQUIRED ***
-        The Supabase credentials are now loaded from the external file ./JS/config.js.
+        The Supabase credentials are now loaded from the external file ./js/config.js.
         Ensure that file exists and correctly defines SUPABASE_URL and SUPABASE_ANON_KEY.
     -->
-    <script src="./JS/config.js"></script>
+    <script src="./js/config.js"></script>
     
     <script>
         tailwind.config = {
@@ -63,7 +63,7 @@
         
         <!-- Configuration Warning -->
         <div id="config-error" class="hidden error-message mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-            **Configuration Error 🛑** Supabase credentials (`SUPABASE_URL`, `SUPABASE_ANON_KEY`) were not found. Please ensure the file **./JS/config.js** exists and contains the correct definitions.
+            **Configuration Error 🛑** Supabase credentials (`SUPABASE_URL`, `SUPABASE_ANON_KEY`) were not found. Please ensure the file **./js/config.js** exists and contains the correct definitions.
         </div>
     </div>
 
@@ -89,7 +89,7 @@
             log = document.getElementById('status-log');
             button = document.getElementById('automate-button');
             
-            // Check the globally exposed variables, which should be loaded from ./JS/config.js
+            // Check the globally exposed variables, which should be loaded from ./js/config.js
             if (typeof window.SUPABASE_URL === 'undefined' || typeof window.SUPABASE_ANON_KEY === 'undefined' || window.SUPABASE_URL === null) {
                  document.getElementById('log-initial').textContent = "Configuration required...";
                  document.getElementById('config-error').classList.remove('hidden');
