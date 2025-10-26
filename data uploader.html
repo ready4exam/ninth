@@ -9,19 +9,10 @@
     
     <!-- 
         *** CONFIGURATION REQUIRED ***
-        Please replace the placeholder values below with your actual Supabase project URL and Anon Public Key.
-        You can find these in your Supabase project settings under "API".
+        The Supabase credentials are now loaded from the external file ./JS/config.js.
+        Ensure that file exists and correctly defines SUPABASE_URL and SUPABASE_ANON_KEY.
     -->
-    <script>
-        // --- START USER CONFIGURATION ---
-        const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL_HERE"; 
-        const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_PUBLIC_KEY_HERE";
-        // --- END USER CONFIGURATION ---
-        
-        // This makes the variables accessible globally, mimicking the 'config.js' file
-        window.SUPABASE_URL = SUPABASE_URL;
-        window.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
-    </script>
+    <script src="./JS/config.js"></script>
     
     <script>
         tailwind.config = {
@@ -72,7 +63,7 @@
         
         <!-- Configuration Warning -->
         <div id="config-error" class="hidden error-message mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-            **Configuration Error 🛑** Supabase credentials (`SUPABASE_URL`, `SUPABASE_ANON_KEY`) were not found. Please update the `SUPABASE_URL` and `SUPABASE_ANON_KEY` variables in the code's `<head>` section.
+            **Configuration Error 🛑** Supabase credentials (`SUPABASE_URL`, `SUPABASE_ANON_KEY`) were not found. Please ensure the file **./JS/config.js** exists and contains the correct definitions.
         </div>
     </div>
 
@@ -98,8 +89,8 @@
             log = document.getElementById('status-log');
             button = document.getElementById('automate-button');
             
-            // Check the globally exposed variables
-            if (typeof window.SUPABASE_URL === 'undefined' || window.SUPABASE_URL.includes("YOUR_SUPABASE_PROJECT_URL_HERE")) {
+            // Check the globally exposed variables, which should be loaded from ./JS/config.js
+            if (typeof window.SUPABASE_URL === 'undefined' || typeof window.SUPABASE_ANON_KEY === 'undefined' || window.SUPABASE_URL === null) {
                  document.getElementById('log-initial').textContent = "Configuration required...";
                  document.getElementById('config-error').classList.remove('hidden');
                  button.disabled = true;
