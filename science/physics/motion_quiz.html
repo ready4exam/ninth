@@ -117,7 +117,7 @@
 
             if (quizData) {
                 quizDataLoaded = true;
-                // Separate questions by difficulty for the selection screen
+                // Separate questions by difficulty for the selection screen. Use 'complex' as the key.
                 const simpleQuestions = quizData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'simple');
                 const mediumQuestions = quizData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'medium');
                 const complexQuestions = quizData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'complex');
@@ -134,10 +134,10 @@
 
             if (Object.keys(ALL_QUESTIONS).length === 0 || 
                 (ALL_QUESTIONS.simple?.length === 0 && ALL_QUESTIONS.medium?.length === 0 && ALL_QUESTIONS.complex?.length === 0)) {
-                 container.innerHTML = `<p class="text-red-700 p-4 rounded bg-red-100">
-                    **No Quiz Questions Found!** Please ensure your Supabase table **${TABLE_NAME}** contains questions.
-                    </p>`;
-                 return;
+                   container.innerHTML = `<p class="text-red-700 p-4 rounded bg-red-100">
+                       **No Quiz Questions Found!** Please ensure your Supabase table **${TABLE_NAME}** contains questions.
+                       </p>`;
+                   return;
             }
 
             const html = `
@@ -154,6 +154,8 @@
         function createDifficultyCard(level, count, description, colorClass) {
             const actualCount = Math.min(count, TARGET_QUESTION_COUNT);
             const buttonText = count >= TARGET_QUESTION_COUNT ? `Start Quiz (${TARGET_QUESTION_COUNT} Qs)` : `Start Quiz (${actualCount} Qs)`;
+            
+            // This displays 'Advanced' for 'complex' in the selection card
             const displayName = level.charAt(0).toUpperCase() + level.slice(1);
             
             return `
@@ -191,8 +193,15 @@
         function renderQuiz() {
             const container = document.getElementById('quiz-container');
 
-            const displayDifficulty = QUIZ_DATA.difficulty.charAt(0).toUpperCase() + QUIZ_DATA.difficulty.slice(1);
-            const titleDifficulty = displayDifficulty === 'Complex' ? 'Advanced' : displayDifficulty;
+            // 🌟 FIX APPLIED HERE: Correctly display 'Advanced' for the 'complex' difficulty
+            const rawDifficulty = QUIZ_DATA.difficulty;
+            let titleDifficulty;
+            
+            if (rawDifficulty === 'complex') {
+                titleDifficulty = 'Advanced';
+            } else {
+                titleDifficulty = rawDifficulty.charAt(0).toUpperCase() + rawDifficulty.slice(1);
+            }
 
             let quizHtml = `<h2 class="text-3xl font-extrabold text-cbse-blue mb-6">${titleDifficulty} Quiz (${QUIZ_DATA.questions.length} Questions)</h2>`;
 
@@ -325,6 +334,11 @@
             // Start the quiz process immediately
             initSupabase(); 
         });
+        
+        // Expose functions to the global scope for use in inline HTML attributes (onclick, onchange)
+        window.startQuiz = startQuiz;
+        window.storeAnswer = storeAnswer;
+        window.submitQuiz = submitQuiz;
     </script>
 </body>
 </html>
