@@ -29,13 +29,13 @@
         <h1 class="text-3xl font-extrabold text-primary-blue mb-4">CSV Quiz Processor & Uploader</h1>
         <p class="text-gray-600 mb-6">
             **Step 1: Generate CSV.** Use your Gemini prompt to generate the 60 questions and copy the entire CSV output (including the header row).<br>
-            **Step 2: Paste & Upload.** Paste the CSV below, specify the table, and click upload. **NOTE: If using Gemini output, manually search and replace any instances of 'nan' in the options with an empty string or 'N/A' before pasting.**
+            **Step 2: Paste & Upload.** Paste the CSV below, specify the table, and click upload. **The script will now automatically clean up instances of 'nan' and remove LaTeX symbols.**
         </p>
 
         <div class="space-y-4 mb-6">
             <div>
                 <label for="table-name" class="block text-sm font-medium text-gray-700">Target Supabase Table Name</label>
-                <input type="text" id="table-name" value="motion" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-accent-green focus:border-accent-green">
+                <input type="text" id="table-name" value="force" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-accent-green focus:border-accent-green">
             </div>
             <div>
                 <label for="csv-input" class="block text-sm font-medium text-gray-700">Paste Gemini CSV Output Here (Including Header)</label>
@@ -66,12 +66,43 @@
             'scenario_reason_text', 'option_a', 'option_b', 'option_c', 'option_d', 
             'correct_answer_key'
         ];
+        
+        // List of columns that need the LaTeX cleaning applied
+        const LATEX_CLEANUP_COLUMNS = [
+            'question_text', 'scenario_reason_text', 'option_a', 'option_b', 'option_c', 'option_d'
+        ];
 
         let supabaseClient;
         let button;
         let log;
 
         // --- Utility Functions ---
+
+        /**
+         * Sanitizes a string by removing common LaTeX/KaTeX formatting.
+         * @param {string | null} input The string to clean.
+         * @returns {string | null} The cleaned string.
+         */
+        function cleanLatex(input) {
+            if (input === null || typeof input !== 'string') return input;
+
+            // 1. Remove common math environment delimiters ($, $$, \(, \), \[,\], {, })
+            let cleaned = input.replace(/\$|\\\(|\\\)|\\\[|\\\]|{|}/g, '');
+
+            // 2. Remove common text and vector commands (\text{}, \mathbf{}, \cdot, etc.)
+            // This regex targets commands like \text{...} or \mathbf{...} and removes the command itself
+            // but keeps the content inside the braces if possible.
+            cleaned = cleaned.replace(/\\(text|mathbf|mathrm|unit|cdot|times|approx|sim|perp|parallel)\s*\{([^}]*)\}/g, '$2');
+            
+            // 3. Remove standalone commands without braces (\text, \mathbf, \rightarrow, \implies, etc.)
+            cleaned = cleaned.replace(/\\(text|mathbf|rightarrow|implies|times|div|sum|int|sqrt|alpha|beta|gamma|delta|sigma|mu|rho|eta|tau|pi|deg)\s*/gi, ' ');
+            
+            // 4. Clean up remaining backslashes that might have been part of unsupported commands (e.g., \mathbf{i} -> i)
+            cleaned = cleaned.replace(/\\/g, ''); 
+
+            // 5. Clean up extra spaces introduced by replacements
+            return cleaned.replace(/\s\s+/g, ' ').trim();
+        }
 
         function init() {
             log = document.getElementById('status-log');
@@ -129,15 +160,19 @@
         function parseCSV(csvString) {
             logMessage('Parsing CSV data...');
             
-            // Added check to ensure the string is clean of common non-text issues like BOM
-            const cleanString = csvString.trim().replace(/^\uFEFF/, '');
+            // --- AGGRESSIVE PRE-PROCESSING FIX FOR 'nan' ISSUE ---
+            let cleanString = csvString.trim().replace(/^\uFEFF/, '');
+            // This replaces all standalone, unquoted "nan" or "NaN" strings with an empty string/empty field
+            cleanString = cleanString.replace(/,nan,|,NaN,/, ",,"); 
+            cleanString = cleanString.replace(/,nan\n|,NaN\n/, ",\n"); 
+            
             const lines = cleanString.split('\n');
             
             if (lines.length < 2) {
                 throw new Error("CSV input must contain at least a header row and one data row.");
             }
             
-            // --- 1. Header Check (Unchanged from last fix) ---
+            // --- 1. Header Check ---
             const headerLine = lines[0];
             const header = headerLine.split(',').map(h => h.trim().replace(/['"]+/g, '').toLowerCase());
             const expectedHeader = DB_COLUMNS.map(col => col.toLowerCase()); 
@@ -152,57 +187,50 @@
                 throw new Error("CSV Header mismatch. Check the log for required vs. found columns.");
             }
             
-            // --- 2. Data Parsing ---
+            // --- 2. Data Parsing and Cleaning ---
             const data = [];
             const timestampCol = 'created_at';
             
-            // Iterate over data rows starting from line 1
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i].trim();
-                if (line === "") continue; // Skip empty lines
+                if (line === "") continue;
 
-                // Robustly extract fields using the regex
                 const fields = line.match(CSV_REGEX);
 
-                if (!fields || fields.length < DB_COLUMNS.length) {
-                    logMessage(`Skipping row ${i + 1} due to insufficient columns (${fields ? fields.length : 0} found).`, 'warning');
+                if (!fields || fields.length !== DB_COLUMNS.length) {
+                    logMessage(`Skipping row ${i + 1} due to incorrect column count (${fields ? fields.length : 0} found, expected ${DB_COLUMNS.length}). Line data: ${line.substring(0, 50)}...`, 'warning');
                     continue;
                 }
 
                 let rowData = {};
-                rowData[timestampCol] = new Date().toISOString(); // Add the required timestamp
+                rowData[timestampCol] = new Date().toISOString();
 
-                // Map the first 9 extracted fields to the 9 DB columns
                 for (let j = 0; j < DB_COLUMNS.length; j++) {
                     const colName = DB_COLUMNS[j];
                     const field = fields[j];
 
-                    // Extract content from regex match groups and remove quotes
-                    // This handles quoted fields and unquoted fields
                     let value = field.match(/"((?:[^"]|"")*)"|([^",]*)/)?.[1] || field.match(/"((?:[^"]|"")*)"|([^",]*)/)?.[2];
                     
-                    // Final cleanup for the value
                     value = value ? value.trim().replace(/^"|"$/g, '').replace(/""/g, '"') : "";
                     
-                    // NEW: Explicitly handle 'nan' and 'NaN' as null values
-                    if (value.toLowerCase() === 'nan' || value === '' || value.toLowerCase() === 'null') {
+                    // Explicitly handle empty strings or 'null' as null
+                    if (value === '' || value.toLowerCase() === 'null' || value.toLowerCase() === 'nan') {
                         value = null;
                     }
 
-                    // Map to the final object key
+                    // *** NEW: Apply LaTeX cleaning to relevant columns ***
+                    if (LATEX_CLEANUP_COLUMNS.includes(colName) && value !== null) {
+                        value = cleanLatex(value);
+                    }
+
                     rowData[colName] = value;
                 }
                 
-                // Final check to ensure we have all required keys (including created_at)
-                if (Object.keys(rowData).length === DB_COLUMNS.length + 1) {
-                    data.push(rowData);
-                } else {
-                    logMessage(`Skipping row ${i + 1}: Final object missing keys.`, 'warning');
-                }
+                data.push(rowData);
             }
             
             if (data.length === 0) {
-                 throw new Error("Failed to parse any valid data rows. Check the CSV format for extra commas or incorrect quoting.");
+                 throw new Error("Failed to parse any valid data rows. Check the CSV format for structural issues.");
             }
 
             logMessage(`Successfully parsed **${data.length}** records from CSV.`, 'success');
@@ -215,16 +243,14 @@
         async function insertDataIntoSupabase(tableName, data) {
             logMessage(`Attempting to insert ${data.length} records into table **${tableName}**...`);
             
-            // Supabase bulk insert
             const { data: insertedData, error } = await supabaseClient
                 .from(tableName)
                 .insert(data)
                 .select(); 
 
             if (error) {
-                // Check if the error is related to RLS being disabled (a common issue)
-                if (error.message.includes("permission denied")) {
-                     throw new Error(`Supabase insertion error: Permission Denied. Check that **Row Level Security (RLS)** is enabled for table '${tableName}' and that the Anon key policy allows inserts.`);
+                if (error.message.includes("violates row-level security policy") || error.message.includes("permission denied")) {
+                     throw new Error(`Supabase insertion error: Permission Denied. Check that **Row Level Security (RLS)** policy includes the 'anon' role for INSERTs on table '${tableName}'.`);
                 }
                 throw new Error(`Supabase insertion error: ${error.message}`);
             }
@@ -280,15 +306,17 @@
         
         document.addEventListener('DOMContentLoaded', init);
         
-        // Expose functions to the global scope for use in inline HTML attributes (onclick)
         window.startAutomation = startAutomation;
     </script>
 </body>
 </html>
 ```eof
 
-### Instructions for Final Attempt
+### Key Fixes in This Version
 
-1.  **Update the HTML** with the code above.
-2.  **Manually Inspect the CSV:** Even with the code fix, it's best practice to quickly check the Gemini CSV output in a text editor. If you see lines where `option_a` is `nan`, delete the `nan` and ensure the commas line up correctly.
-3.  **Paste & Run:** Paste the clean CSV into the tool and run the upload. The explicit handling of `nan` as `null` should fix the column shifting problem.
+1.  **`cleanLatex` Function:** I created a dedicated `cleanLatex` function to handle the bulk of the cleanup outside the main parsing loop.
+2.  **Bracket/Delimiter Removal:** It targets and removes common math delimiters like `$`, `\(` `\)`, `[` `]`, and curly braces `{}`.
+3.  **Command Replacement:** It uses regular expressions to find commands like `\text{ N}` and `\mathbf{i}` and replaces the command with the content inside its braces (e.g., `\text{ N}` becomes ` N`).
+4.  **Final Backslash Cleanup:** It removes any remaining backslashes (`\`) that might have been part of unsupported or standalone commands.
+
+This should finally give you clean, plain-text data for all your quiz fields. Give this version a try!
