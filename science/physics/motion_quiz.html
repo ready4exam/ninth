@@ -69,7 +69,7 @@
         // FIREBASE INITIALIZATION AND LOGGING FUNCTION
         // ==================================================================================
         
-        // YOUR FIREBASE CONFIGURATION (Copied from economics (1).html)
+        // Configuration from economics (1).html
         const firebaseConfig = {
             apiKey: "AIzaSyAXdKiYRxBKAj280YcNuNwlKKDp85xpOWQ",
             authDomain: "quiz-signon.firebaseapp.com",
@@ -88,7 +88,6 @@
         const googleSignInBtn = document.getElementById('google-sign-in-btn');
         const errorMessage = document.getElementById('error-message');
 
-        // FIX: Removed premature modal hiding. The state listener handles it.
         googleSignInBtn.addEventListener('click', async () => {
              errorMessage.textContent = 'Signing in with Google...';
             googleSignInBtn.disabled = true;
@@ -96,22 +95,21 @@
             const provider = new firebase.auth.GoogleAuthProvider();
 
             try {
+                // Set a flag before initiating sign-in
+                localStorage.setItem('auth_in_progress', 'true'); 
                 await auth.signInWithPopup(provider);
-                // On successful popup sign-in, the auth.onAuthStateChanged listener below will fire and handle the UI update.
             } catch (error) {
                 let displayMessage = 'Google Sign-in failed: ' + error.message;
                 errorMessage.textContent = displayMessage;
             } finally {
-                 googleSignInBtn.disabled = false;
+                googleSignInBtn.disabled = false;
+                localStorage.removeItem('auth_in_progress'); 
             }
         });
 
         function logFinalQuizScore(score, total, chapterName, difficulty) {
             const user = auth.currentUser;
-            if (!user) {
-                console.warn("User not logged in. Score not saved.");
-                return;
-            }
+            if (!user) return;
 
             db.collection("quiz_scores").add({
                 userId: user.uid,
@@ -123,12 +121,6 @@
                 percentage: (score / total) * 100,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                 action: 'Quiz Completed'
-            })
-            .then(() => {
-                console.log(`Final score ${score}/${total} logged successfully.`);
-            })
-            .catch((error) => {
-                console.error("Error logging final score:", error);
             });
         }
 
@@ -137,11 +129,11 @@
         // ==================================================================================
 
         // State variables
-        let ALL_QUESTIONS = {}; // Use object for difficulty-keyed data
+        let ALL_QUESTIONS = {};
         let QUIZ_DATA = {};
         const TARGET_QUESTION_COUNT = 20;
         const TABLE_NAME = 'motion';
-        let quizDataLoaded = false; // Prevents re-fetching Supabase data multiple times
+        let quizDataLoaded = false; 
 
         function shuffleAndSlice(array, count) {
             const shuffled = array.sort(() => 0.5 - Math.random());
@@ -170,7 +162,6 @@
 
         function renderDifficultySelection(fullData) {
             
-            // Re-organize data only if we passed the full fetched array (i.e., first load)
             if (Array.isArray(fullData) && fullData.length > 0 && !quizDataLoaded) {
                  const simpleQuestions = fullData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'simple');
                 const mediumQuestions = fullData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'medium');
@@ -185,8 +176,11 @@
             
             const container = document.getElementById('quiz-container');
 
-            if (Object.keys(ALL_QUESTIONS).length === 0) {
-                 container.innerHTML = `<p class="text-gray-700 p-4 rounded">No difficulties found in the data for table **${TABLE_NAME}**.</p>`;
+            if (Object.keys(ALL_QUESTIONS).length === 0 || 
+                (ALL_QUESTIONS.simple?.length === 0 && ALL_QUESTIONS.medium?.length === 0 && ALL_QUESTIONS.complex?.length === 0)) {
+                 container.innerHTML = `<p class="text-red-700 p-4 rounded bg-red-100">
+                    **No Quiz Questions Found!** Please ensure your Supabase table **${TABLE_NAME}** contains questions and that the RLS (Row Level Security) policy permits **SELECT** access for your authenticated user.
+                    </p>`;
                  return;
             }
 
@@ -217,13 +211,13 @@
                     <button
                         class="px-6 py-2 text-white font-bold rounded-lg shadow-md transition duration-150 ${colorClass}"
                         onclick="startQuiz('${level}')"
-                        ${count === 0 ? 'disabled' : ''}>
-                        ${count === 0 ? 'No Questions Available' : buttonText}
+                        ${actualCount === 0 ? 'disabled' : ''}>
+                        ${actualCount === 0 ? 'No Questions Available' : buttonText}
                     </button>
                 </div>
             `;
         }
-
+        
         function startQuiz(difficulty) {
             const allQs = ALL_QUESTIONS[difficulty];
             QUIZ_DATA.questions = shuffleAndSlice(allQs, TARGET_QUESTION_COUNT);
@@ -372,10 +366,8 @@
         // --- Supabase Connection and Initialization ---
 
         function initSupabase() {
-            // FIX: If data is already loaded, skip fetching and re-render the difficulty screen
             if (quizDataLoaded) { 
-                document.getElementById('auth-modal').classList.add('hidden');
-                renderDifficultySelection(null); // Pass null/empty array to use existing ALL_QUESTIONS data
+                renderDifficultySelection(null); 
                 return;
             }
 
@@ -407,12 +399,9 @@
                 return;
             }
 
-            if (quizData && quizData.length > 0) {
-                quizDataLoaded = true; // Set flag on successful initial load
-                renderDifficultySelection(quizData); // Pass data for initial organization
-                document.getElementById('auth-modal').classList.add('hidden'); // CRITICAL: Hide the modal only after successful data load
-            } else {
-                container.innerHTML = `<p class="text-gray-700 p-4 rounded">No questions found for table **${TABLE_NAME}**.</p>`;
+            if (quizData) {
+                quizDataLoaded = true;
+                renderDifficultySelection(quizData); 
             }
         }
         
@@ -429,17 +418,20 @@
         }
 
 
-        // FIX: The core state manager
+        // CRITICAL FIX: The core state manager with local storage check
         document.addEventListener('DOMContentLoaded', () => {
-             const container = document.getElementById('quiz-container');
+            const container = document.getElementById('quiz-container');
             container.innerHTML = `<div class="text-center p-6 bg-white rounded-lg shadow-xl">Initializing Authentication...</div>`;
             
-            // This listener manages ALL UI state changes based on login status.
             auth.onAuthStateChanged((user) => {
                 if (user) {
-                    initSupabase(); // Authenticated: Load quiz data or render difficulty if already loaded
-                } else {
-                    renderAccessRestrictedView(); // Unauthenticated: Show login view
+                    // CRITICAL FIX: Hide modal and then start data load
+                    document.getElementById('auth-modal').classList.add('hidden');
+                    // Alert that was causing the loop is removed, as the session is now established.
+                    initSupabase(); 
+                } else if (!localStorage.getItem('auth_in_progress')) {
+                    // Only show the restricted view if sign-in is not actively in progress (prevents the loop)
+                    renderAccessRestrictedView();
                 }
             });
         });
