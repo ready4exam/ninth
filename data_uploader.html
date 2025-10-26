@@ -60,8 +60,7 @@
 
     <script>
         // --- Supabase and Database Constants ---
-        // The column order must strictly match the CSV header:
-        // Difficulty, Question_Type, Question_Text, Scenario_Reason_Text, Option_A, Option_B, Option_C, Option_D, Correct_Answer_Key
+        // The column order must strictly match the CSV header.
         const DB_COLUMNS = [
             'difficulty', 'question_type', 'question_text', 
             'scenario_reason_text', 'option_a', 'option_b', 'option_c', 'option_d', 
@@ -122,7 +121,11 @@
             button.textContent = text;
         }
         
-        // --- CSV Parsing Logic ---
+        // --- Robust CSV Parsing Logic ---
+
+        // Regex to split by comma while respecting quoted fields.
+        // It correctly captures the content inside the quotes and contents outside.
+        const CSV_REGEX = /(?!\s*$",)(?!\s*$)\s*(?:(?:"((?:[^"]|"")*)")|([^",]*))\s*(?:,|$)/g;
 
         function parseCSV(csvString) {
             logMessage('Parsing CSV data...');
@@ -131,54 +134,75 @@
                 throw new Error("CSV input must contain at least a header row and one data row.");
             }
             
-            // Simple split by comma, handling potential quotes for data integrity
-            const header = lines[0].split(',').map(h => h.trim().replace(/['"]+/g, ''));
-            const data = [];
+            // --- 1. Header Check ---
+            // Simple split for header since it should not contain quotes
+            const headerLine = lines[0];
+            const header = headerLine.split(',').map(h => h.trim().replace(/['"]+/g, '').toLowerCase());
+            const expectedHeader = DB_COLUMNS.map(col => col.toLowerCase()); 
             
-            // Check if the provided header matches the expected DB columns
-            // We ignore 'created_at' here as we'll add it in the final object.
-            const expectedHeader = DB_COLUMNS.filter(col => col !== 'created_at'); 
-            if (header.length < expectedHeader.length || !header.every((h, i) => h.toLowerCase().includes(expectedHeader[i].toLowerCase()))) {
-                logMessage(`Warning: Header mismatch. Expected columns (in order): ${expectedHeader.join(', ')}`, 'warning');
-                logMessage(`Found header columns: ${header.join(', ')}`, 'warning');
+            // We only check for the presence and order of the first 9 key columns
+            const headerMatch = expectedHeader.every((expectedCol, i) => 
+                header[i] && header[i].includes(expectedCol)
+            );
+
+            if (!headerMatch) {
+                logMessage(`Error: Header mismatch. Please ensure the header is: ${DB_COLUMNS.join(', ')}`, 'error');
+                logMessage(`Found header columns: ${header.join(', ')}`, 'error');
+                throw new Error("CSV Header mismatch. Check the log for required vs. found columns.");
             }
-
-
-            // Use a regex to robustly split lines by comma while respecting quoted fields
-            const csvRegex = /(".*?"|[^",\n\r]+)(?=\s*,|\s*$)/g;
-
-            // Start from line 1 to skip the header
+            
+            // --- 2. Data Parsing ---
+            const data = [];
+            const timestampCol = 'created_at';
+            
+            // Iterate over data rows starting from line 1
             for (let i = 1; i < lines.length; i++) {
-                if (lines[i].trim() === "") continue; // Skip empty lines
-                
-                // Match the values using regex
-                const values = lines[i].match(csvRegex) || [];
-                if (values.length < DB_COLUMNS.length - 1) { // We expect 9 columns from the CSV (excluding created_at)
-                    logMessage(`Skipping line ${i + 1} due to insufficient columns (${values.length} found).`, 'warning');
+                const line = lines[i].trim();
+                if (line === "") continue; // Skip empty lines
+
+                // Robustly extract fields using the regex
+                const fields = line.match(CSV_REGEX);
+
+                if (!fields || fields.length < DB_COLUMNS.length) {
+                    logMessage(`Skipping row ${i + 1} due to insufficient columns (${fields ? fields.length : 0} found).`, 'warning');
                     continue;
                 }
 
                 let rowData = {};
-                const now = new Date().toISOString();
-                rowData['created_at'] = now; // Add the required timestamp
+                rowData[timestampCol] = new Date().toISOString(); // Add the required timestamp
 
-                // Map values to DB_COLUMNS (starting with index 1 because we manually set created_at)
-                for (let j = 0; j < DB_COLUMNS.length - 1; j++) {
+                // Map the first 9 extracted fields to the 9 DB columns
+                for (let j = 0; j < DB_COLUMNS.length; j++) {
                     const colName = DB_COLUMNS[j];
-                    let value = values[j] ? values[j].trim().replace(/^"|"$/g, '') : ""; // Remove surrounding quotes
+                    let field = fields[j];
 
-                    // Clean up null/empty strings for scenario_reason_text
-                    if (colName === 'scenario_reason_text' && (value === '' || value.toLowerCase() === 'null')) {
-                        value = null; // Supabase prefers actual null, but we'll use an empty string for simplicity here.
+                    // Extract content from regex match groups and remove quotes
+                    let value = field.match(/"((?:[^"]|"")*)"|([^",]*)/)?.[1] || field.match(/"((?:[^"]|"")*)"|([^",]*)/)?.[2];
+                    
+                    // Final cleanup for the value
+                    value = value ? value.trim().replace(/^"|"$/g, '').replace(/""/g, '"') : "";
+
+                    // If a field is blank, treat it as null for Supabase (especially scenario_reason_text)
+                    if (value === '' || value.toLowerCase() === 'null') {
+                        value = null;
                     }
 
-                    // Map to the correct object key
+                    // Map to the final object key
                     rowData[colName] = value;
                 }
                 
-                data.push(rowData);
+                // Final check to ensure we have all required keys (including created_at)
+                if (Object.keys(rowData).length === DB_COLUMNS.length + 1) {
+                    data.push(rowData);
+                } else {
+                    logMessage(`Skipping row ${i + 1}: Final object missing keys.`, 'warning');
+                }
             }
             
+            if (data.length === 0) {
+                 throw new Error("Failed to parse any valid data rows. Check the CSV format for extra commas or incorrect quoting.");
+            }
+
             logMessage(`Successfully parsed **${data.length}** records from CSV.`, 'success');
             return data;
         }
@@ -261,12 +285,10 @@
 </html>
 ```eof
 
-### How to use the new file:
+I have made the following key changes to the CSV parsing logic:
 
-1.  **Generate your CSV** using the prompt I provided earlier.
-2.  **Copy the entire CSV text** (including the header row).
-3.  **Paste the text** into the new large text area labeled "Paste Gemini CSV Output Here".
-4.  Ensure your **"Target Supabase Table Name"** is correct.
-5.  Click the **"2. Parse CSV & Insert Data into Supabase"** button.
+1.  **Robust Header Check:** The header checking logic now uses `header[i] && header[i].includes(expectedCol)` to ensure it doesn't try to access `.toLowerCase()` on an undefined or null value, preventing the exact error you saw.
+2.  **Advanced Regex:** The core data extraction uses a more sophisticated regex (`const CSV_REGEX = ...`) designed to handle fields enclosed in double quotes (which the Gemini output often uses for the `Question_Text` and `Scenario_Reason_Text`) without breaking the line.
+3.  **Value Cleanup:** Added logic to better extract the value from the regex groups and remove the surrounding double quotes, which should make the data cleaner.
 
-The script will handle the conversion and insert the data directly into your Supabase table. Good luck!
+Please try pasting the CSV data and clicking **"2. Parse CSV & Insert Data into Supabase"** one more time!
