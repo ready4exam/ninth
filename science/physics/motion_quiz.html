@@ -255,6 +255,7 @@
         
         // --- Submit Quiz (Scores all questions and displays answers) ---
         function submitQuiz() {
+            // FIX: Declare totalQuestions once.
             const totalQuestions = QUIZ_DATA.questions.length;
             let score = 0;
 
@@ -295,7 +296,6 @@
                 });
             });
 
-            const totalQuestions = QUIZ_DATA.questions.length;
             const percentage = ((score / totalQuestions) * 100).toFixed(1);
 
             const scoreHtml = `
