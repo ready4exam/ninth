@@ -7,6 +7,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     
+    <!-- 
+        *** CONFIGURATION REQUIRED ***
+        The Supabase credentials are now loaded from the external file ./js/config.js.
+        Ensure that file exists and correctly defines SUPABASE_URL and SUPABASE_ANON_KEY.
+    -->
     <script src="./js/config.js"></script>
     
     <script>
@@ -28,46 +33,137 @@
     <div class="max-w-4xl mx-auto bg-white p-6 md:p-10 rounded-xl shadow-2xl border-t-8 border-primary-blue">
         <h1 class="text-3xl font-extrabold text-primary-blue mb-4">CSV Quiz Processor & Uploader</h1>
         <p class="text-gray-600 mb-6">
-            **Step 1: Generate CSV.** Use your Gemini prompt to generate the 60 questions and copy the entire CSV output (including the header row).<br>
-            **Step 2: Paste & Upload.** Paste the CSV below, specify the table, and click upload. **The script will now automatically clean up instances of 'nan' and remove LaTeX symbols.**
+            **Step 1:** Select the **Subject** and **Chapter/Table Name** below.<br>
+            **Step 2:** Paste the Gemini-generated CSV and click upload.
         </p>
 
+        <!-- Input Fields -->
         <div class="space-y-4 mb-6">
+            <!-- 1. Subject Selector -->
             <div>
-                <label for="table-name" class="block text-sm font-medium text-gray-700">Target Supabase Table Name</label>
-                <input type="text" id="table-name" value="force" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-accent-green focus:border-accent-green">
+                <label for="subject-select" class="block text-sm font-medium text-gray-700">1. Select Subject</label>
+                <select id="subject-select" onchange="handleSubjectChange()" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-accent-green focus:border-accent-green">
+                    <!-- Subjects will be populated here -->
+                </select>
             </div>
+
+            <!-- 2. Chapter Selector (Dependent on Subject) -->
             <div>
-                <label for="csv-input" class="block text-sm font-medium text-gray-700">Paste Gemini CSV Output Here (Including Header)</label>
+                <label for="table-name-select" class="block text-sm font-medium text-gray-700">2. Select Chapter / Table Name</label>
+                <select id="table-name-select" onchange="updateTableNameDisplay()" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-accent-green focus:border-accent-green" disabled>
+                    <option value="">--- Select a Subject First ---</option>
+                </select>
+            </div>
+            
+            <!-- NEW: Read-Only Table Name Display for Copying -->
+            <div>
+                <label for="current-table-name" class="block text-sm font-medium text-gray-700">Selected Supabase Table Name (Copy this into your prompt)</label>
+                <input type="text" id="current-table-name" readonly placeholder="Table name will appear here after selecting a chapter..." 
+                       class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm bg-gray-100 text-primary-blue font-mono cursor-copy">
+            </div>
+
+            <!-- 3. CSV Input -->
+            <div>
+                <label for="csv-input" class="block text-sm font-medium text-gray-700">3. Paste Gemini CSV Output Here (Including Header)</label>
                 <textarea id="csv-input" rows="10" placeholder="Paste your 60-question CSV output from Gemini here..." class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-accent-green focus:border-accent-green"></textarea>
             </div>
         </div>
 
+        <!-- Conversion Button -->
         <button id="automate-button" onclick="startAutomation()"
                 class="w-full px-6 py-3 text-lg font-bold text-white bg-accent-green rounded-lg shadow-md hover:bg-green-700 transition duration-150">
-            2. Parse CSV & Insert Data into Supabase
+            4. Parse CSV & Insert Data into Supabase
         </button>
 
+        <!-- Messages & Log Area -->
         <div id="status-log" class="mt-8 space-y-2">
             <h2 class="text-xl font-semibold text-gray-700 mb-3">Process Log:</h2>
             <p id="log-initial" class="text-gray-500">Ready to start...</p>
         </div>
         
+        <!-- Configuration Warning -->
         <div id="config-error" class="hidden error-message mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
             **Configuration Error 🛑** Supabase credentials (`SUPABASE_URL`, `SUPABASE_ANON_KEY`) were not found. Please ensure the file **./js/config.js** exists and contains the correct definitions.
         </div>
     </div>
 
     <script>
+        // --- NCERT Syllabus Data and Table Naming Convention ---
+        
+        /**
+         * The Supabase table name is derived from the "value" property of the chapter object.
+         * Convention: Lowercase, descriptive words from the chapter title, separated by underscores.
+         */
+        const NCERT_SYLLABUS = {
+            "science": [
+                { name: "Motion", value: "motion" },
+                { name: "Force and Laws of Motion", value: "force" },
+                { name: "Gravitation", value: "gravitation" },
+                { name: "Work and Energy", value: "work_energy" },
+                { name: "Sound", value: "sound" },
+                { name: "Matter in Our Surroundings", value: "matter_surroundings" },
+                { name: "Is Matter Around Us Pure", value: "matter_pure" },
+                { name: "Atoms and Molecules", value: "atoms_molecules" },
+                { name: "Structure of the Atom", value: "structure_atom" },
+                { name: "The Fundamental Unit of Life", value: "fundamental_unit" },
+                { name: "Tissues", value: "tissues" },
+                { name: "Diversity in Living Organisms", value: "diversity" },
+                { name: "Why Do We Fall Ill", value: "fall_ill" },
+                { name: "Natural Resources", value: "natural_resources" },
+                { name: "Improvement in Food Resources", value: "food_resources" }
+            ],
+            "social_science": [
+                // History
+                { name: "The French Revolution", value: "french_revolution" },
+                { name: "Socialism in Europe and the Russian Revolution", value: "socialism_europe" },
+                { name: "Nazism and the Rise of Hitler", value: "nazism" },
+                { name: "Forest Society and Colonialism", value: "forest_society" },
+                { name: "Pastoralists in the Modern World", value: "pastoralists" },
+                // Geography
+                { name: "India - Size and Location", value: "india_size" },
+                { name: "Physical Features of India", value: "physical_features" },
+                { name: "Drainage", value: "drainage" },
+                { name: "Climate", value: "climate" },
+                { name: "Natural Vegetation and Wild Life", value: "natural_veg" },
+                { name: "Population", value: "population" },
+                // Civics (Democratic Politics)
+                { name: "What is Democracy? Why Democracy?", value: "what_is_democracy" },
+                { name: "Constitutional Design", value: "constitutional_design" },
+                { name: "Electoral Politics", value: "electoral_politics" },
+                { name: "Working of Institutions", value: "working_institutions" },
+                { name: "Democratic Rights", value: "democratic_rights" },
+                // Economics
+                { name: "The Story of Village Palampur", value: "village_palampur" },
+                { name: "People as Resource", value: "people_resource" },
+                { name: "Poverty as a Challenge", value: "poverty_challenge" },
+                { name: "Food Security in India", value: "food_security" }
+            ],
+            "maths": [
+                { name: "Number Systems", value: "number_systems" },
+                { name: "Polynomials", value: "polynomials" },
+                { name: "Coordinate Geometry", value: "coordinate_geometry" },
+                { name: "Linear Equations in Two Variables", value: "linear_equations" },
+                { name: "Introduction to Euclid's Geometry", value: "euclids_geometry" },
+                { name: "Lines and Angles", value: "lines_angles" },
+                { name: "Triangles", value: "triangles" },
+                { name: "Quadrilaterals", value: "quadrilaterals" },
+                { name: "Areas of Parallelograms and Triangles", value: "areas_shapes" },
+                { name: "Circles", value: "circles" },
+                { name: "Constructions", value: "constructions" },
+                { name: "Heron's Formula", value: "herons_formula" },
+                { name: "Surface Areas and Volumes", value: "surface_volumes" },
+                { name: "Statistics", value: "statistics" },
+                { name: "Probability", value: "probability" }
+            ]
+        };
+
         // --- Supabase and Database Constants ---
-        // The column order must strictly match the CSV header.
         const DB_COLUMNS = [
             'difficulty', 'question_type', 'question_text', 
             'scenario_reason_text', 'option_a', 'option_b', 'option_c', 'option_d', 
             'correct_answer_key'
         ];
         
-        // List of columns that need the LaTeX cleaning applied
         const LATEX_CLEANUP_COLUMNS = [
             'question_text', 'scenario_reason_text', 'option_a', 'option_b', 'option_c', 'option_d'
         ];
@@ -76,39 +172,109 @@
         let button;
         let log;
 
-        // --- Utility Functions ---
+        // --- Core Utility Functions ---
 
         /**
          * Sanitizes a string by removing common LaTeX/KaTeX formatting.
-         * @param {string | null} input The string to clean.
-         * @returns {string | null} The cleaned string.
          */
         function cleanLatex(input) {
             if (input === null || typeof input !== 'string') return input;
 
-            // 1. Remove common math environment delimiters ($, $$, \(, \), \[,\], {, })
             let cleaned = input.replace(/\$|\\\(|\\\)|\\\[|\\\]|{|}/g, '');
-
-            // 2. Remove common text and vector commands (\text{}, \mathbf{}, \cdot, etc.)
-            // This regex targets commands like \text{...} or \mathbf{...} and removes the command itself
-            // but keeps the content inside the braces if possible.
             cleaned = cleaned.replace(/\\(text|mathbf|mathrm|unit|cdot|times|approx|sim|perp|parallel)\s*\{([^}]*)\}/g, '$2');
-            
-            // 3. Remove standalone commands without braces (\text, \mathbf, \rightarrow, \implies, etc.)
             cleaned = cleaned.replace(/\\(text|mathbf|rightarrow|implies|times|div|sum|int|sqrt|alpha|beta|gamma|delta|sigma|mu|rho|eta|tau|pi|deg)\s*/gi, ' ');
-            
-            // 4. Clean up remaining backslashes that might have been part of unsupported commands (e.g., \mathbf{i} -> i)
             cleaned = cleaned.replace(/\\/g, ''); 
 
-            // 5. Clean up extra spaces introduced by replacements
             return cleaned.replace(/\s\s+/g, ' ').trim();
         }
+
+        // --- Dropdown Management Functions ---
+        
+        /**
+         * Updates the read-only input field with the currently selected table name.
+         */
+        function updateTableNameDisplay() {
+            const tableSelect = document.getElementById('table-name-select');
+            const tableInput = document.getElementById('current-table-name');
+            const selectedValue = tableSelect.value;
+            
+            if (selectedValue) {
+                tableInput.value = selectedValue;
+            } else {
+                tableInput.value = '';
+            }
+        }
+
+
+        /**
+         * Populates the main Subject dropdown.
+         */
+        function populateSubjectSelect() {
+            const select = document.getElementById('subject-select');
+            select.innerHTML = ''; // Clear existing options
+            
+            const defaultOption = document.createElement('option');
+            defaultOption.value = "";
+            defaultOption.textContent = "--- Select Subject ---";
+            defaultOption.disabled = true;
+            defaultOption.selected = true;
+            select.appendChild(defaultOption);
+
+            // Populate with keys from the syllabus data
+            Object.keys(NCERT_SYLLABUS).forEach(subjectKey => {
+                const option = document.createElement('option');
+                option.value = subjectKey;
+                // Capitalize the first letter for display
+                option.textContent = subjectKey.charAt(0).toUpperCase() + subjectKey.slice(1).replace('_', ' '); 
+                select.appendChild(option);
+            });
+        }
+        
+        /**
+         * Populates the Chapter dropdown based on the selected Subject.
+         */
+        function handleSubjectChange() {
+            const subjectSelect = document.getElementById('subject-select');
+            const chapterSelect = document.getElementById('table-name-select');
+            const selectedSubject = subjectSelect.value;
+
+            chapterSelect.innerHTML = ''; // Clear existing chapters
+            chapterSelect.disabled = true;
+
+            const defaultOption = document.createElement('option');
+            defaultOption.value = "";
+            defaultOption.textContent = selectedSubject ? "--- Select Chapter ---" : "--- Select a Subject First ---";
+            defaultOption.disabled = true;
+            defaultOption.selected = true;
+            chapterSelect.appendChild(defaultOption);
+
+            if (selectedSubject && NCERT_SYLLABUS[selectedSubject]) {
+                const chapters = NCERT_SYLLABUS[selectedSubject];
+                chapters.forEach(chapter => {
+                    const option = document.createElement('option');
+                    option.value = chapter.value;
+                    option.textContent = `${chapter.name} (Table: ${chapter.value})`;
+                    chapterSelect.appendChild(option);
+                });
+                chapterSelect.disabled = false;
+            }
+            
+            // Crucial: Clear the table name display field on subject change
+            updateTableNameDisplay();
+        }
+
+
+        // --- Initialization and Logging ---
 
         function init() {
             log = document.getElementById('status-log');
             button = document.getElementById('automate-button');
             
-            // Check the globally exposed variables, which should be loaded from ./js/config.js
+            // Populate both dropdown menus
+            populateSubjectSelect();
+            handleSubjectChange(); // Initialize the chapter dropdown state
+
+            // Check config
             if (typeof window.SUPABASE_URL === 'undefined' || typeof window.SUPABASE_ANON_KEY === 'undefined' || window.SUPABASE_URL === null) {
                  document.getElementById('log-initial').textContent = "Configuration required...";
                  document.getElementById('config-error').classList.remove('hidden');
@@ -133,7 +299,7 @@
 
         function logMessage(message, type = 'info') {
             const p = document.createElement('p');
-            p.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`; // Use innerHTML for bolding
+            p.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`; 
             p.className = 'p-2 rounded';
             
             if (type === 'info') p.classList.add('bg-gray-100', 'text-gray-700');
@@ -141,7 +307,6 @@
             if (type === 'error') p.classList.add('bg-red-100', 'text-red-700', 'font-semibold');
             if (type === 'warning') p.classList.add('bg-yellow-100', 'text-yellow-700');
 
-            // Insert new message at the top of the log
             const logContainer = document.getElementById('status-log');
             const firstLogEntry = logContainer.querySelector('h2').nextElementSibling;
             logContainer.insertBefore(p, firstLogEntry);
@@ -152,17 +317,14 @@
             button.textContent = text;
         }
         
-        // --- Robust CSV Parsing Logic ---
+        // --- Robust CSV Parsing Logic (Kept consistent with previous fixes) ---
 
-        // Regex to split by comma while respecting quoted fields.
         const CSV_REGEX = /(?!\s*$",)(?!\s*$)\s*(?:(?:"((?:[^"]|"")*)")|([^",]*))\s*(?:,|$)/g;
 
         function parseCSV(csvString) {
             logMessage('Parsing CSV data...');
             
-            // --- AGGRESSIVE PRE-PROCESSING FIX FOR 'nan' ISSUE ---
             let cleanString = csvString.trim().replace(/^\uFEFF/, '');
-            // This replaces all standalone, unquoted "nan" or "NaN" strings with an empty string/empty field
             cleanString = cleanString.replace(/,nan,|,NaN,/, ",,"); 
             cleanString = cleanString.replace(/,nan\n|,NaN\n/, ",\n"); 
             
@@ -213,12 +375,10 @@
                     
                     value = value ? value.trim().replace(/^"|"$/g, '').replace(/""/g, '"') : "";
                     
-                    // Explicitly handle empty strings or 'null' as null
                     if (value === '' || value.toLowerCase() === 'null' || value.toLowerCase() === 'nan') {
                         value = null;
                     }
 
-                    // *** NEW: Apply LaTeX cleaning to relevant columns ***
                     if (LATEX_CLEANUP_COLUMNS.includes(colName) && value !== null) {
                         value = cleanLatex(value);
                     }
@@ -243,6 +403,8 @@
         async function insertDataIntoSupabase(tableName, data) {
             logMessage(`Attempting to insert ${data.length} records into table **${tableName}**...`);
             
+            // NOTE: The table must already exist in Supabase and have RLS policies set up
+            // to allow anonymous or authenticated inserts, as this client is using the anon key.
             const { data: insertedData, error } = await supabaseClient
                 .from(tableName)
                 .insert(data)
@@ -266,11 +428,15 @@
                 return;
             }
             
-            const tableName = document.getElementById('table-name').value.trim();
+            const tableName = document.getElementById('table-name-select').value.trim();
             const csvInput = document.getElementById('csv-input').value.trim();
             
+            if (!document.getElementById('subject-select').value) {
+                logMessage('Please select a Subject first.', 'error');
+                return;
+            }
             if (!tableName) {
-                logMessage('Table Name is required.', 'error');
+                logMessage('Please select a Chapter/Table Name.', 'error');
                 return;
             }
             if (!csvInput) {
@@ -278,7 +444,7 @@
                 return;
             }
 
-            setButtonState(true, 'Processing: Parsing CSV...');
+            setButtonState(true, `Processing: Parsing CSV for table '${tableName}'...`);
             
             try {
                 // 1. Parse CSV Data
@@ -287,10 +453,10 @@
                 if (!quizData || quizData.length === 0) {
                     throw new Error("No valid data rows were parsed from the CSV.");
                 }
-                logMessage(`Content Parsed: Ready to insert **${quizData.length}** records.`, 'success');
+                logMessage(`Content Parsed: Ready to insert **${quizData.length}** records into table **${tableName}**.`, 'success');
 
                 // 2. Insert Data into Supabase
-                setButtonState(true, 'Processing: Inserting into Supabase...');
+                setButtonState(true, `Processing: Inserting into Supabase table '${tableName}'...`);
                 const insertedRecords = await insertDataIntoSupabase(tableName, quizData);
                 
                 // 3. Complete
@@ -306,17 +472,10 @@
         
         document.addEventListener('DOMContentLoaded', init);
         
+        // Expose functions to the global scope for use in inline HTML attributes (onchange/onclick)
+        window.handleSubjectChange = handleSubjectChange;
         window.startAutomation = startAutomation;
+        window.updateTableNameDisplay = updateTableNameDisplay;
     </script>
 </body>
 </html>
-```eof
-
-### Key Fixes in This Version
-
-1.  **`cleanLatex` Function:** I created a dedicated `cleanLatex` function to handle the bulk of the cleanup outside the main parsing loop.
-2.  **Bracket/Delimiter Removal:** It targets and removes common math delimiters like `$`, `\(` `\)`, `[` `]`, and curly braces `{}`.
-3.  **Command Replacement:** It uses regular expressions to find commands like `\text{ N}` and `\mathbf{i}` and replaces the command with the content inside its braces (e.g., `\text{ N}` becomes ` N`).
-4.  **Final Backslash Cleanup:** It removes any remaining backslashes (`\`) that might have been part of unsupported or standalone commands.
-
-This should finally give you clean, plain-text data for all your quiz fields. Give this version a try!
