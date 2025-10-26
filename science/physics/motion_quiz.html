@@ -69,7 +69,7 @@
 
     <script>
         // ==================================================================================
-        // FIREBASE INITIALIZATION AND LOGGING FUNCTION (Copied from demand_quiz.html)
+        // FIREBASE INITIALIZATION AND LOGGING FUNCTION
         // ==================================================================================
         
         // YOUR FIREBASE CONFIGURATION (Copied from economics (1).html)
@@ -83,7 +83,6 @@
             measurementId: "G-4EFDM0CRYY"
         };
 
-        // Initialize Firebase App, Auth, and Firestore
         const app = firebase.initializeApp(firebaseConfig);
         const auth = app.auth();
         const db = app.firestore();
@@ -91,10 +90,6 @@
         const authModal = document.getElementById('auth-modal');
         const googleSignInBtn = document.getElementById('google-sign-in-btn');
         const errorMessage = document.getElementById('error-message');
-
-        auth.onAuthStateChanged((user) => {
-            // Re-check auth state on load (needed for the modal logic)
-        });
 
         googleSignInBtn.addEventListener('click', async () => {
              errorMessage.textContent = 'Signing in with Google...';
@@ -105,7 +100,7 @@
             try {
                 await auth.signInWithPopup(provider);
                 authModal.classList.add('hidden');
-                alert("Login successful! You can now start the quiz.");
+                // The auth.onAuthStateChanged listener will now handle loading the quiz
             } catch (error) {
                 let displayMessage = 'Google Sign-in failed: ' + error.message;
                 errorMessage.textContent = displayMessage;
@@ -114,12 +109,8 @@
             }
         });
 
-        /**
-         * Logs the final score and details to the 'quiz_scores' collection in Firestore.
-         */
         function logFinalQuizScore(score, total, chapterName, difficulty) {
             const user = auth.currentUser;
-
             if (!user) {
                 console.warn("User not logged in. Score not saved.");
                 return;
@@ -140,7 +131,7 @@
                 console.log(`Final score ${score}/${total} logged successfully.`);
             })
             .catch((error) => {
-                console.error("Error logging final score (Check Rules/Network):", error);
+                console.error("Error logging final score:", error);
             });
         }
 
@@ -148,20 +139,18 @@
         // END FIREBASE SETUP
         // ==================================================================================
 
-
-        // Global variables to store filtered questions
+        // State variables
         let ALL_QUESTIONS = [];
-        let QUIZ_DATA = {}; // Stores the 20 questions for the currently active quiz
-        const TARGET_QUESTION_COUNT = 20; // 🚨 NEW: Fixed question count like demand_quiz.html
-        const TABLE_NAME = 'motion'; // Your confirmed Supabase table name
+        let QUIZ_DATA = {};
+        const TARGET_QUESTION_COUNT = 20;
+        const TABLE_NAME = 'motion';
+        let quizDataLoaded = false; // Prevents re-fetching Supabase data
 
-        // Utility to shuffle and slice an array (Copied from demand_quiz.html)
         function shuffleAndSlice(array, count) {
             const shuffled = array.sort(() => 0.5 - Math.random());
             return shuffled.slice(0, count);
         }
 
-        // 🚨 NEW: UTILITY FIX: Cleans up formatting from Supabase data fields (Copied from demand_quiz.html)
         function cleanText(text) {
             if (!text) return '';
 
@@ -182,26 +171,16 @@
             return cleaned;
         }
 
-        // --- Core Quiz State Management (Modified to match demand_quiz.html structure) ---
-
+        // FIX: This function no longer checks authentication. It only renders cards with provided data.
         function renderDifficultySelection(fullData) {
-             const user = auth.currentUser;
             
-            // Check authentication status before rendering the quiz
-            if (!user) {
-                // Show a message and the login modal
-                document.getElementById('quiz-container').innerHTML = `
-                    <div class="text-center p-6 bg-white rounded-lg shadow-xl">
-                        <h2 class="text-2xl font-bold mb-4 text-cbse-blue">Access Restricted</h2>
-                        <p class="text-gray-700 mb-6">Please sign in to start the **Motion** Chapter Quizzes and track your progress.</p>
-                        <button class="px-6 py-2 text-white font-bold rounded-lg shadow-md bg-red-600 hover:bg-red-700" onclick="document.getElementById('auth-modal').classList.remove('hidden');">
-                            Sign in to Start
-                        </button>
-                    </div>`;
-                return; 
+            // Check if there is data to render
+            if (!fullData || fullData.length === 0) {
+                 document.getElementById('quiz-container').innerHTML = `<p class="text-gray-700 p-4 rounded">No difficulties found in the data for table **${TABLE_NAME}**.</p>`;
+                 return;
             }
-            
-            // Filter all questions by difficulty
+
+            // Filter questions by difficulty
             const simpleQuestions = fullData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'simple');
             const mediumQuestions = fullData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'medium');
             const complexQuestions = fullData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'complex');
@@ -249,12 +228,10 @@
 
         function startQuiz(difficulty) {
             const allQs = ALL_QUESTIONS[difficulty];
-            // Shuffle and select the target number of questions
             QUIZ_DATA.questions = shuffleAndSlice(allQs, TARGET_QUESTION_COUNT);
             QUIZ_DATA.difficulty = difficulty;
-            QUIZ_DATA.answers = {}; // To store user answers
+            QUIZ_DATA.answers = {};
 
-            // Log attempt to Firebase
              if (auth.currentUser) {
                 db.collection("quiz_attempts").add({
                     userId: auth.currentUser.uid,
@@ -269,7 +246,6 @@
             renderQuiz();
         }
 
-        // 🚨 NEW: Updated renderQuiz to match demand_quiz.html structure and use cleanText
         function renderQuiz() {
             const container = document.getElementById('quiz-container');
 
@@ -280,14 +256,9 @@
 
             QUIZ_DATA.questions.forEach((q, index) => {
                 const questionNumber = index + 1;
-
-                // Use the cleanText utility on all text fields
                 const questionText = cleanText(q.question_text);
                 const scenarioReasonText = cleanText(q.scenario_reason_text);
-
-                // Assuming simple MCQ for Ninth Class, but supporting scenario text if present
-                const isScenarioPresent = scenarioReasonText && scenarioReasonText.toUpperCase() !== 'N/A';
-                const showScenario = isScenarioPresent; // Simplified check for 9th class
+                const showScenario = scenarioReasonText && scenarioReasonText.toUpperCase() !== 'N/A';
 
                 const options = [
                     { key: 'A', text: cleanText(q.option_a) },
@@ -301,7 +272,6 @@
                         <p class="text-lg font-semibold text-gray-800 mb-3">${questionNumber}. ${questionText}</p>
 
                         ${showScenario ?
-                            // Scenario/Reasoning Text styling
                             `<p class="text-lg font-normal text-gray-700 mb-4 bg-gray-50 p-3 rounded">${scenarioReasonText}</p>`
                             : ''}
 
@@ -344,7 +314,6 @@
             QUIZ_DATA.answers[qIndex] = answerKey;
         }
         
-        // 🚨 NEW: Updated submitQuiz to match demand_quiz.html structure and logging
         function submitQuiz() {
             const totalQuestions = QUIZ_DATA.questions.length;
             let score = 0;
@@ -383,13 +352,11 @@
                 });
             });
 
-            // FIREBASE LOGGING CALL INSERTED HERE
             const chapterName = "7. Motion";
             const difficultyLevel = QUIZ_DATA.difficulty || "Medium";
 
             logFinalQuizScore(score, totalQuestions, chapterName, difficultyLevel);
 
-            // Display final score
             const scoreHtml = `
                 <div class="p-6 md:p-10 mb-8 text-center bg-cbse-blue text-white rounded-lg shadow-2xl">
                     <h3 class="text-4xl font-extrabold mb-2">Quiz Complete!</h3>
@@ -407,10 +374,14 @@
         // --- Supabase Connection and Initialization ---
 
         function initSupabase() {
+            // Check if we've already loaded the data
+            if (quizDataLoaded) return; 
+
             const configError = document.getElementById('config-error');
 
             if (typeof window.SUPABASE_URL === 'undefined' || typeof window.SUPABASE_ANON_KEY === 'undefined') {
                 configError.classList.remove('hidden');
+                document.getElementById('quiz-container').innerHTML = ''; // Clear loading message
                 console.error("Configuration failed: Supabase keys are missing.");
             } else {
                 const supabaseClient = supabase.createClient(
@@ -424,36 +395,51 @@
 
         async function fetchQuizData(supabaseClient) {
             const container = document.getElementById('quiz-container');
+            container.innerHTML = `<div class="text-center p-6 bg-white rounded-lg shadow-xl">Fetching Questions from Supabase...</div>`;
+
 
             const { data: quizData, error } = await supabaseClient
                 .from(TABLE_NAME)
                 .select('*');
 
             if (error) {
-                if (container) {
-                    container.innerHTML = `<p class="error-message text-red-700 bg-red-100 p-4 rounded">Error retrieving questions: ${error.message}. Please check RLS policy for the table **${TABLE_NAME}**.</p>`;
-                }
+                container.innerHTML = `<p class="error-message text-red-700 bg-red-100 p-4 rounded">Error retrieving questions: ${error.message}. Please check RLS policy for the table **${TABLE_NAME}**.</p>`;
                 return;
             }
 
             if (quizData && quizData.length > 0) {
+                quizDataLoaded = true; // Set flag on success
                 renderDifficultySelection(quizData);
             } else {
-                if (container) {
-                    container.innerHTML = `<p class="text-gray-700 p-4 rounded">No questions found for table **${TABLE_NAME}**.</p>`;
-                }
+                container.innerHTML = `<p class="text-gray-700 p-4 rounded">No questions found for table **${TABLE_NAME}**.</p>`;
             }
         }
+        
+        // FIX: Dedicated function to show the restricted view
+        function renderAccessRestrictedView() {
+            document.getElementById('quiz-container').innerHTML = `
+                <div class="text-center p-6 bg-white rounded-lg shadow-xl">
+                    <h2 class="text-2xl font-bold mb-4 text-cbse-blue">Access Restricted</h2>
+                    <p class="text-gray-700 mb-6">Please sign in to start the **Motion** Chapter Quizzes and track your progress.</p>
+                    <button class="px-6 py-2 text-white font-bold rounded-lg shadow-md bg-red-600 hover:bg-red-700" onclick="document.getElementById('auth-modal').classList.remove('hidden');">
+                        Sign in to Start
+                    </button>
+                </div>`;
+            document.getElementById('auth-modal').classList.remove('hidden'); // Ensure modal is visible
+        }
 
-        // Start the application after the script loads
+
+        // FIX: Simplified DOMContentLoaded to manage state flow cleanly
         document.addEventListener('DOMContentLoaded', () => {
-            // Check auth state immediately to determine if we should proceed to Supabase
+             const container = document.getElementById('quiz-container');
+            container.innerHTML = `<div class="text-center p-6 bg-white rounded-lg shadow-xl">Initializing Authentication...</div>`;
+            
+            // This is the core state listener that determines what to do
             auth.onAuthStateChanged((user) => {
                 if (user) {
-                    initSupabase();
+                    initSupabase(); // Only fetch data if authenticated
                 } else {
-                    // Show restricted view, which will call initSupabase() after login
-                    renderDifficultySelection([]); 
+                    renderAccessRestrictedView(); // Only show login view if unauthenticated
                 }
             });
         });
