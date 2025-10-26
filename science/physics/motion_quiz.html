@@ -1,273 +1,439 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Motion Chapter Quiz</title>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script> 
-    
-        <script src="../../js/config.js"></script> 
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motion Chapter Quiz</title>
 
-    <style>
-        /* Define a max width for the quiz container for better readability */
-        .quiz-container { max-width: 800px; }
-        /* Style for the primary button */
-        .btn-primary { 
-            background-color: #1a3e6a; 
-            color: white; 
-            padding: 0.5rem 1rem; 
-            border-radius: 0.5rem; 
-            transition: background-color 0.15s ease-in-out;
-        }
-        .btn-primary:hover { 
-            background-color: #1a3e6a;
-            opacity: 0.9;
-        }
-    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
 
-    <script>
-        // Tailwind Configuration
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'], },
-                    colors: {
-                        'cbse-blue': '#1a3e6a', 
-                        'cbse-light': '#f0f4f8', 
-                        'accent-green': '#059669', 
-                        'correct': '#10b981', 
-                        'incorrect': '#ef4444', 
-                    }
-                }
-            }
-        }
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-        // === START: Quiz Specific Configuration ===
-        const TABLE_NAME = 'motion'; 
-        // === END: Quiz Specific Configuration ===
+    <script>
+        // Tailwind Configuration
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'], },
+                    colors: {
+                        'cbse-blue': '#1a3e6a',
+                        'cbse-light': '#f0f4f8',
+                        'accent-green': '#059669',
+                        'correct': '#10b981', // Emerald 500
+                        'incorrect': '#ef4444', // Red 500
+                    }
+                }
+            }
+        }
+    </script>
 
-        // State variables
-        let allQuestions = [];
-        let currentQuizQuestions = [];
-        let currentQuestionIndex = 0;
-        let score = 0;
-        let selectedDifficulty = '';
-
-        /**
-         * Initializes the Supabase client and starts fetching data.
-         * NOTE: Variables are accessed via window. to match /js/config.js file structure.
-         */
-        function initSupabase() {
-            if (typeof window.SUPABASE_URL === 'undefined' || typeof window.SUPABASE_ANON_KEY === 'undefined') {
-                document.getElementById('quiz-container').innerHTML = `<p class="error-message text-red-700 bg-red-100 p-4 rounded">Configuration Error: **SUPABASE_URL** or **SUPABASE_ANON_KEY** not defined. Check **../../js/config.js** and its file path.</p>`;
-                return;
-            }
-            const supabaseClient = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-            
-            fetchQuizData(supabaseClient); 
-        }
-
-        /**
-         * Fetches quiz data from the configured Supabase table.
-         * @param {object} supabaseClient - The initialized Supabase client.
-         */
-        async function fetchQuizData(supabaseClient) {
-            const container = document.getElementById('quiz-container');
-
-            const { data: quizData, error } = await supabaseClient
-                .from(TABLE_NAME) 
-                .select('*'); // Select all columns
-
-            if (error) {
-                if (container) {
-                    container.innerHTML = `<p class="error-message text-red-700 bg-red-100 p-4 rounded">Error retrieving questions: ${error.message}. Please check RLS policy for the table **${TABLE_NAME}**.</p>`;
-                }
-                return;
-            }
-
-            if (quizData && quizData.length > 0) {
-                allQuestions = quizData;
-                renderDifficultySelection(quizData);
-            } else {
-                if (container) {
-                    container.innerHTML = `<p class="text-gray-700 p-4 rounded">No questions found for table **${TABLE_NAME}**.</p>`;
-                }
-            }
-        }
-
-        /**
-         * Renders the screen allowing the user to select quiz difficulty.
-         * @param {Array} data - All fetched questions.
-         */
-        function renderDifficultySelection(data) {
-            const container = document.getElementById('quiz-container');
-            const difficulties = [...new Set(data.map(q => q.difficulty))].filter(d => d); 
-
-            if (difficulties.length === 0) {
-                 container.innerHTML = `<p class="text-gray-700 p-4 rounded">No difficulties found in the data for table **${TABLE_NAME}**. Ensure your 'difficulty' column is populated.</p>`;
-                 return;
-            }
-
-            let difficultyOptions = difficulties.map(d => 
-                `<button class="difficulty-btn btn-primary m-2" data-difficulty="${d}">${d.charAt(0).toUpperCase() + d.slice(1)} Quiz</button>`
-            ).join('');
-
-            container.innerHTML = `
-                <div class="text-center p-6 bg-white rounded-lg shadow-xl">
-                    <h2 class="text-2xl font-bold mb-4 text-cbse-blue">Select Difficulty for the **Motion** Quiz</h2>
-                    <div class="flex justify-center flex-wrap">
-                        ${difficultyOptions}
-                    </div>
-                </div>
-            `;
-
-            // Attach event listeners to the new difficulty buttons
-            document.querySelectorAll('.difficulty-btn').forEach(button => {
-                button.addEventListener('click', (e) => startQuiz(e.target.dataset.difficulty));
-            });
-        }
-
-        /**
-         * Filters questions by difficulty, shuffles them, and begins the quiz.
-         * @param {string} difficulty - The selected difficulty level.
-         */
-        function startQuiz(difficulty) {
-            selectedDifficulty = difficulty;
-            currentQuizQuestions = allQuestions.filter(q => q.difficulty && q.difficulty.toLowerCase() === difficulty.toLowerCase());
-            
-            if (currentQuizQuestions.length === 0) {
-                alert(`No ${difficulty} questions found.`);
-                renderDifficultySelection(allQuestions);
-                return;
-            }
-
-            currentQuizQuestions.sort(() => Math.random() - 0.5); // Shuffle the questions
-            currentQuestionIndex = 0;
-            score = 0;
-            renderQuestion();
-        }
-
-        /**
-         * Renders the current question and its options.
-         */
-        function renderQuestion() {
-            const container = document.getElementById('quiz-container');
-            if (currentQuestionIndex >= currentQuizQuestions.length) {
-                renderResults(); // Go to results screen
-                return;
-            }
-
-            const q = currentQuizQuestions[currentQuestionIndex];
-            
-            // Collect existing options
-            const options = [];
-            if (q.option_a) options.push({ key: 'A', text: q.option_a });
-            if (q.option_b) options.push({ key: 'B', text: q.option_b });
-            if (q.option_c) options.push({ key: 'C', text: q.option_c });
-            if (q.option_d) options.push({ key: 'D', text: q.option_d });
-
-            const optionButtons = options.map(opt => `
-                <button class="option-btn w-full text-left p-3 my-2 border rounded-lg bg-cbse-light hover:bg-cbse-blue/20 transition duration-100 ease-in-out focus:outline-none focus:ring-2 focus:ring-cbse-blue" data-key="${opt.key}">
-                    <span class="font-semibold text-cbse-blue mr-2">${opt.key}.</span> ${opt.text}
-                </button>
-            `).join('');
-            
-            container.innerHTML = `
-                <div class="p-6 bg-white rounded-lg shadow-xl">
-                    <div class="text-sm font-medium mb-2 text-cbse-blue">Question ${currentQuestionIndex + 1} of ${currentQuizQuestions.length} (Difficulty: ${selectedDifficulty.toUpperCase()})</div>
-                    <h3 class="text-lg font-bold mb-4">${q.question_text}</h3>
-                    ${q.scenario_reason_text ? `<p class="text-sm italic mb-4 p-2 bg-gray-100 rounded">${q.scenario_reason_text}</p>` : ''}
-                    <div id="options-container">
-                        ${optionButtons}
-                    </div>
-                    <div id="feedback-container" class="mt-4 text-center"></div>
-                </div>
-            `;
-
-            // Attach click handler to all option buttons
-            document.querySelectorAll('.option-btn').forEach(button => {
-                button.addEventListener('click', handleAnswerClick);
-            });
-        }
-
-        /**
-         * Handles the user's answer selection, provides feedback, and sets up the next question button.
-         * @param {Event} event - The click event from the option button.
-         */
-        function handleAnswerClick(event) {
-            const selectedButton = event.target.closest('.option-btn');
-            const selectedKey = selectedButton.dataset.key;
-            const currentQuestion = currentQuizQuestions[currentQuestionIndex];
-            const correctKey = currentQuestion.correct_answer_key;
-            const feedbackContainer = document.getElementById('feedback-container');
-
-            // Disable all options after selection
-            document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true);
-
-            // Style the buttons based on the result
-            document.querySelectorAll('.option-btn').forEach(btn => {
-                // Highlight user's choice
-                if (btn.dataset.key === selectedKey) {
-                    btn.style.backgroundColor = (selectedKey === correctKey) ? '#10b981' : '#ef4444'; // correct or incorrect color
-                    btn.style.color = 'white';
-                }
-                // Highlight the correct answer if the user was wrong
-                if (btn.dataset.key === correctKey && selectedKey !== correctKey) {
-                    btn.style.border = '2px solid #10b981'; // Green border for correct answer
-                }
-            });
-
-            // Update score and feedback text
-            if (selectedKey === correctKey) {
-                score++;
-                feedbackContainer.innerHTML = `<p class="text-correct font-bold text-lg">Correct! ✅</p>`;
-            } else {
-                feedbackContainer.innerHTML = `<p class="text-incorrect font-bold text-lg">Incorrect. The correct answer was **${correctKey}**. ❌</p>`;
-            }
-
-            // Create and append the Next button
-            const nextButton = document.createElement('button');
-            nextButton.textContent = 'Next Question';
-            nextButton.className = 'btn-primary mt-4';
-            nextButton.onclick = () => {
-                currentQuestionIndex++;
-                renderQuestion();
-            };
-            feedbackContainer.appendChild(nextButton);
-        }
-
-        /**
-         * Renders the final results screen.
-         */
-        function renderResults() {
-            const container = document.getElementById('quiz-container');
-            container.innerHTML = `
-                <div class="text-center p-8 bg-white rounded-lg shadow-xl">
-                    <h2 class="text-3xl font-bold mb-4 text-cbse-blue">Quiz Complete! 🏆</h2>
-                    <p class="text-2xl mb-6">Your Score: <span class="font-extrabold text-accent-green">${score} / ${currentQuizQuestions.length}</span></p>
-                    <p class="mb-8 text-gray-700">You completed the **${selectedDifficulty.toUpperCase()}** level for the Motion chapter.</p>
-                    <button class="btn-primary m-2" onclick="renderDifficultySelection(allQuestions)">Select New Difficulty</button>
-                    <button class="btn-primary m-2 bg-gray-500 hover:bg-gray-600" onclick="window.location.href='../../science(1).html'">Back to Subjects</button>
-                </div>
-            `;
-        }
-
-        // Start the application when the page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            const container = document.getElementById('quiz-container');
-            if (container) {
-                // Initial loading message
-                container.innerHTML = `<div class="text-center p-6 bg-white rounded-lg shadow-xl">Loading Motion Quiz Data...</div>`;
-            }
-            initSupabase();
-        });
-
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <script src="../../js/config.js"></script>
 </head>
-<body class="bg-cbse-light min-h-screen flex items-center justify-center p-4 font-sans">
-    <div id="quiz-container" class="quiz-container w-full">
-        </div>
+<body class="bg-cbse-light min-h-screen antialiased">
+
+    <header class="bg-white shadow-lg sticky top-0 z-10 border-t-8 border-cbse-blue">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <h1 class="text-2xl font-bold text-cbse-blue">Motion Chapter Quiz Portal</h1>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
+        <div id="quiz-container" class="container bg-white p-6 md:p-10 rounded-xl shadow-lg">
+            <p class="text-cbse-blue font-semibold">Loading authentication...</p>
+        </div>
+
+        <div id="config-error" class="hidden error-message mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+            Configuration Error 🛑<br>Quiz failed to load because Supabase credentials are missing or the 'config.js' file could not be found.
+        </div>
+    </main>
+
+    <div id="auth-modal" class="modal-overlay hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); display: flex; justify-content: center; align-items: center; z-index: 50;">
+        <div id="auth-view" class="bg-white relative p-8 rounded-lg shadow-xl" style="max-width: 400px;">
+            <h2 class="text-2xl font-bold text-center mb-6 text-cbse-blue">Login to Access Quizzes</h2>
+            <div class="mt-4">
+                <button id="google-sign-in-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition flex items-center justify-center space-x-3 shadow-md">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/4/4a/Logo_google_g_standard.png" alt="Google logo" class="w-6 h-6 bg-white rounded-full">
+                    <span>Sign in with Google</span>
+                </button>
+            </div>
+            <p id="error-message" class="mt-4 text-center text-red-500 font-medium"></p>
+        </div>
+    </div>
+
+
+    <script>
+        // ==================================================================================
+        // FIREBASE INITIALIZATION AND AUTHENTICATION LOGIC (Working Code Preserved)
+        // ==================================================================================
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyAXdKiYRxBKAj280YcNuNwlKKDp85xpOWQ",
+            authDomain: "quiz-signon.firebaseapp.com",
+            projectId: "quiz-signon",
+            storageBucket: "quiz-signon.firebasestorage.app",
+            messagingSenderId: "863414222321",
+            appId: "1:863414222321:web:819f5564825308bcd9d850",
+            measurementId: "G-4EFDM0CRYY"
+        };
+
+        const app = firebase.initializeApp(firebaseConfig);
+        const auth = app.auth();
+        const db = app.firestore();
+        
+        const googleSignInBtn = document.getElementById('google-sign-in-btn');
+        const errorMessage = document.getElementById('error-message');
+
+        googleSignInBtn.addEventListener('click', async () => {
+             errorMessage.textContent = 'Signing in with Google...';
+             googleSignInBtn.disabled = true;
+
+            const provider = new firebase.auth.GoogleAuthProvider();
+
+            try {
+                // CRITICAL LOGIC: Set flag before popup to prevent loop
+                localStorage.setItem('auth_in_progress', 'true'); 
+                await auth.signInWithPopup(provider);
+            } catch (error) {
+                let displayMessage = 'Google Sign-in failed: ' + error.message;
+                errorMessage.textContent = displayMessage;
+            } finally {
+                 googleSignInBtn.disabled = false;
+                 // CRITICAL LOGIC: Remove flag after popup is complete/fails
+                 localStorage.removeItem('auth_in_progress'); 
+            }
+        });
+
+        function logFinalQuizScore(score, total, chapterName, difficulty) {
+            const user = auth.currentUser;
+            if (!user) return;
+
+            db.collection("quiz_scores").add({
+                userId: user.uid,
+                email: user.email || 'N/A',
+                chapter: chapterName,
+                difficulty: difficulty,
+                score: score,
+                total: total,
+                percentage: (score / total) * 100,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                action: 'Quiz Completed'
+            });
+        }
+        
+        function renderAccessRestrictedView() {
+            document.getElementById('quiz-container').innerHTML = `
+                <div class="text-center p-6 bg-white rounded-lg shadow-xl">
+                    <h2 class="text-2xl font-bold mb-4 text-cbse-blue">Access Restricted</h2>
+                    <p class="text-gray-700 mb-6">Please sign in to start the **Motion** Chapter Quizzes and track your progress.</p>
+                    <button class="px-6 py-2 text-white font-bold rounded-lg shadow-md bg-red-600 hover:bg-red-700" onclick="document.getElementById('auth-modal').classList.remove('hidden');">
+                        Sign in to Start
+                    </button>
+                </div>`;
+            document.getElementById('auth-modal').classList.remove('hidden'); 
+        }
+
+        // ==================================================================================
+        // QUIZ LOGIC (Refactored for Batch Display and Submission)
+        // ==================================================================================
+
+        const TABLE_NAME = 'motion';
+        const TARGET_QUESTION_COUNT = 20;
+
+        let ALL_QUESTIONS = {}; // Stores questions segregated by difficulty
+        let QUIZ_DATA = {}; // Stores the current quiz questions and user answers
+        let quizDataLoaded = false; 
+
+        // Utility: Sanitizes text (removes LaTeX math formatting)
+        function cleanText(text) {
+            if (!text) return '';
+            let cleaned = text
+                .replace(/\$\\(text)\{([^\}]+)\}\$|\\text\{([^\}]+)\}|(\\\$)|(\\\\)|(\text\{[^\}]+\})/g, (match, p1, p2, p3) => {
+                    const matchText = match.match(/\\text\{([^\}]+)\}/);
+                    if (matchText) return matchText[1];
+                    if (match === '\\$') return '₹';
+                    if (match === '\\\\') return '<br>';
+                    return match;
+                })
+                .replace(/\$/g, '')
+                .replace(/\\(left|right)[\(\)\|\{\}]/g, '');
+            cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            return cleaned;
+        }
+
+        function shuffleAndSlice(array, count) {
+            const shuffled = array.sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, count);
+        }
+        
+        // --- Supabase Connection and Initialization ---
+
+        function initSupabase() {
+            if (quizDataLoaded) { 
+                renderDifficultySelection(null); 
+                return;
+            }
+            const configError = document.getElementById('config-error');
+
+            if (typeof window.SUPABASE_URL === 'undefined' || typeof window.SUPABASE_ANON_KEY === 'undefined') {
+                configError.classList.remove('hidden');
+                document.getElementById('quiz-container').innerHTML = ''; 
+            } else {
+                const supabaseClient = supabase.createClient(
+                    window.SUPABASE_URL,
+                    window.SUPABASE_ANON_KEY
+                );
+
+                fetchQuizData(supabaseClient);
+            }
+        }
+
+        async function fetchQuizData(supabaseClient) {
+            const container = document.getElementById('quiz-container');
+            container.innerHTML = `<div class="text-center p-6 bg-white rounded-lg shadow-xl">Fetching Questions from Supabase...</div>`;
+
+            const { data: quizData, error } = await supabaseClient
+                .from(TABLE_NAME)
+                .select('*');
+
+            if (error) {
+                container.innerHTML = `<p class="error-message text-red-700 bg-red-100 p-4 rounded">Error retrieving questions: ${error.message}. Please check RLS policy for the table **${TABLE_NAME}**.</p>`;
+                return;
+            }
+
+            if (quizData) {
+                quizDataLoaded = true;
+                // Separate questions by difficulty for the selection screen
+                const simpleQuestions = quizData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'simple');
+                const mediumQuestions = quizData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'medium');
+                const complexQuestions = quizData.filter(q => q.difficulty && q.difficulty.toLowerCase() === 'complex');
+                ALL_QUESTIONS = { simple: simpleQuestions, medium: mediumQuestions, complex: complexQuestions };
+                
+                renderDifficultySelection(quizData); 
+            }
+        }
+        
+        // --- Render Difficulty (Styled to match demand_quiz) ---
+
+        function renderDifficultySelection(fullData) {
+            const container = document.getElementById('quiz-container');
+
+            if (Object.keys(ALL_QUESTIONS).length === 0 || 
+                (ALL_QUESTIONS.simple?.length === 0 && ALL_QUESTIONS.medium?.length === 0 && ALL_QUESTIONS.complex?.length === 0)) {
+                 container.innerHTML = `<p class="text-red-700 p-4 rounded bg-red-100">
+                    **No Quiz Questions Found!** Please ensure your Supabase table **${TABLE_NAME}** contains questions.
+                    </p>`;
+                 return;
+            }
+
+            const html = `
+                <h2 class="text-3xl font-extrabold text-cbse-blue mb-8">Choose Difficulty for Motion Chapter</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    ${createDifficultyCard('simple', ALL_QUESTIONS.simple?.length || 0, 'Easy start, covers foundational concepts.', 'bg-accent-green hover:bg-green-700')}
+                    ${createDifficultyCard('medium', ALL_QUESTIONS.medium?.length || 0, 'Moderate difficulty, requires application of concepts.', 'bg-yellow-600 hover:bg-yellow-700')}
+                    ${createDifficultyCard('complex', ALL_QUESTIONS.complex?.length || 0, 'High difficulty, includes numericals and critical analysis.', 'bg-red-600 hover:bg-red-700')}
+                </div>
+            `;
+            container.innerHTML = html;
+        }
+
+        function createDifficultyCard(level, count, description, colorClass) {
+            const actualCount = Math.min(count, TARGET_QUESTION_COUNT);
+            const buttonText = count >= TARGET_QUESTION_COUNT ? `Start Quiz (${TARGET_QUESTION_COUNT} Qs)` : `Start Quiz (${actualCount} Qs)`;
+            const displayName = level.charAt(0).toUpperCase() + level.slice(1);
+            
+            return `
+                <div class="p-6 bg-cbse-light rounded-lg shadow-md border border-gray-200">
+                    <h4 class="text-2xl font-bold capitalize text-cbse-blue mb-2">${displayName === 'Complex' ? 'Advanced' : displayName}</h4>
+                    <p class="text-gray-600 text-sm mb-4">${description}</p>
+                    <p class="text-sm font-semibold mb-4 text-gray-700">Available: ${count} questions. Starting: ${actualCount} questions.</p>
+                    <button
+                        class="px-6 py-2 text-white font-bold rounded-lg shadow-md transition duration-150 ${colorClass}"
+                        onclick="startQuiz('${level}')"
+                        ${actualCount === 0 ? 'disabled' : ''}>
+                        ${actualCount === 0 ? 'No Questions Available' : buttonText}
+                    </button>
+                </div>
+            `;
+        }
+        
+        // --- Start Quiz (Initializes QUIZ_DATA and renders all questions) ---
+        function startQuiz(difficulty) {
+            const allQs = ALL_QUESTIONS[difficulty];
+            QUIZ_DATA.questions = shuffleAndSlice(allQs, TARGET_QUESTION_COUNT);
+            QUIZ_DATA.difficulty = difficulty;
+            QUIZ_DATA.answers = {}; // Initialize user answers object
+
+            // Log attempt to Firestore
+             if (auth.currentUser) {
+                db.collection("quiz_attempts").add({
+                    userId: auth.currentUser.uid,
+                    email: auth.currentUser.email || 'N/A',
+                    chapter: "7. Motion",
+                    difficulty: difficulty,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    action: 'Quiz Attempted'
+                });
+            }
+
+            renderQuiz();
+        }
+
+        // --- Store Answer (Called by radio button onChange) ---
+        function storeAnswer(qIndex, answerKey) {
+            QUIZ_DATA.answers[qIndex] = answerKey;
+        }
+
+
+        // --- Render Quiz (Displays ALL questions at once) ---
+        function renderQuiz() {
+            const container = document.getElementById('quiz-container');
+
+            const displayDifficulty = QUIZ_DATA.difficulty.charAt(0).toUpperCase() + QUIZ_DATA.difficulty.slice(1);
+            const titleDifficulty = displayDifficulty === 'Complex' ? 'Advanced' : displayDifficulty;
+
+            let quizHtml = `<h2 class="text-3xl font-extrabold text-cbse-blue mb-6">${titleDifficulty} Quiz (${QUIZ_DATA.questions.length} Questions)</h2>`;
+
+            QUIZ_DATA.questions.forEach((q, index) => {
+                const questionNumber = index + 1;
+                const questionText = cleanText(q.question_text);
+                const scenarioReasonText = cleanText(q.scenario_reason_text);
+                const showScenario = scenarioReasonText && scenarioReasonText.toUpperCase() !== 'N/A';
+
+                const options = [
+                    { key: 'A', text: cleanText(q.option_a) },
+                    { key: 'B', text: cleanText(q.option_b) },
+                    { key: 'C', text: cleanText(q.option_c) },
+                    { key: 'D', text: cleanText(q.option_d) }
+                ].filter(opt => opt.text !== null && opt.text.trim() !== '');
+
+                quizHtml += `
+                    <div id="q-card-${index}" class="question-card p-6 mb-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                        <p class="text-lg font-semibold text-gray-800 mb-3">${questionNumber}. ${questionText}</p>
+
+                        ${showScenario ?
+                            `<p class="text-lg font-normal text-gray-700 mb-4 bg-gray-50 p-3 rounded">${scenarioReasonText}</p>`
+                            : ''}
+
+                        <div class="options space-y-2">
+                            ${options.map(opt => `
+                                <label class="block p-3 border border-gray-100 rounded-lg cursor-pointer hover:bg-cbse-light transition duration-150">
+                                    <input
+                                        type="radio"
+                                        name="q_${index}"
+                                        value="${opt.key}"
+                                        onchange="storeAnswer(${index}, this.value)"
+                                        class="mr-3 text-cbse-blue focus:ring-cbse-blue"
+                                    >
+                                    <span class="font-medium">${opt.key}.</span> ${opt.text}
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+
+            quizHtml += `
+                <button
+                    id="submit-button"
+                    class="w-full mt-8 px-8 py-3 text-lg bg-cbse-blue text-white font-bold rounded-lg shadow-xl hover:bg-blue-700 transition duration-150"
+                    onclick="submitQuiz()">
+                    Submit Answers
+                </button>
+                <button
+                    class="w-full mt-4 text-sm text-gray-500 hover:text-cbse-blue transition duration-150"
+                    onclick="window.location.reload()">
+                    Restart Quiz
+                </button>
+            `;
+
+            container.innerHTML = quizHtml;
+        }
+
+        
+        // --- Submit Quiz (Scores all questions and displays answers) ---
+        function submitQuiz() {
+            const totalQuestions = QUIZ_DATA.questions.length;
+            let score = 0;
+
+            QUIZ_DATA.questions.forEach((q, index) => {
+                const userAnswer = QUIZ_DATA.answers[index];
+                const correctAnswer = q.correct_answer_key;
+                const questionCard = document.getElementById(`q-card-${index}`);
+
+                // Disable all inputs
+                const radios = questionCard.querySelectorAll(`input[name="q_${index}"]`);
+                radios.forEach(radio => radio.disabled = true);
+
+                // Highlight card background
+                if (userAnswer === correctAnswer) {
+                    score++;
+                    questionCard.classList.add('border-correct', 'bg-green-50', 'border-2');
+                } else {
+                    questionCard.classList.add('border-incorrect', 'bg-red-50', 'border-2');
+                }
+
+                // Highlight options
+                const optionsContainer = questionCard.querySelector('.options');
+                const options = optionsContainer.querySelectorAll('label');
+
+                options.forEach(label => {
+                    const input = label.querySelector('input');
+                    const optionKey = input.value;
+
+                    if (optionKey === correctAnswer) {
+                        label.classList.add('bg-correct', 'text-white', 'font-bold');
+                        label.classList.remove('hover:bg-cbse-light');
+                    } else if (optionKey === userAnswer && userAnswer !== correctAnswer) {
+                        label.classList.add('bg-incorrect', 'text-white', 'font-bold');
+                        label.classList.remove('hover:bg-cbse-light');
+                    } else if (optionKey !== correctAnswer && optionKey !== userAnswer) {
+                        label.classList.add('opacity-50');
+                    }
+                });
+            });
+
+            const chapterName = "7. Motion";
+            const difficultyLevel = QUIZ_DATA.difficulty || "Medium";
+
+            logFinalQuizScore(score, totalQuestions, chapterName, difficultyLevel);
+
+            const scoreHtml = `
+                <div class="p-6 md:p-10 mb-8 text-center bg-cbse-blue text-white rounded-lg shadow-2xl">
+                    <h3 class="text-4xl font-extrabold mb-2">Quiz Complete!</h3>
+                    <p class="text-6xl font-black">${score}/${totalQuestions}</p>
+                    <p class="text-xl font-semibold mt-2">Your Score is: ${((score / totalQuestions) * 100).toFixed(1)}%</p>
+                    <p class="mt-4 text-sm">Review your answers below (Green = Correct, Red = Your selection, Outline = Correct answer).</p>
+                </div>
+            `;
+            document.getElementById('quiz-container').insertAdjacentHTML('afterbegin', scoreHtml);
+            document.getElementById('submit-button').remove();
+
+            document.getElementById('quiz-container').scrollIntoView({ behavior: 'smooth' });
+        }
+
+
+        // ==================================================================================
+        // DOM LOAD LISTENER (AUTHENTICATION GATE)
+        // ==================================================================================
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('quiz-container');
+            container.innerHTML = `<div class="text-center p-6 bg-white rounded-lg shadow-xl">Initializing Authentication...</div>`;
+            
+            auth.onAuthStateChanged((user) => {
+                if (user) {
+                    // Authenticated: Hide modal and load data
+                    document.getElementById('auth-modal').classList.add('hidden');
+                    initSupabase(); 
+                } else if (!localStorage.getItem('auth_in_progress')) {
+                    // Unauthenticated: Only show login view if sign-in is NOT actively in progress
+                    renderAccessRestrictedView();
+                }
+            });
+        });
+    </script>
 </body>
 </html>
