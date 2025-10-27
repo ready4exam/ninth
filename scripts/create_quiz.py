@@ -1,58 +1,51 @@
-import argparse
-import os
+# ... (imports and other functions)
 
-# --- Configuration: Base template variables (from force_quiz.html) ---
-# NOTE: Using 'force_quiz.html' as the template as it was the final confirmed replica.
-OLD_TITLE = "Force and Laws of Motion Quiz" 
-OLD_TABLE = "force" 
-# ---
-
-def create_quiz_file(template_path, new_title, new_table, output_path):
-    """Reads template, performs find/replace, and writes the new file."""
+def create_quiz_file(template_path, target_dir, new_title, new_table, filename):
+    """
+    Reads template, performs find/replace, and writes the new file.
+    """
+    # 1. Ensure the filename ends with .html
+    if not filename.lower().endswith('.html'):
+        filename = f"{filename}.html"
+        
+    output_path = pathlib.Path(target_dir) / filename
     
-    try:
-        with open(template_path, 'r') as f:
-            content = f.read()
-    except FileNotFoundError:
-        print(f"Error: Template file not found at {template_path}")
-        # The Action will fail here if the template path is wrong.
-        return
-
-    # 1. Replace Main Title (e.g., Force and Laws of Motion Quiz -> Electricity Quiz)
-    new_content = content.replace(OLD_TITLE, new_title)
+    # ... (rest of your file creation logic using output_path)
     
-    # 2. Replace Supabase Table Name (e.g., const SUPABASE_TABLE = 'force'; -> 'electricity')
-    new_content = new_content.replace(f"const SUPABASE_TABLE = '{OLD_TABLE}';", f"const SUPABASE_TABLE = '{new_table}';")
-    
-    # 3. Replace Difficulty Selector Heading (e.g., Choose Difficulty for Force Chapter -> Electricity Chapter)
-    old_chapter_name = OLD_TITLE.replace(" Quiz", "")
-    new_chapter_name = new_title.replace(" Quiz", "")
-    new_content = new_content.replace(f"Choose Difficulty for {old_chapter_name} Chapter", f"Choose Difficulty for {new_chapter_name} Chapter")
-
-
-    # 4. Write New File
-    target_dir = os.path.dirname(output_path)
-    # Ensure the target directory exists before writing
-    os.makedirs(target_dir, exist_ok=True)
-    
-    try:
-        with open(output_path, 'w') as f:
-            f.write(new_content)
-        print(f"Successfully created: {output_path}")
-    except Exception as e:
-        print(f"Error writing file: {e}")
-
+# ... (rest of the script including argparse)
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Automate creation of new chapter quiz files from a template.")
-    parser.add_argument('--title', required=True, help="New chapter title")
-    parser.add_argument('--table', required=True, help="New Supabase table name")
-    parser.add_argument('--output', required=True, help="New HTML file's full relative path (e.g., science/physics/quiz.html)")
+    parser = argparse.ArgumentParser(description="Generate a new quiz HTML file from a template.")
+    parser.add_argument("--title", required=True, help="New title for the quiz.")
+    parser.add_argument("--table", required=True, help="Firestore table name for the quiz data.")
+    parser.add_argument("--output", required=True, help="Output filename (e.g., 'gravitation_quiz').")
     
     args = parser.parse_args()
-
-    # Define paths based on your repository structure
-    # We use force_quiz.html as the template since it was the perfect replica.
-    TEMPLATE_PATH = 'science/physics/force_quiz.html'
     
-    # args.output is now treated as the full path to the new file (e.g., science/physics/sound_quiz.html)
-    create_quiz_file(TEMPLATE_PATH, args.title, args.table, args.output)
+    template = 'science/physics/force_quiz.html' # Assuming this is your template
+    target = 'science/physics' # Assuming this is the target directory
+    
+    create_quiz_file(
+        template_path=template, 
+        target_dir=target, 
+        new_title=args.title, 
+        new_table=args.table,
+        filename=args.output  # The script will now add .html if missing
+    )
+```
+
+---
+
+#### 2. The GitHub Actions Workflow (`.github/workflows/create_quiz.yml`)
+
+The YAML file is what actually runs the Python script and passes the arguments. You need to ensure the **`--output`** value you pass is just the base name, and rely on the updated Python script to add the extension.
+
+**In your workflow file (e.g., where you run the step named "Run Quiz Creation Script"):**
+
+```yaml
+# Hypothetical YAML structure
+- name: Run Quiz Creation Script
+  run: |
+    python scripts/create_quiz.py \
+      --title "9. Gravitation" \
+      --table "gravitation" \
+      --output "gravitation_quiz" # <--- Pass ONLY the base name here
