@@ -4,15 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       chapter_title:
-        description: 'Quiz Title (e.g., Work and Energy Quiz)'
+        description: 'Quiz Title (e.g., 11. Sound)'
         required: true
         type: string
       supabase_table:
-        description: 'Supabase Table Name (e.g., work_energy)'
+        description: 'Supabase Table Name (e.g., sound_data)'
         required: true
         type: string
       output_filename:
-        description: 'Target HTML Filename (e.g., work_quiz.html)'
+        description: 'Target HTML Filename (e.g., sound_quiz.html)'
         required: true
         type: string
 
@@ -20,7 +20,6 @@ jobs:
   create_file:
     runs-on: ubuntu-latest
     
-    # This is the fix for the 403 Forbidden error
     permissions:
       contents: write
     
@@ -32,21 +31,37 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-
+          
       - name: 🚀 Run Quiz Creation Script
         id: run_script
         run: |
-          # The Python script MUST use the output path relative to the repository root.
-          # We force the output path to include the correct subdirectory.
-          # For example: --output "science/physics/work_quiz.html"
+          # Full output path is determined here.
+          FULL_OUTPUT_PATH="science/physics/${{ github.event.inputs.output_filename }}"
+          
+          # This calls the corrected scripts/create_quiz.py
           python scripts/create_quiz.py \
             --title "${{ github.event.inputs.chapter_title }}" \
             --table "${{ github.event.inputs.supabase_table }}" \
-            --output "science/physics/${{ github.event.inputs.output_filename }}" 
+            --output "$FULL_OUTPUT_PATH"
+            
+      # --- NEW STEP: Update science.html with the new link ---
+      - name: 🔗 Update science.html link map
+        run: |
+          FULL_OUTPUT_PATH="science/physics/${{ github.event.inputs.output_filename }}"
+          CHAPTER_NAME="${{ github.event.inputs.chapter_title }}"
+          
+          # This calls the new scripts/update_links.py script
+          python scripts/update_links.py \
+            --html-file "science.html" \
+            --chapter-name "$CHAPTER_NAME" \
+            --file-path "$FULL_OUTPUT_PATH"
 
-      - name: 💾 Commit new quiz file
+      # The commit step now commits both the newly created quiz file and the modified science.html
+      - name: 💾 Commit new files and update science.html
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "🤖 Feat: Add new quiz page for ${{ github.event.inputs.chapter_title }}"
-          # The file pattern is correct IF the python script outputs to this location.
-          file_pattern: "science/physics/${{ github.event.inputs.output_filename }}" 
+          commit_message: "🤖 Feat: Add quiz page for ${{ github.event.inputs.chapter_title }} and update science.html"
+          # Commit the newly created quiz file AND the modified index file
+          files: |
+            science/physics/${{ github.event.inputs.output_filename }}
+            science.html
