@@ -4,31 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Force and Laws of Motion Quiz</title>
-    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Load Supabase client library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-    <!-- 
-        CORRECTED PATH: Goes up two levels (../../) from science/physics/ 
-        to reach the project root and find js/config.js
-    -->
     <script src="../../js/config.js"></script>
     <style>
         /* Custom font and base styling */
         body { font-family: 'Inter', sans-serif; }
         .quiz-card {
-            max-width: 640px;
+            max-width: 800px; /* Increased max width for single-page layout */
             margin: 2rem auto;
             min-height: 80vh;
             display: flex;
             flex-direction: column;
-            justify-content: center;
         }
-        .option-btn {
-            transition: all 0.2s;
-            cursor: pointer;
+        .option-label {
+            transition: all 0.15s;
         }
-        .option-btn:hover:not(.disabled) {
+        /* Hover state for unselected options */
+        .option-label:hover:not(.correct):not(.incorrect) {
             background-color: #f3f4f6;
             border-color: #1a3e6a;
         }
@@ -36,19 +29,19 @@
             background-color: #d1fae5 !important;
             border-color: #059669 !important;
             color: #065f46 !important;
-            font-weight: 600;
-            pointer-events: none;
         }
         .incorrect {
             background-color: #fee2e2 !important;
             border-color: #dc2626 !important;
             color: #991b1b !important;
-            font-weight: 600;
-            pointer-events: none;
         }
-        .disabled {
-            opacity: 0.7;
-            pointer-events: none;
+        .difficulty-btn {
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .difficulty-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
     </style>
     <script>
@@ -72,53 +65,50 @@
             Force and Laws of Motion Quiz
         </h1>
         <p class="text-sm text-gray-500 mb-6 text-center">
-            Chapter: **Force and Laws of Motion** | Supabase Table: **force**
+            Supabase Table: **force**
         </p>
 
-        <!-- Loading & Error Status -->
         <div id="status-message" class="text-center p-4 rounded-lg bg-yellow-100 text-yellow-700 font-medium mb-6">
-            Loading questions...
+            Loading quiz configuration...
         </div>
 
-        <!-- Quiz Content Area -->
-        <div id="quiz-content" class="hidden">
-            
-            <!-- Progress Bar -->
-            <div class="mb-4">
-                <div id="progress-text" class="text-sm text-gray-600 mb-1"></div>
-                <div class="h-2 bg-gray-200 rounded-full">
-                    <div id="progress-bar" class="h-2 bg-accent-green rounded-full transition-all duration-500" style="width: 0%"></div>
-                </div>
-            </div>
-
-            <!-- Question Card -->
-            <div class="bg-primary-blue text-white p-5 rounded-xl shadow-lg mb-6">
-                <p id="question-text" class="text-lg font-semibold"></p>
-                <p id="scenario-text" class="text-sm mt-2 italic opacity-80"></p>
-            </div>
-
-            <!-- Options -->
-            <div id="options-container" class="space-y-3">
-                <!-- Option buttons will be injected here -->
-            </div>
-
-            <!-- Next Button -->
-            <div class="mt-8">
-                <button id="next-button" onclick="nextQuestion()" disabled
-                        class="w-full px-6 py-3 text-lg font-bold text-white bg-primary-blue rounded-lg shadow-md hover:bg-blue-800 transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
-                    Next Question
+        <div id="start-screen" class="text-center p-8 bg-white rounded-xl shadow-lg hidden">
+            <h2 class="text-2xl font-bold text-primary-blue mb-6">Select Difficulty Level</h2>
+            <div class="space-y-4">
+                <button onclick="startQuiz('Simple')" class="difficulty-btn w-full px-6 py-3 text-lg font-bold text-white bg-green-600 rounded-lg hover:bg-green-700 transition duration-150">
+                    Simple
+                </button>
+                <button onclick="startQuiz('Medium')" class="difficulty-btn w-full px-6 py-3 text-lg font-bold text-white bg-yellow-600 rounded-lg hover:bg-yellow-700 transition duration-150">
+                    Medium
+                </button>
+                <button onclick="startQuiz('Advanced')" class="difficulty-btn w-full px-6 py-3 text-lg font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 transition duration-150">
+                    Advanced
                 </button>
             </div>
         </div>
 
-        <!-- Results Screen -->
+        <div id="quiz-content" class="hidden">
+            
+            <p id="difficulty-display" class="text-md font-semibold text-gray-700 mb-6 border-b pb-2"></p>
+            
+            <div id="question-list" class="space-y-8 mb-8">
+                </div>
+
+            <div class="mt-8 sticky bottom-0 bg-white p-4 shadow-2xl rounded-t-xl border-t-2 border-primary-blue">
+                <button id="submit-button" onclick="submitQuiz()"
+                        class="w-full px-6 py-3 text-lg font-bold text-white bg-primary-blue rounded-lg shadow-md hover:bg-blue-800 transition duration-150">
+                    Submit Quiz
+                </button>
+            </div>
+        </div>
+
         <div id="results-screen" class="hidden text-center p-8 bg-white rounded-xl shadow-lg">
             <h2 class="text-3xl font-bold text-accent-green mb-4">Quiz Complete! 🎉</h2>
-            <p class="text-lg text-gray-700 mb-2">You answered:</p>
+            <p class="text-lg text-gray-700 mb-2">You scored:</p>
             <p id="score-display" class="text-6xl font-extrabold text-primary-blue mb-6">0 / 0</p>
             <button onclick="window.location.reload()"
                     class="px-6 py-3 text-white bg-accent-green rounded-lg shadow-md hover:bg-green-700 transition duration-150">
-                Start Again
+                Start New Quiz
             </button>
         </div>
 
@@ -127,34 +117,30 @@
     <script>
         // --- Configuration ---
         // NOTE: SUPABASE_URL and SUPABASE_ANON_KEY are loaded from 'js/config.js'.
-        // This variable remains local to the quiz script:
         const SUPABASE_TABLE = 'force'; 
         // ---------------------
 
-        // SUPABASE_URL and SUPABASE_ANON_KEY are assumed to be accessible globally here.
         let supabaseClient;
         let questions = [];
-        let currentQuestionIndex = 0;
-        let score = 0;
-        let isAnswered = false;
+        let selectedAnswers = {}; // { qId: 'A' }
+        let selectedDifficulty = null; 
 
         // --- DOM Elements ---
         const statusMessage = document.getElementById('status-message');
+        const quizContainer = document.getElementById('quiz-container');
         const quizContent = document.getElementById('quiz-content');
         const resultsScreen = document.getElementById('results-screen');
-        const questionText = document.getElementById('question-text');
-        const scenarioText = document.getElementById('scenario-text');
-        const optionsContainer = document.getElementById('options-container');
-        const nextButton = document.getElementById('next-button');
-        const progressBar = document.getElementById('progress-bar');
-        const progressText = document.getElementById('progress-text');
+        const startScreen = document.getElementById('start-screen');
+        const questionList = document.getElementById('question-list');
+        const submitButton = document.getElementById('submit-button');
         const scoreDisplay = document.getElementById('score-display');
+        const difficultyDisplay = document.getElementById('difficulty-display');
+
 
         // --- Initialization ---
 
         function init() {
-            // The variables SUPABASE_URL and SUPABASE_ANON_KEY are expected to be loaded 
-            // from the external file js/config.js and should be globally accessible.
+            // Check for external configuration variables
             if (typeof SUPABASE_URL === 'undefined' || typeof SUPABASE_ANON_KEY === 'undefined') {
                 statusMessage.textContent = 'Configuration Error: SUPABASE_URL or SUPABASE_ANON_KEY is undefined. Please ensure "../../js/config.js" is correctly loaded and defines these global variables.';
                 statusMessage.className = 'text-center p-4 rounded-lg bg-red-100 text-red-700 font-medium mb-6';
@@ -164,36 +150,59 @@
             try {
                 // Accessing the globally defined variables
                 supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                fetchQuestions();
+                
+                // Show start screen (assuming this is the intended initial state)
+                statusMessage.classList.add('hidden');
+                startScreen.classList.remove('hidden');
+
             } catch (e) {
                 statusMessage.textContent = `Error initializing Supabase: ${e.message}`;
                 statusMessage.className = 'text-center p-4 rounded-lg bg-red-100 text-red-700 font-medium mb-6';
             }
         }
+        
+        // --- Start Quiz Function ---
+        function startQuiz(difficulty) {
+            selectedDifficulty = difficulty;
+            difficultyDisplay.textContent = `Difficulty Selected: ${difficulty}`;
+            startScreen.classList.add('hidden');
+            quizContent.classList.remove('hidden');
+            fetchQuestions(difficulty);
+        }
 
         // --- Data Fetching ---
 
-        async function fetchQuestions() {
-            statusMessage.textContent = `Fetching questions from table '${SUPABASE_TABLE}'...`;
+        async function fetchQuestions(difficulty) {
+            statusMessage.textContent = `Fetching ${difficulty} questions from table '${SUPABASE_TABLE}'...`;
+            statusMessage.classList.remove('hidden');
             
             try {
-                // Fetch all columns from the 'force' table
-                const { data, error } = await supabaseClient
+                let query = supabaseClient
                     .from(SUPABASE_TABLE)
                     .select('*');
+                
+                // Filter by difficulty (case-insensitive equality)
+                if (difficulty) {
+                    query = query.ilike('difficulty', difficulty); 
+                }
+                
+                // Order by ID for consistent display
+                query = query.order('id', { ascending: true }); 
+
+                const { data, error } = await query;
 
                 if (error) throw error;
 
                 if (data.length === 0) {
-                    statusMessage.textContent = `No questions found in table '${SUPABASE_TABLE}'. Please upload data using the CSV Uploader.`;
+                    statusMessage.textContent = `No ${difficulty} questions found in table '${SUPABASE_TABLE}'. Please upload data using the CSV Uploader.`;
                     statusMessage.className = 'text-center p-4 rounded-lg bg-yellow-100 text-yellow-700 font-medium mb-6';
                     return;
                 }
 
                 questions = data;
                 statusMessage.classList.add('hidden'); // Hide status on success
-                quizContent.classList.remove('hidden');
-                displayQuestion();
+                renderQuestions(); // Render all questions
+                submitButton.disabled = false;
 
             } catch (error) {
                 console.error('Error fetching questions:', error);
@@ -201,111 +210,110 @@
                 statusMessage.className = 'text-center p-4 rounded-lg bg-red-100 text-red-700 font-medium mb-6';
             }
         }
+        
+        // --- Answer Storage ---
+        function storeAnswer(questionId, selectedKey) {
+            selectedAnswers[questionId] = selectedKey;
+        }
 
-        // --- Quiz Logic ---
+        // --- Rendering Logic (All questions at once) ---
+        function renderQuestions() {
+            questionList.innerHTML = '';
+            questions.forEach((q, index) => {
+                const questionHtml = createQuestionHtml(q, index);
+                questionList.innerHTML += questionHtml;
+            });
+        }
 
-        function displayQuestion() {
-            if (currentQuestionIndex >= questions.length) {
-                showResults();
-                return;
-            }
-
-            const q = questions[currentQuestionIndex];
-            
-            // Reset state
-            isAnswered = false;
-            optionsContainer.innerHTML = '';
-            nextButton.disabled = true;
-            nextButton.textContent = 'Select an answer';
-
-            // Update question and scenario text
-            questionText.textContent = `${currentQuestionIndex + 1}. ${q.question_text || 'Error: Missing question text.'}`;
-            
-            if (q.scenario_reason_text) {
-                scenarioText.textContent = `Context/Reason: ${q.scenario_reason_text}`;
-                scenarioText.classList.remove('hidden');
-            } else {
-                scenarioText.classList.add('hidden');
-            }
-
-            // Shuffle options for better replayability (Optional, but good practice)
+        function createQuestionHtml(q, index) {
+            const questionNumber = index + 1;
             const optionKeys = ['A', 'B', 'C', 'D'];
-            const options = optionKeys.map(key => ({ 
-                key: key, 
-                text: q[`option_${key.toLowerCase()}`] || `(Option ${key} missing)` 
-            }));
-            
-            // Create option buttons
-            options.forEach(option => {
-                const btn = document.createElement('button');
-                btn.className = 'option-btn w-full text-left p-4 border-2 border-gray-300 rounded-xl font-medium text-gray-800 transition duration-100 shadow-sm';
-                btn.textContent = `${option.key}. ${option.text}`;
-                btn.setAttribute('data-key', option.key);
-                btn.onclick = () => handleAnswer(option.key, q.correct_answer_key);
-                optionsContainer.appendChild(btn);
-            });
-            
-            updateProgress();
+
+            // Generate options using radio buttons
+            const optionsHtml = optionKeys.map(key => `
+                <label class="option-label block w-full text-left p-3 border-2 border-gray-300 rounded-xl font-medium text-gray-800 transition duration-100 shadow-sm cursor-pointer" data-key="${key}">
+                    <input type="radio" name="question_${q.id}" value="${key}" class="mr-3" onchange="storeAnswer('${q.id}', '${key}')">
+                    <span class="font-bold mr-1">${key}.</span> ${q[`option_${key.toLowerCase()}`] || `(Option ${key} missing)`}
+                </label>
+            `).join('');
+
+            return `
+                <div class="question-item p-5 bg-white rounded-xl shadow-lg border-l-4 border-primary-blue" data-q-id="${q.id}">
+                    <p class="text-lg font-semibold text-primary-blue mb-3">${questionNumber}. ${q.question_text || 'Error: Missing question text.'}</p>
+                    ${q.scenario_reason_text ? `<p class="text-sm italic text-gray-600 mb-4 bg-gray-50 p-2 rounded">Context/Reason: ${q.scenario_reason_text}</p>` : ''}
+                    <div class="options-group space-y-2">
+                        ${optionsHtml}
+                    </div>
+                    <div class="feedback-box mt-3 text-sm font-bold p-2 rounded hidden"></div>
+                </div>
+            `;
         }
-
-        function handleAnswer(selectedKey, correctKey) {
-            if (isAnswered) return;
-            isAnswered = true;
-            nextButton.disabled = false;
-            nextButton.textContent = 'Next Question';
-
-            let isCorrect = (selectedKey === correctKey);
+        
+        // --- Submission Logic ---
+        function submitQuiz() {
+            let finalScore = 0;
             
-            if (isCorrect) {
-                score++;
-            }
+            // Disable submission button while processing
+            submitButton.disabled = true;
+            submitButton.textContent = 'Calculating Score...';
 
-            // Highlight all buttons
-            Array.from(optionsContainer.children).forEach(btn => {
-                const key = btn.getAttribute('data-key');
-                btn.classList.add('disabled'); // Disable all buttons
+            questions.forEach(q => {
+                const questionElement = document.querySelector(`.question-item[data-q-id="${q.id}"]`);
+                const feedbackBox = questionElement.querySelector('.feedback-box');
+                const correctKey = q.correct_answer_key;
+                const selectedKey = selectedAnswers[q.id];
+                let isCorrect = false;
 
-                if (key === correctKey) {
-                    // Correct answer
-                    btn.classList.remove('disabled');
-                    btn.classList.add('correct');
-                    btn.innerHTML += ' &nbsp; (Correct)';
-                } else if (key === selectedKey) {
-                    // User's incorrect answer
-                    btn.classList.remove('disabled');
-                    btn.classList.add('incorrect');
-                    btn.innerHTML += ' &nbsp; (Your Answer)';
+                // Check answer and update score
+                if (selectedKey && selectedKey === correctKey) {
+                    finalScore++;
+                    isCorrect = true;
                 }
+
+                // Highlight options and show feedback
+                const optionLabels = questionElement.querySelectorAll('.option-label');
+                optionLabels.forEach(label => {
+                    const labelKey = label.getAttribute('data-key');
+                    const radioInput = label.querySelector('input');
+                    radioInput.disabled = true; // Disable all inputs after submission
+                    
+                    label.classList.remove('hover:bg-gray-50');
+
+                    if (labelKey === correctKey) {
+                        // Highlight correct answer
+                        label.classList.add('correct', 'shadow-md');
+                        feedbackBox.textContent = isCorrect ? '✅ Correct Answer!' : `✅ Correct answer: ${correctKey}.`;
+                        feedbackBox.classList.add('bg-green-100', 'text-green-700');
+                    } else if (labelKey === selectedKey && !isCorrect) {
+                        // Highlight user's incorrect answer
+                        label.classList.add('incorrect', 'shadow-md');
+                        if (!feedbackBox.textContent) { // Only set feedback if not already set by correct answer
+                            feedbackBox.textContent = `❌ Incorrect. The correct answer is ${correctKey}.`;
+                            feedbackBox.classList.add('bg-red-100', 'text-red-700');
+                        }
+                    }
+                });
+                
+                // Handle unanswered questions
+                if (!selectedKey) {
+                    feedbackBox.textContent = '❓ Unanswered.';
+                    feedbackBox.classList.add('bg-yellow-100', 'text-yellow-700');
+                }
+
+                feedbackBox.classList.remove('hidden');
             });
-        }
 
-        function nextQuestion() {
-            if (!isAnswered) {
-                // This shouldn't happen if the button is disabled, but as a safeguard
-                // Use a temporary visual cue instead of alert()
-                nextButton.textContent = 'Please select an answer first!';
-                setTimeout(() => nextButton.textContent = 'Next Question', 1500);
-                return;
-            }
-
-            currentQuestionIndex++;
-            displayQuestion();
-        }
-
-        function updateProgress() {
-            const total = questions.length;
-            const current = currentQuestionIndex + 1;
-            const percent = (currentQuestionIndex / total) * 100;
-            
-            progressText.textContent = `Question ${current} of ${total} | Score: ${score}`;
-            progressBar.style.width = `${percent}%`;
+            // Show results
+            score = finalScore;
+            // Scroll to the top of the quiz container before showing results screen
+            quizContainer.scrollIntoView({ behavior: 'smooth' });
+            setTimeout(showResults, 1000); 
         }
 
         function showResults() {
             quizContent.classList.add('hidden');
             resultsScreen.classList.remove('hidden');
             scoreDisplay.textContent = `${score} / ${questions.length}`;
-            progressBar.style.width = `100%`; // Ensure progress bar finishes
         }
 
         // Start the quiz when the window loads
@@ -313,3 +321,4 @@
     </script>
 </body>
 </html>
+```eof
