@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Work and Energy Quiz</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Supabase JS is required for data fetching -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-    <!-- Assuming your config.js defines SUPABASE_URL and SUPABASE_ANON_KEY -->
     <script src="../../js/config.js"></script>
     <style>
         /* Custom font and base styling */
@@ -39,12 +37,12 @@
             color: #991b1b !important;
         }
 
-        /* Style for the difficulty selection cards (Template Replication) */
+        /* Style for the difficulty selection cards */
         .difficulty-card {
             transition: all 0.2s;
             cursor: pointer;
-            border: 1px solid #e5e7eb; /* Light border */
-            border-radius: 0.5rem; /* rounded-lg */
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
             padding: 1.5rem;
             display: flex;
@@ -57,14 +55,14 @@
         }
         
         /* Button styles to match the template colors */
-        .btn-simple { background-color: #10b981; } /* Emerald-500 */
-        .btn-simple:hover { background-color: #059669; } /* Emerald-600 */
+        .btn-simple { background-color: #10b981; }
+        .btn-simple:hover { background-color: #059669; }
 
-        .btn-medium { background-color: #f59e0b; } /* Amber-500 */
-        .btn-medium:hover { background-color: #d97706; } /* Amber-600 */
+        .btn-medium { background-color: #f59e0b; }
+        .btn-medium:hover { background-color: #d97706; }
         
-        .btn-advanced { background-color: #ef4444; } /* Red-500 */
-        .btn-advanced:hover { background-color: #dc2626; } /* Red-600 */
+        .btn-advanced { background-color: #ef4444; }
+        .btn-advanced:hover { background-color: #dc2626; }
 
         .submit-sticky {
             position: sticky;
@@ -94,7 +92,7 @@
         </h1>
 
         <div id="status-message" class="text-center p-4 rounded-lg bg-yellow-100 text-yellow-700 font-medium mb-6">
-            Loading quiz configuration...
+            Loading quiz configuration and fetching question counts...
         </div>
 
         <div id="start-screen" class="p-8 bg-white rounded-xl shadow-lg hidden">
@@ -170,7 +168,6 @@
 
     <script>
         // --- Configuration ---
-        // Ensure this table exists in your Supabase project and contains quiz questions
         const SUPABASE_TABLE = 'work_energy'; 
         // ---------------------
 
@@ -178,7 +175,7 @@
         let questions = [];
         let selectedAnswers = {}; 
         let selectedDifficulty = null; 
-        let score = 0; // Initialize score to fix potential errors
+        let score = 0; // Ensures the score variable is initialized
 
         // --- DOM Elements ---
         const statusMessage = document.getElementById('status-message');
@@ -211,9 +208,9 @@
         };
 
 
-        // --- Initialization ---
-        function init() {
-            // Check if global Supabase config variables are available
+        // --- Initialization (MODIFIED to use async/await for connectivity check) ---
+
+        async function init() {
             if (typeof SUPABASE_URL === 'undefined' || typeof SUPABASE_ANON_KEY === 'undefined') {
                 statusMessage.textContent = 'Configuration Error: SUPABASE_URL or SUPABASE_ANON_KEY is undefined. Check "../../js/config.js".';
                 statusMessage.className = 'text-center p-4 rounded-lg bg-red-100 text-red-700 font-medium mb-6';
@@ -221,33 +218,37 @@
             }
 
             try {
-                // Initialize Supabase client
                 supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 
-                // Fetch question counts to update the difficulty cards
-                fetchQuestionCounts(); 
+                statusMessage.textContent = 'Connecting to database and fetching question counts...';
                 
-                // Show the start screen once config is loaded and fetching starts
+                // CRITICAL FIX: AWAIT the question counts fetch to ensure data is loaded before showing the UI
+                await fetchQuestionCounts(); 
+                
+                // ONLY if fetchQuestionCounts succeeds, we hide the status and show the start screen.
                 statusMessage.classList.add('hidden');
                 startScreen.classList.remove('hidden');
 
             } catch (e) {
-                // Display error if client initialization fails
-                statusMessage.textContent = `Error initializing Supabase: ${e.message}`;
+                // If an error occurs in setup or fetching counts, it is caught here.
+                statusMessage.textContent = `Error initializing quiz (Database/Config issue): ${e.message}`;
                 statusMessage.className = 'text-center p-4 rounded-lg bg-red-100 text-red-700 font-medium mb-6';
+                console.error("Initialization Failure:", e.message); // For debugging
             }
         }
         
-        // --- Data Fetching for Start Screen ---
+        // --- Data Fetching for Start Screen (MODIFIED to use async/await) ---
         async function fetchQuestionCounts() {
             const difficulties = ['Simple', 'Medium', 'Advanced'];
             
+            let allCountsSucceeded = true; 
+
             for (const difficulty of difficulties) {
                 try {
                     const { count, error } = await supabaseClient
                         .from(SUPABASE_TABLE)
                         .select('id', { count: 'exact', head: true })
-                        .ilike('difficulty', difficulty); // Case-insensitive match on difficulty
+                        .ilike('difficulty', difficulty); 
 
                     if (error) throw error;
                     
@@ -260,11 +261,17 @@
 
                 } catch (error) {
                     console.error(`Error fetching count for ${difficulty}:`, error);
-                    // Use -- on failure
-                    difficultyElements[difficulty].available.textContent = '--';
-                    difficultyElements[difficulty].starting.textContent = '--';
-                    difficultyElements[difficulty].buttonQs.textContent = '-- Qs';
+                    allCountsSucceeded = false; 
+                    // Display error indicator on the card
+                    difficultyElements[difficulty].available.textContent = 'DB Error';
+                    difficultyElements[difficulty].starting.textContent = 'DB Error';
+                    difficultyElements[difficulty].buttonQs.textContent = '0 Qs';
                 }
+            }
+            
+            if (!allCountsSucceeded) {
+                // Throw an error if any part of the count fetching failed, which init() will catch.
+                throw new Error('Failed to retrieve all question counts from Supabase. Check table name or permissions.');
             }
         }
 
@@ -274,11 +281,12 @@
             selectedDifficulty = difficulty;
             difficultyDisplay.textContent = `Difficulty Selected: ${difficulty}`;
             startScreen.classList.add('hidden');
-            quizContent.classList.remove('hidden');
+            // quizContent.classList.remove('hidden'); // This is done inside fetchQuestions to manage loading state
             fetchQuestions(difficulty);
         }
 
         // --- Data Fetching for Quiz ---
+
         async function fetchQuestions(difficulty) {
             statusMessage.textContent = `Fetching ${difficulty} questions from table '${SUPABASE_TABLE}'...`;
             statusMessage.classList.remove('hidden');
@@ -290,11 +298,9 @@
                     .select('*');
                 
                 if (difficulty) {
-                    // Filter by selected difficulty
                     query = query.ilike('difficulty', difficulty); 
                 }
                 
-                // Order by ID (or any other field)
                 query = query.order('id', { ascending: true }); 
 
                 const { data, error } = await query;
@@ -309,7 +315,7 @@
 
                 questions = data;
                 statusMessage.classList.add('hidden'); 
-                quizContent.classList.remove('hidden');
+                quizContent.classList.remove('hidden'); // Show the content now
                 renderQuestions(); 
                 submitButton.disabled = false;
 
@@ -322,28 +328,24 @@
         
         // --- Answer Storage ---
         function storeAnswer(questionId, selectedKey) {
-            // Stores the selected option key (A, B, C, or D) for a given question ID
             selectedAnswers[questionId] = selectedKey;
         }
 
         // --- Rendering Logic (All questions at once) ---
         function renderQuestions() {
-            questionList.innerHTML = ''; // Clear previous questions
+            questionList.innerHTML = '';
             questions.forEach((q, index) => {
                 const questionHtml = createQuestionHtml(q, index);
                 questionList.innerHTML += questionHtml;
             });
         }
 
-        // Helper function to generate HTML for a single question
         function createQuestionHtml(q, index) {
             const questionNumber = index + 1;
             const optionKeys = ['A', 'B', 'C', 'D'];
 
             const optionsHtml = optionKeys.map(key => {
-                // Safely access option text, using option_a, option_b, etc.
                 const optionText = q[`option_${key.toLowerCase()}`] || `(Option ${key} missing)`;
-                
                 return `
                     <label class="option-label block w-full text-left p-3 border-2 border-gray-300 rounded-xl font-medium text-gray-800 transition duration-100 shadow-sm cursor-pointer" data-key="${key}">
                         <input type="radio" name="question_${q.id}" value="${key}" class="mr-3" onchange="storeAnswer('${q.id}', '${key}')">
@@ -359,7 +361,6 @@
                     <div class="options-group space-y-2">
                         ${optionsHtml}
                     </div>
-                    <!-- Feedback box will be populated after submission -->
                     <div class="feedback-box mt-3 text-sm font-bold p-2 rounded hidden"></div>
                 </div>
             `;
@@ -384,32 +385,27 @@
                     isCorrect = true;
                 }
 
-                // Iterate over all options to apply correct/incorrect styling and disable inputs
                 const optionLabels = questionElement.querySelectorAll('.option-label');
                 optionLabels.forEach(label => {
                     const labelKey = label.getAttribute('data-key');
                     const radioInput = label.querySelector('input');
-                    radioInput.disabled = true; // Disable further changes
+                    radioInput.disabled = true; 
                     
-                    label.classList.remove('hover:bg-gray-50'); // Remove hover effect
+                    label.classList.remove('hover:bg-gray-50');
 
                     if (labelKey === correctKey) {
                         label.classList.add('correct', 'shadow-md');
-                        // Set the primary feedback message to the correct answer label
                         feedbackBox.textContent = isCorrect ? '✅ Correct Answer!' : `✅ Correct answer: ${correctKey}.`;
                         feedbackBox.classList.add('bg-green-100', 'text-green-700');
                     } else if (labelKey === selectedKey && !isCorrect) {
-                        // Highlight the user's incorrect selection
                         label.classList.add('incorrect', 'shadow-md');
-                        if (!feedbackBox.textContent.includes('Correct answer')) { 
-                            // Only set incorrect message if correct message hasn't already been set
+                        if (!feedbackBox.textContent) { 
                             feedbackBox.textContent = `❌ Incorrect. The correct answer is ${correctKey}.`;
                             feedbackBox.classList.add('bg-red-100', 'text-red-700');
                         }
                     }
                 });
                 
-                // Handle unanswered questions
                 if (!selectedKey) {
                     feedbackBox.textContent = '❓ Unanswered.';
                     feedbackBox.classList.add('bg-yellow-100', 'text-yellow-700');
@@ -418,23 +414,18 @@
                 feedbackBox.classList.remove('hidden');
             });
 
-            score = finalScore; // Update the global score variable
-            quizContainer.scrollIntoView({ behavior: 'smooth' }); // Scroll to the top of the container
-            
-            // Wait a moment before showing results for visual effect
+            score = finalScore;
+            quizContainer.scrollIntoView({ behavior: 'smooth' });
             setTimeout(showResults, 1500); 
         }
 
-        // --- Results Logic ---
         function showResults() {
             quizContent.classList.add('hidden');
             resultsScreen.classList.remove('hidden');
             scoreDisplay.textContent = `${score} / ${questions.length}`;
-            // Scroll to top of results screen
-            resultsScreen.scrollIntoView({ behavior: 'smooth' }); 
+            resultsScreen.scrollIntoView({ behavior: 'smooth' });
         }
 
-        // Start the application when the page is fully loaded
         window.onload = init;
     </script>
 </body>
