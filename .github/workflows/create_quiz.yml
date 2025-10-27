@@ -11,7 +11,6 @@ on:
         description: 'Supabase Table Name (e.g., work_energy)'
         required: true
         type: string
-      # Renaming this input internally to be clear about its purpose (filename)
       output_filename:
         description: 'Target HTML Filename (e.g., work_quiz.html)'
         required: true
@@ -21,7 +20,7 @@ jobs:
   create_file:
     runs-on: ubuntu-latest
     
-    # Grants the necessary write access for the commit action (403 fix)
+    # This is the fix for the 403 Forbidden error
     permissions:
       contents: write
     
@@ -37,15 +36,17 @@ jobs:
       - name: 🚀 Run Quiz Creation Script
         id: run_script
         run: |
-          # Pass the arguments using the names the Python script EXPECTS (--title, --table, --output)
+          # The Python script MUST use the output path relative to the repository root.
+          # We force the output path to include the correct subdirectory.
+          # For example: --output "science/physics/work_quiz.html"
           python scripts/create_quiz.py \
             --title "${{ github.event.inputs.chapter_title }}" \
             --table "${{ github.event.inputs.supabase_table }}" \
-            --output "${{ github.event.inputs.output_filename }}"  # <--- FIXED ARGUMENT NAME
+            --output "science/physics/${{ github.event.inputs.output_filename }}" 
 
       - name: 💾 Commit new quiz file
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "🤖 Feat: Add new quiz page for ${{ github.event.inputs.chapter_title }}"
-          # The committed file path must match the expected output location of the Python script
-          file_pattern: "science/physics/${{ github.event.inputs.output_filename }}"
+          # The file pattern is correct IF the python script outputs to this location.
+          file_pattern: "science/physics/${{ github.event.inputs.output_filename }}" 
