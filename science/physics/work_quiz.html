@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Work and Energy</title>
+    <title>Work and Energy Quiz</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS is required for data fetching -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <!-- Assuming your config.js defines SUPABASE_URL and SUPABASE_ANON_KEY -->
     <script src="../../js/config.js"></script>
     <style>
         /* Custom font and base styling */
@@ -25,6 +27,7 @@
             background-color: #f3f4f6;
             border-color: #1a3e6a;
         }
+        /* Visual feedback styles */
         .correct {
             background-color: #d1fae5 !important;
             border-color: #059669 !important;
@@ -54,13 +57,13 @@
         }
         
         /* Button styles to match the template colors */
-        .btn-simple { background-color: #10b981; } /* Emerald-500 (Close to Green in Template) */
+        .btn-simple { background-color: #10b981; } /* Emerald-500 */
         .btn-simple:hover { background-color: #059669; } /* Emerald-600 */
 
-        .btn-medium { background-color: #f59e0b; } /* Amber-500 (Matches Orange/Gold in Template) */
+        .btn-medium { background-color: #f59e0b; } /* Amber-500 */
         .btn-medium:hover { background-color: #d97706; } /* Amber-600 */
         
-        .btn-advanced { background-color: #ef4444; } /* Red-500 (Matches Red in Template) */
+        .btn-advanced { background-color: #ef4444; } /* Red-500 */
         .btn-advanced:hover { background-color: #dc2626; } /* Red-600 */
 
         .submit-sticky {
@@ -87,7 +90,7 @@
     <div id="quiz-container" class="quiz-card bg-white p-6 md:p-10 rounded-xl shadow-2xl border-t-8 border-primary-blue">
         
         <h1 class="text-3xl font-extrabold text-primary-blue mb-4 text-center">
-            Work and Energy
+            Work and Energy Quiz
         </h1>
 
         <div id="status-message" class="text-center p-4 rounded-lg bg-yellow-100 text-yellow-700 font-medium mb-6">
@@ -96,7 +99,7 @@
 
         <div id="start-screen" class="p-8 bg-white rounded-xl shadow-lg hidden">
             <h2 class="text-2xl font-extrabold text-primary-blue mb-8 text-center">
-                Choose Difficulty for Force Chapter
+                Choose Difficulty for Work and Energy
             </h2>
             <div class="space-y-6 md:space-y-0 md:grid md:grid-cols-3 md:gap-6">
                 
@@ -143,7 +146,7 @@
             <p id="difficulty-display" class="text-md font-semibold text-gray-700 mb-6 border-b pb-2"></p>
             
             <div id="question-list" class="space-y-8 mb-8">
-                </div>
+            </div>
 
             <div class="mt-8 submit-sticky bg-white p-4 shadow-2xl rounded-t-xl border-t-2 border-primary-blue">
                 <button id="submit-button" onclick="submitQuiz()"
@@ -167,6 +170,7 @@
 
     <script>
         // --- Configuration ---
+        // Ensure this table exists in your Supabase project and contains quiz questions
         const SUPABASE_TABLE = 'work_energy'; 
         // ---------------------
 
@@ -174,6 +178,7 @@
         let questions = [];
         let selectedAnswers = {}; 
         let selectedDifficulty = null; 
+        let score = 0; // Initialize score to fix potential errors
 
         // --- DOM Elements ---
         const statusMessage = document.getElementById('status-message');
@@ -207,8 +212,8 @@
 
 
         // --- Initialization ---
-
         function init() {
+            // Check if global Supabase config variables are available
             if (typeof SUPABASE_URL === 'undefined' || typeof SUPABASE_ANON_KEY === 'undefined') {
                 statusMessage.textContent = 'Configuration Error: SUPABASE_URL or SUPABASE_ANON_KEY is undefined. Check "../../js/config.js".';
                 statusMessage.className = 'text-center p-4 rounded-lg bg-red-100 text-red-700 font-medium mb-6';
@@ -216,22 +221,24 @@
             }
 
             try {
+                // Initialize Supabase client
                 supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 
-                // Fetch question counts to update the cards like the template
+                // Fetch question counts to update the difficulty cards
                 fetchQuestionCounts(); 
                 
+                // Show the start screen once config is loaded and fetching starts
                 statusMessage.classList.add('hidden');
                 startScreen.classList.remove('hidden');
 
             } catch (e) {
+                // Display error if client initialization fails
                 statusMessage.textContent = `Error initializing Supabase: ${e.message}`;
                 statusMessage.className = 'text-center p-4 rounded-lg bg-red-100 text-red-700 font-medium mb-6';
             }
         }
         
         // --- Data Fetching for Start Screen ---
-        // This function dynamically gets the count for each difficulty level
         async function fetchQuestionCounts() {
             const difficulties = ['Simple', 'Medium', 'Advanced'];
             
@@ -240,7 +247,7 @@
                     const { count, error } = await supabaseClient
                         .from(SUPABASE_TABLE)
                         .select('id', { count: 'exact', head: true })
-                        .ilike('difficulty', difficulty); 
+                        .ilike('difficulty', difficulty); // Case-insensitive match on difficulty
 
                     if (error) throw error;
                     
@@ -272,7 +279,6 @@
         }
 
         // --- Data Fetching for Quiz ---
-
         async function fetchQuestions(difficulty) {
             statusMessage.textContent = `Fetching ${difficulty} questions from table '${SUPABASE_TABLE}'...`;
             statusMessage.classList.remove('hidden');
@@ -284,9 +290,11 @@
                     .select('*');
                 
                 if (difficulty) {
+                    // Filter by selected difficulty
                     query = query.ilike('difficulty', difficulty); 
                 }
                 
+                // Order by ID (or any other field)
                 query = query.order('id', { ascending: true }); 
 
                 const { data, error } = await query;
@@ -314,28 +322,35 @@
         
         // --- Answer Storage ---
         function storeAnswer(questionId, selectedKey) {
+            // Stores the selected option key (A, B, C, or D) for a given question ID
             selectedAnswers[questionId] = selectedKey;
         }
 
         // --- Rendering Logic (All questions at once) ---
         function renderQuestions() {
-            questionList.innerHTML = '';
+            questionList.innerHTML = ''; // Clear previous questions
             questions.forEach((q, index) => {
                 const questionHtml = createQuestionHtml(q, index);
                 questionList.innerHTML += questionHtml;
             });
         }
 
+        // Helper function to generate HTML for a single question
         function createQuestionHtml(q, index) {
             const questionNumber = index + 1;
             const optionKeys = ['A', 'B', 'C', 'D'];
 
-            const optionsHtml = optionKeys.map(key => `
-                <label class="option-label block w-full text-left p-3 border-2 border-gray-300 rounded-xl font-medium text-gray-800 transition duration-100 shadow-sm cursor-pointer" data-key="${key}">
-                    <input type="radio" name="question_${q.id}" value="${key}" class="mr-3" onchange="storeAnswer('${q.id}', '${key}')">
-                    <span class="font-bold mr-1">${key}.</span> ${q[`option_${key.toLowerCase()}`] || `(Option ${key} missing)`}
-                </label>
-            `).join('');
+            const optionsHtml = optionKeys.map(key => {
+                // Safely access option text, using option_a, option_b, etc.
+                const optionText = q[`option_${key.toLowerCase()}`] || `(Option ${key} missing)`;
+                
+                return `
+                    <label class="option-label block w-full text-left p-3 border-2 border-gray-300 rounded-xl font-medium text-gray-800 transition duration-100 shadow-sm cursor-pointer" data-key="${key}">
+                        <input type="radio" name="question_${q.id}" value="${key}" class="mr-3" onchange="storeAnswer('${q.id}', '${key}')">
+                        <span class="font-bold mr-1">${key}.</span> ${optionText}
+                    </label>
+                `;
+            }).join('');
 
             return `
                 <div class="question-item p-5 bg-white rounded-xl shadow-lg border-l-4 border-primary-blue" data-q-id="${q.id}">
@@ -344,6 +359,7 @@
                     <div class="options-group space-y-2">
                         ${optionsHtml}
                     </div>
+                    <!-- Feedback box will be populated after submission -->
                     <div class="feedback-box mt-3 text-sm font-bold p-2 rounded hidden"></div>
                 </div>
             `;
@@ -368,27 +384,32 @@
                     isCorrect = true;
                 }
 
+                // Iterate over all options to apply correct/incorrect styling and disable inputs
                 const optionLabels = questionElement.querySelectorAll('.option-label');
                 optionLabels.forEach(label => {
                     const labelKey = label.getAttribute('data-key');
                     const radioInput = label.querySelector('input');
-                    radioInput.disabled = true; 
+                    radioInput.disabled = true; // Disable further changes
                     
-                    label.classList.remove('hover:bg-gray-50');
+                    label.classList.remove('hover:bg-gray-50'); // Remove hover effect
 
                     if (labelKey === correctKey) {
                         label.classList.add('correct', 'shadow-md');
+                        // Set the primary feedback message to the correct answer label
                         feedbackBox.textContent = isCorrect ? '✅ Correct Answer!' : `✅ Correct answer: ${correctKey}.`;
                         feedbackBox.classList.add('bg-green-100', 'text-green-700');
                     } else if (labelKey === selectedKey && !isCorrect) {
+                        // Highlight the user's incorrect selection
                         label.classList.add('incorrect', 'shadow-md');
-                        if (!feedbackBox.textContent) { 
+                        if (!feedbackBox.textContent.includes('Correct answer')) { 
+                            // Only set incorrect message if correct message hasn't already been set
                             feedbackBox.textContent = `❌ Incorrect. The correct answer is ${correctKey}.`;
                             feedbackBox.classList.add('bg-red-100', 'text-red-700');
                         }
                     }
                 });
                 
+                // Handle unanswered questions
                 if (!selectedKey) {
                     feedbackBox.textContent = '❓ Unanswered.';
                     feedbackBox.classList.add('bg-yellow-100', 'text-yellow-700');
@@ -397,17 +418,23 @@
                 feedbackBox.classList.remove('hidden');
             });
 
-            score = finalScore;
-            quizContainer.scrollIntoView({ behavior: 'smooth' });
-            setTimeout(showResults, 1000); 
+            score = finalScore; // Update the global score variable
+            quizContainer.scrollIntoView({ behavior: 'smooth' }); // Scroll to the top of the container
+            
+            // Wait a moment before showing results for visual effect
+            setTimeout(showResults, 1500); 
         }
 
+        // --- Results Logic ---
         function showResults() {
             quizContent.classList.add('hidden');
             resultsScreen.classList.remove('hidden');
             scoreDisplay.textContent = `${score} / ${questions.length}`;
+            // Scroll to top of results screen
+            resultsScreen.scrollIntoView({ behavior: 'smooth' }); 
         }
 
+        // Start the application when the page is fully loaded
         window.onload = init;
     </script>
 </body>
