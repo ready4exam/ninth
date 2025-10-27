@@ -1,19 +1,18 @@
 name: 🧩 Create New Quiz Chapter File
 
-# Allows manual triggering from the GitHub Actions UI
 on:
   workflow_dispatch:
     inputs:
       chapter_title:
-        description: 'Quiz Title (e.g., Force and Laws of Motion Quiz)'
+        description: 'Quiz Title (e.g., Work and Energy Quiz)'
         required: true
         type: string
       supabase_table:
-        description: 'Supabase Table Name (e.g., force)'
+        description: 'Supabase Table Name (e.g., work_energy)'
         required: true
         type: string
       output_filename:
-        description: 'Target HTML Filename (e.g., force_quiz.html)'
+        description: 'Target HTML Filename (e.g., work_quiz.html)'
         required: true
         type: string
 
@@ -21,11 +20,10 @@ jobs:
   create_file:
     runs-on: ubuntu-latest
     
-    # *** FIX: ADDED WRITE PERMISSIONS HERE ***
+    # FIX: Grants the necessary write access for the commit action (403 fix)
     permissions:
       contents: write
-    # *****************************************
-
+    
     steps:
       - name: 🛎️ Checkout code
         uses: actions/checkout@v4
@@ -35,86 +33,18 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: 🛠️ Setup script directory and create quiz file
-        id: create_quiz_file
+      - name: 🚀 Run Quiz Creation Script
+        id: run_script  # Give the step an ID to reference the output file path (if needed)
         run: |
-          mkdir -p scripts
-          # Inject variables into a temporary Python script
-          cat > scripts/create_quiz.py << 'EOF'
-import os
-import argparse
-import shutil
-from pathlib import Path
-
-# --- Configuration: Base template variables (from force_quiz.html) ---
-OLD_TITLE = "Force and Laws of Motion Quiz"
-OLD_TABLE = "force"
-# --- # ---
-
-def create_quiz_file(template_path, target_dir, new_title, new_table, new_filename):
-    """Reads template, performs find/replace, and writes the new file."""
-
-    try:
-        with open(template_path, "r") as f:
-            content = f.read()
-    except FileNotFoundError:
-        print(f"Error: Template file not found at {template_path}")
-        return
-
-    # 1. Replace Main Title
-    new_content = content.replace(OLD_TITLE, new_title)
-
-    # 2. Replace Supabase Table Name
-    new_content = new_content.replace(OLD_TABLE, new_table)
-    
-    # Create target directory if it doesn't exist
-    Path(target_dir).mkdir(parents=True, exist_ok=True)
-
-    # Define the final path for the new file
-    output_path = Path(target_dir) / new_filename
-    
-    # 3. Write the new content to the specified file
-    try:
-        with open(output_path, "w") as f:
-            f.write(new_content)
-        print(f"Successfully created: {output_path}")
-    except Exception as e:
-        print(f"Error writing file: {e}")
-        
-    # Set output for git-auto-commit-action
-    print(f"::set-output name=filepath::{output_path}")
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Generate a new quiz HTML file from a template.')
-    parser.add_argument('--title', required=True, help='New title for the quiz.')
-    parser.add_argument('--table', required=True, help='New Supabase table name.')
-    parser.add_argument('--filename', required=True, help='Output HTML filename.')
-    
-    args = parser.parse_args()
-
-    # Assuming the template is located at 'science/physics/force_quiz.html'
-    template_file = 'science/physics/force_quiz.html' 
-    target_directory = 'science/physics' # Target directory for the new file
-
-    create_quiz_file(
-        template_path=template_file,
-        target_dir=target_directory,
-        new_title=args.title,
-        new_table=args.table,
-        new_filename=args.filename
-    )
-
-EOF
-          # Run the Python script with inputs from the workflow dispatch
+          # The script is assumed to be committed in 'scripts/create_quiz.py'
           python scripts/create_quiz.py \
             --title "${{ github.event.inputs.chapter_title }}" \
             --table "${{ github.event.inputs.supabase_table }}" \
             --filename "${{ github.event.inputs.output_filename }}"
-          
+
       - name: 💾 Commit new quiz file
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "🤖 Feat: Add new quiz page for ${{ github.event.inputs.chapter_title }}"
-          # The file to commit is outputted by the previous step
-          files: ${{ steps.create_quiz_file.outputs.filepath }}
+          # The file to commit is derived from the target path used in the Python script
+          file_pattern: "science/physics/${{ github.event.inputs.output_filename }}"
