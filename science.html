@@ -160,7 +160,6 @@
         </div>
     </div>
     
-    <!-- Custom Message Modal (Replaces all alert() calls) -->
     <div id="message-modal" class="modal-overlay hidden">
         <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full relative">
             <h3 id="message-title" class="text-xl font-bold text-cbse-blue mb-2">Notice</h3>
@@ -302,7 +301,7 @@
         const quizLinkMap = {
             '7. Motion': './science/physics/motion_quiz.html',
             '8. Force and Laws of Motion': './science/physics/force_quiz.html',
-            '9. Gravitation': './science/physics/gravitation_quiz.html', // Fixed: Added the missing link for Gravitation
+            '9. Gravitation': './science/physics/gravitation_quiz.html', // Corrected path to match other Physics quizzes
             '10. Work and Energy': './science/physics/work_quiz.html',
             '5. The Fundamental Unit of Life': './quizzes/science/biology/cell/cell_quiz.html',
             '2. Is Matter Around Us Pure': './quizzes/science/chemistry/pure/pure_quiz.html',
@@ -313,8 +312,6 @@
         
         const bookData = {
             'Physics': [
-                // Note: '9. Gravitation' is added here to ensure the UI shows it, 
-                // but its quiz link must be dynamically added by the workflow.
                 { unit: 'UNIT I: Motion & Force', chapters: ['7. Motion', '8. Force and Laws of Motion', '9. Gravitation'] },
                 { unit: 'UNIT II: Work & Sound', chapters: ['10. Work and Energy', '11. Sound'] },
             ],
