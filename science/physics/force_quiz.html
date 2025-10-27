@@ -11,7 +11,7 @@
         /* Custom font and base styling */
         body { font-family: 'Inter', sans-serif; }
         .quiz-card {
-            max-width: 800px; /* Increased max width for single-page layout */
+            max-width: 800px; 
             margin: 2rem auto;
             min-height: 80vh;
             display: flex;
@@ -25,6 +25,7 @@
             background-color: #f3f4f6;
             border-color: #1a3e6a;
         }
+        /* Formatting for correct/incorrect answers */
         .correct {
             background-color: #d1fae5 !important;
             border-color: #059669 !important;
@@ -35,13 +36,23 @@
             border-color: #dc2626 !important;
             color: #991b1b !important;
         }
-        .difficulty-btn {
+        /* Formatting for difficulty selection cards (Template Replication) */
+        .difficulty-card {
             transition: all 0.2s;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            cursor: pointer;
+            border-left-width: 8px; 
         }
-        .difficulty-btn:hover {
+        .difficulty-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .diff-simple { border-left-color: #34d399; } /* Green-400 */
+        .diff-medium { border-left-color: #fbbf24; } /* Amber-400 */
+        .diff-advanced { border-left-color: #ef4444; } /* Red-500 */
+        .submit-sticky {
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
         }
     </style>
     <script>
@@ -73,17 +84,35 @@
         </div>
 
         <div id="start-screen" class="text-center p-8 bg-white rounded-xl shadow-lg hidden">
-            <h2 class="text-2xl font-bold text-primary-blue mb-6">Select Difficulty Level</h2>
-            <div class="space-y-4">
-                <button onclick="startQuiz('Simple')" class="difficulty-btn w-full px-6 py-3 text-lg font-bold text-white bg-green-600 rounded-lg hover:bg-green-700 transition duration-150">
-                    Simple
-                </button>
-                <button onclick="startQuiz('Medium')" class="difficulty-btn w-full px-6 py-3 text-lg font-bold text-white bg-yellow-600 rounded-lg hover:bg-yellow-700 transition duration-150">
-                    Medium
-                </button>
-                <button onclick="startQuiz('Advanced')" class="difficulty-btn w-full px-6 py-3 text-lg font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 transition duration-150">
-                    Advanced
-                </button>
+            <h2 class="text-2xl font-bold text-primary-blue mb-8">Select Difficulty Level</h2>
+            <div class="space-y-6 md:space-y-0 md:grid md:grid-cols-3 md:gap-6">
+                
+                <div onclick="startQuiz('Simple')" class="difficulty-card p-5 bg-white rounded-lg shadow-lg diff-simple border-l-8 hover:shadow-xl">
+                    <p class="text-xl font-bold text-green-600 mb-2">Simple</p>
+                    <p class="text-gray-600 text-sm">Focus on definitions and basic laws.</p>
+                    <div class="mt-4 text-xs text-gray-500">
+                        <p>⏱️ Approx. 5-7 Questions</p>
+                        <p>🧠 Low Complexity</p>
+                    </div>
+                </div>
+
+                <div onclick="startQuiz('Medium')" class="difficulty-card p-5 bg-white rounded-lg shadow-lg diff-medium border-l-8 hover:shadow-xl">
+                    <p class="text-xl font-bold text-yellow-600 mb-2">Medium</p>
+                    <p class="text-gray-600 text-sm">Requires application of formulas and concepts.</p>
+                    <div class="mt-4 text-xs text-gray-500">
+                        <p>⏱️ Approx. 8-10 Questions</p>
+                        <p>🧠 Moderate Complexity</p>
+                    </div>
+                </div>
+
+                <div onclick="startQuiz('Advanced')" class="difficulty-card p-5 bg-white rounded-lg shadow-lg diff-advanced border-l-8 hover:shadow-xl">
+                    <p class="text-xl font-bold text-red-600 mb-2">Advanced</p>
+                    <p class="text-gray-600 text-sm">Challenging numerical problems and scenarios.</p>
+                    <div class="mt-4 text-xs text-gray-500">
+                        <p>⏱️ Approx. 10+ Questions</p>
+                        <p>🧠 High Complexity</p>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -94,7 +123,7 @@
             <div id="question-list" class="space-y-8 mb-8">
                 </div>
 
-            <div class="mt-8 sticky bottom-0 bg-white p-4 shadow-2xl rounded-t-xl border-t-2 border-primary-blue">
+            <div class="mt-8 submit-sticky bg-white p-4 shadow-2xl rounded-t-xl border-t-2 border-primary-blue">
                 <button id="submit-button" onclick="submitQuiz()"
                         class="w-full px-6 py-3 text-lg font-bold text-white bg-primary-blue rounded-lg shadow-md hover:bg-blue-800 transition duration-150">
                     Submit Quiz
@@ -122,7 +151,7 @@
 
         let supabaseClient;
         let questions = [];
-        let selectedAnswers = {}; // { qId: 'A' }
+        let selectedAnswers = {}; 
         let selectedDifficulty = null; 
 
         // --- DOM Elements ---
@@ -151,7 +180,6 @@
                 // Accessing the globally defined variables
                 supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 
-                // Show start screen (assuming this is the intended initial state)
                 statusMessage.classList.add('hidden');
                 startScreen.classList.remove('hidden');
 
@@ -181,12 +209,10 @@
                     .from(SUPABASE_TABLE)
                     .select('*');
                 
-                // Filter by difficulty (case-insensitive equality)
                 if (difficulty) {
                     query = query.ilike('difficulty', difficulty); 
                 }
                 
-                // Order by ID for consistent display
                 query = query.order('id', { ascending: true }); 
 
                 const { data, error } = await query;
@@ -194,14 +220,14 @@
                 if (error) throw error;
 
                 if (data.length === 0) {
-                    statusMessage.textContent = `No ${difficulty} questions found in table '${SUPABASE_TABLE}'. Please upload data using the CSV Uploader.`;
+                    statusMessage.textContent = `No ${difficulty} questions found in table '${SUPABASE_TABLE}'. Please upload data.`;
                     statusMessage.className = 'text-center p-4 rounded-lg bg-yellow-100 text-yellow-700 font-medium mb-6';
                     return;
                 }
 
                 questions = data;
-                statusMessage.classList.add('hidden'); // Hide status on success
-                renderQuestions(); // Render all questions
+                statusMessage.classList.add('hidden'); 
+                renderQuestions(); 
                 submitButton.disabled = false;
 
             } catch (error) {
@@ -229,7 +255,6 @@
             const questionNumber = index + 1;
             const optionKeys = ['A', 'B', 'C', 'D'];
 
-            // Generate options using radio buttons
             const optionsHtml = optionKeys.map(key => `
                 <label class="option-label block w-full text-left p-3 border-2 border-gray-300 rounded-xl font-medium text-gray-800 transition duration-100 shadow-sm cursor-pointer" data-key="${key}">
                     <input type="radio" name="question_${q.id}" value="${key}" class="mr-3" onchange="storeAnswer('${q.id}', '${key}')">
@@ -253,7 +278,6 @@
         function submitQuiz() {
             let finalScore = 0;
             
-            // Disable submission button while processing
             submitButton.disabled = true;
             submitButton.textContent = 'Calculating Score...';
 
@@ -264,37 +288,32 @@
                 const selectedKey = selectedAnswers[q.id];
                 let isCorrect = false;
 
-                // Check answer and update score
                 if (selectedKey && selectedKey === correctKey) {
                     finalScore++;
                     isCorrect = true;
                 }
 
-                // Highlight options and show feedback
                 const optionLabels = questionElement.querySelectorAll('.option-label');
                 optionLabels.forEach(label => {
                     const labelKey = label.getAttribute('data-key');
                     const radioInput = label.querySelector('input');
-                    radioInput.disabled = true; // Disable all inputs after submission
+                    radioInput.disabled = true; 
                     
                     label.classList.remove('hover:bg-gray-50');
 
                     if (labelKey === correctKey) {
-                        // Highlight correct answer
                         label.classList.add('correct', 'shadow-md');
                         feedbackBox.textContent = isCorrect ? '✅ Correct Answer!' : `✅ Correct answer: ${correctKey}.`;
                         feedbackBox.classList.add('bg-green-100', 'text-green-700');
                     } else if (labelKey === selectedKey && !isCorrect) {
-                        // Highlight user's incorrect answer
                         label.classList.add('incorrect', 'shadow-md');
-                        if (!feedbackBox.textContent) { // Only set feedback if not already set by correct answer
+                        if (!feedbackBox.textContent) { 
                             feedbackBox.textContent = `❌ Incorrect. The correct answer is ${correctKey}.`;
                             feedbackBox.classList.add('bg-red-100', 'text-red-700');
                         }
                     }
                 });
                 
-                // Handle unanswered questions
                 if (!selectedKey) {
                     feedbackBox.textContent = '❓ Unanswered.';
                     feedbackBox.classList.add('bg-yellow-100', 'text-yellow-700');
@@ -303,9 +322,7 @@
                 feedbackBox.classList.remove('hidden');
             });
 
-            // Show results
             score = finalScore;
-            // Scroll to the top of the quiz container before showing results screen
             quizContainer.scrollIntoView({ behavior: 'smooth' });
             setTimeout(showResults, 1000); 
         }
@@ -316,9 +333,7 @@
             scoreDisplay.textContent = `${score} / ${questions.length}`;
         }
 
-        // Start the quiz when the window loads
         window.onload = init;
     </script>
 </body>
 </html>
-```eof
