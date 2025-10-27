@@ -11,6 +11,7 @@ on:
         description: 'Supabase Table Name (e.g., work_energy)'
         required: true
         type: string
+      # Renaming this input internally to be clear about its purpose (filename)
       output_filename:
         description: 'Target HTML Filename (e.g., work_quiz.html)'
         required: true
@@ -20,7 +21,7 @@ jobs:
   create_file:
     runs-on: ubuntu-latest
     
-    # FIX: Grants the necessary write access for the commit action (403 fix)
+    # Grants the necessary write access for the commit action (403 fix)
     permissions:
       contents: write
     
@@ -34,17 +35,17 @@ jobs:
           python-version: '3.x'
 
       - name: 🚀 Run Quiz Creation Script
-        id: run_script  # Give the step an ID to reference the output file path (if needed)
+        id: run_script
         run: |
-          # The script is assumed to be committed in 'scripts/create_quiz.py'
+          # Pass the arguments using the names the Python script EXPECTS (--title, --table, --output)
           python scripts/create_quiz.py \
             --title "${{ github.event.inputs.chapter_title }}" \
             --table "${{ github.event.inputs.supabase_table }}" \
-            --filename "${{ github.event.inputs.output_filename }}"
+            --output "${{ github.event.inputs.output_filename }}"  # <--- FIXED ARGUMENT NAME
 
       - name: 💾 Commit new quiz file
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "🤖 Feat: Add new quiz page for ${{ github.event.inputs.chapter_title }}"
-          # The file to commit is derived from the target path used in the Python script
+          # The committed file path must match the expected output location of the Python script
           file_pattern: "science/physics/${{ github.event.inputs.output_filename }}"
