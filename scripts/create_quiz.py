@@ -7,7 +7,7 @@ OLD_TITLE = "Force and Laws of Motion Quiz"
 OLD_TABLE = "force" 
 # ---
 
-def create_quiz_file(template_path, target_dir, new_title, new_table, new_filename):
+def create_quiz_file(template_path, new_title, new_table, output_path):
     """Reads template, performs find/replace, and writes the new file."""
     
     try:
@@ -31,7 +31,7 @@ def create_quiz_file(template_path, target_dir, new_title, new_table, new_filena
 
 
     # 4. Write New File
-    output_path = os.path.join(target_dir, new_filename)
+    target_dir = os.path.dirname(output_path)
     # Ensure the target directory exists before writing
     os.makedirs(target_dir, exist_ok=True)
     
@@ -46,14 +46,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Automate creation of new chapter quiz files from a template.")
     parser.add_argument('--title', required=True, help="New chapter title")
     parser.add_argument('--table', required=True, help="New Supabase table name")
-    parser.add_argument('--output', required=True, help="New HTML file name")
+    parser.add_argument('--output', required=True, help="New HTML file's full relative path (e.g., science/physics/quiz.html)")
     
     args = parser.parse_args()
 
     # Define paths based on your repository structure
-    # The file system shows motion_quiz.html and force_quiz.html are siblings.
-    # We will use force_quiz.html as the template since it was the perfect replica.
+    # We use force_quiz.html as the template since it was the perfect replica.
     TEMPLATE_PATH = 'science/physics/force_quiz.html'
-    TARGET_DIR = 'science/physics'
     
-    create_quiz_file(TEMPLATE_PATH, TARGET_DIR, args.title, args.table, args.output)
+    # args.output is now treated as the full path to the new file (e.g., science/physics/sound_quiz.html)
+    create_quiz_file(TEMPLATE_PATH, args.title, args.table, args.output)
