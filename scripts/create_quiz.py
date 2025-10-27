@@ -1,51 +1,65 @@
-# ... (imports and other functions)
+import argparse
+import pathlib # <-- CRUCIAL IMPORT for using pathlib.Path
+import shutil
+import re
 
-def create_quiz_file(template_path, target_dir, new_title, new_table, filename):
+# --- Configuration: Base template variables ---
+# These are the strings the script will look for and replace in the template file.
+OLD_TITLE = "Force and Laws of Motion Quiz"
+OLD_TABLE = "force"
+TEMPLATE_PATH = 'science/physics/force_quiz.html' 
+TARGET_DIR = 'science/physics'
+
+def create_quiz_file(new_title, new_table, filename):
     """
-    Reads template, performs find/replace, and writes the new file.
+    Reads a template, performs text replacements for title and table, 
+    and writes the new HTML file to the target directory.
     """
-    # 1. Ensure the filename ends with .html
-    if not filename.lower().endswith('.html'):
-        filename = f"{filename}.html"
+    try:
+        # 1. Ensure the filename ends with .html
+        if not filename.lower().endswith('.html'):
+            filename = f"{filename}.html"
+            
+        # 2. Determine the full output path (This should fix line 34)
+        output_path = pathlib.Path(TARGET_DIR) / filename
         
-    output_path = pathlib.Path(target_dir) / filename
-    
-    # ... (rest of your file creation logic using output_path)
-    
-# ... (rest of the script including argparse)
+        # 3. Read the template content
+        with open(TEMPLATE_PATH, "r") as f:
+            content = f.read()
+        
+        # 4. Perform replacements
+        # Replace the human-readable title
+        content = content.replace(OLD_TITLE, new_title)
+        
+        # Replace the Firestore table name (used in the JavaScript)
+        # Using re.escape in case table names contain special regex characters
+        content = re.sub(re.escape(OLD_TABLE), new_table, content)
+        
+        # 5. Write the new file
+        output_path.parent.mkdir(parents=True, exist_ok=True) # Ensure directory exists
+        with open(output_path, "w") as f:
+            f.write(content)
+            
+        print(f"Successfully created new quiz file: {output_path}")
+
+    except FileNotFoundError:
+        print(f"Error: Template file not found at ({TEMPLATE_PATH})")
+        return
+    except Exception as e:
+        print(f"An unexpected error occurred during file creation: {e}")
+        return
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate a new quiz HTML file from a template.")
-    parser.add_argument("--title", required=True, help="New title for the quiz.")
-    parser.add_argument("--table", required=True, help="Firestore table name for the quiz data.")
-    parser.add_argument("--output", required=True, help="Output filename (e.g., 'gravitation_quiz').")
+    parser.add_argument("--title", required=True, help="New title for the quiz (e.g., '9. Gravitation').")
+    parser.add_argument("--table", required=True, help="Firestore table name (e.g., 'gravitation').")
+    parser.add_argument("--output", required=True, help="Output filename base (e.g., 'gravitation_quiz').")
     
     args = parser.parse_args()
     
-    template = 'science/physics/force_quiz.html' # Assuming this is your template
-    target = 'science/physics' # Assuming this is the target directory
-    
+    # Assuming all necessary files exist and paths are correct.
     create_quiz_file(
-        template_path=template, 
-        target_dir=target, 
         new_title=args.title, 
         new_table=args.table,
-        filename=args.output  # The script will now add .html if missing
+        filename=args.output
     )
-```
-
----
-
-#### 2. The GitHub Actions Workflow (`.github/workflows/create_quiz.yml`)
-
-The YAML file is what actually runs the Python script and passes the arguments. You need to ensure the **`--output`** value you pass is just the base name, and rely on the updated Python script to add the extension.
-
-**In your workflow file (e.g., where you run the step named "Run Quiz Creation Script"):**
-
-```yaml
-# Hypothetical YAML structure
-- name: Run Quiz Creation Script
-  run: |
-    python scripts/create_quiz.py \
-      --title "9. Gravitation" \
-      --table "gravitation" \
-      --output "gravitation_quiz" # <--- Pass ONLY the base name here
