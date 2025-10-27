@@ -1,19 +1,18 @@
 name: 🧩 Create New Quiz Chapter File
 
 on:
-  # This makes the workflow runnable manually from the GitHub Actions UI
   workflow_dispatch:
     inputs:
       chapter_title:
-        description: 'New chapter title (e.g., "Work and Energy Quiz")'
+        description: 'New chapter title (e.g., "Electricity Quiz")'
         required: true
         default: 'New Chapter Quiz'
       supabase_table:
-        description: 'Lowercase Supabase table name (e.g., work_energy)'
+        description: 'Lowercase Supabase table name (e.g., electricity)'
         required: true
         default: 'new_table'
       file_name:
-        description: 'New HTML file name (e.g., work_energy_quiz.html)'
+        description: 'New HTML file name (e.g., electricity_quiz.html)'
         required: true
         default: 'new_quiz.html'
 
@@ -29,71 +28,8 @@ jobs:
         with:
           python-version: '3.x'
 
-      # The Python script needs to be runnable, so we create it here temporarily.
-      # Ideally, you'd commit this to scripts/create_quiz.py separately.
-      - name: 📝 Create Quiz Automation Script
-        run: |
-          mkdir -p scripts
-          cat > scripts/create_quiz.py << 'EOF'
-import argparse
-import os
-
-# --- Configuration: Base template variables (from force_quiz.html) ---
-OLD_TITLE = "Force and Laws of Motion Quiz" 
-OLD_TABLE = "force" 
-# ---
-
-def create_quiz_file(template_path, target_dir, new_title, new_table, new_filename):
-    """Reads template, performs find/replace, and writes the new file."""
-    
-    try:
-        with open(template_path, 'r') as f:
-            content = f.read()
-    except FileNotFoundError:
-        print(f"Error: Template file not found at {template_path}")
-        return
-
-    # 1. Replace Main Title
-    new_content = content.replace(OLD_TITLE, new_title)
-    
-    # 2. Replace Supabase Table Name
-    new_content = new_content.replace(f"const SUPABASE_TABLE = '{OLD_TABLE}';", f"const SUPABASE_TABLE = '{new_table}';")
-    
-    # 3. Replace Difficulty Selector Heading (e.g., "Choose Difficulty for Force Chapter")
-    old_chapter_name = OLD_TITLE.replace(" Quiz", "")
-    new_chapter_name = new_title.replace(" Quiz", "")
-    new_content = new_content.replace(f"Choose Difficulty for {old_chapter_name} Chapter", f"Choose Difficulty for {new_chapter_name} Chapter")
-
-
-    # 4. Write New File
-    output_path = os.path.join(target_dir, new_filename)
-    # Ensure the target directory exists before writing
-    os.makedirs(target_dir, exist_ok=True)
-    
-    try:
-        with open(output_path, 'w') as f:
-            f.write(new_content)
-        print(f"Successfully created: {output_path}")
-    except Exception as e:
-        print(f"Error writing file: {e}")
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Automate creation of new chapter quiz files from a template.")
-    parser.add_argument('--title', required=True, help="New chapter title")
-    parser.add_argument('--table', required=True, help="New Supabase table name")
-    parser.add_argument('--output', required=True, help="New HTML file name")
-    
-    args = parser.parse_args()
-
-    # Define paths based on your repository structure
-    template_path = 'science/physics/force_quiz.html' # NOTE: We use force_quiz as the template since it is the confirmed perfect replica
-    target_dir = 'science/physics'
-    
-    create_quiz_file(template_path, target_dir, args.title, args.table, args.output)
-
-'EOF'
-
       - name: 🚀 Run Quiz Creation Script
+        # Call the script directly from the scripts directory
         run: |
           python scripts/create_quiz.py \
             --title "${{ github.event.inputs.chapter_title }}" \
