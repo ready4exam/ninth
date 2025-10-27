@@ -159,6 +159,15 @@
             <p id="error-message" class="mt-4 text-center text-red-500 font-medium"></p>
         </div>
     </div>
+    
+    <!-- Custom Message Modal (Replaces all alert() calls) -->
+    <div id="message-modal" class="modal-overlay hidden">
+        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full relative">
+            <h3 id="message-title" class="text-xl font-bold text-cbse-blue mb-2">Notice</h3>
+            <p id="message-body" class="text-gray-700 mb-4"></p>
+            <button id="close-message-btn" class="w-full bg-cbse-blue text-white font-semibold py-2 rounded-lg hover:bg-cbse-blue/90 transition">Close</button>
+        </div>
+    </div>
 
     <footer class="bg-cbse-blue mt-12 py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
@@ -199,6 +208,24 @@
         const closeModalBtn = document.getElementById('close-modal-btn');
         const headerHomeBtn = document.getElementById('header-home-btn');
         const googleSignInBtn = document.getElementById('google-sign-in-btn'); 
+        
+        // Custom Message Modal Elements
+        const messageModal = document.getElementById('message-modal');
+        const messageTitle = document.getElementById('message-title');
+        const messageBody = document.getElementById('message-body');
+        const closeMessageBtn = document.getElementById('close-message-btn');
+
+
+        // --- GENERIC MESSAGE/MODAL FUNCTIONS (Replaces alert()) ---
+        function displayMessageModal(title, body) {
+            messageTitle.textContent = title;
+            messageBody.textContent = body;
+            messageModal.classList.remove('hidden');
+        }
+
+        closeMessageBtn.addEventListener('click', () => {
+            messageModal.classList.add('hidden');
+        });
 
         // --- AUTH/MODAL FUNCTIONS ---
 
@@ -232,7 +259,7 @@
             try {
                 await auth.signInWithPopup(provider);
                 hideAuthModal(); 
-                alert("Login successful! You can now access the quizzes."); 
+                displayMessageModal("Login Successful!", "You can now access the quizzes.");
 
             } catch (error) {
                 console.error("Error signing in with Google:", error);
@@ -260,7 +287,7 @@
         logoutNavBtn.addEventListener('click', async () => {
             try {
                 await auth.signOut();
-                alert("You have been logged out.");
+                displayMessageModal("Logged Out", "You have been successfully logged out.");
             } catch (error) {
                 console.error("Error signing out:", error);
             }
@@ -270,10 +297,23 @@
             updateAuthUI(user);
         });
 
+        // --- QUIZ NAVIGATION MAP (TARGET FOR GITHUB ACTION) ---
+        // ** THIS BLOCK WILL BE DYNAMICALLY UPDATED BY THE PYTHON SCRIPT **
+        const quizLinkMap = {
+            '7. Motion': './science/physics/motion_quiz.html',
+            '8. Force and Laws of Motion': './science/physics/force_quiz.html',
+            '10. Work and Energy': './science/physics/work_quiz.html',
+            '5. The Fundamental Unit of Life': './quizzes/science/biology/cell/cell_quiz.html',
+            '2. Is Matter Around Us Pure': './quizzes/science/chemistry/pure/pure_quiz.html',
+        };
+        // --- END QUIZ NAVIGATION MAP ---
+        
         // --- QUIZ DATA ---
         
         const bookData = {
             'Physics': [
+                // Note: '9. Gravitation' is added here to ensure the UI shows it, 
+                // but its quiz link must be dynamically added by the workflow.
                 { unit: 'UNIT I: Motion & Force', chapters: ['7. Motion', '8. Force and Laws of Motion', '9. Gravitation'] },
                 { unit: 'UNIT II: Work & Sound', chapters: ['10. Work and Energy', '11. Sound'] },
             ],
@@ -285,7 +325,7 @@
             ]
         };
 
-        // --- START QUIZ FUNCTION (FIXED WORK AND ENERGY PATH) ---
+        // --- START QUIZ FUNCTION (USES DYNAMIC MAP) ---
 
         function startQuiz(chapterName) {
             const user = auth.currentUser;
@@ -313,37 +353,19 @@
             });
             // --- END LOGIC ---
             
-            // Quiz Navigation Logic
-            
-            if (cleanedChapterName.includes('7. Motion')) { 
-                window.location.href = './science/physics/motion_quiz.html';
-                return;
-            }
-
-            if (cleanedChapterName.includes('8. Force and Laws of Motion')) { 
-                window.location.href = './science/physics/force_quiz.html';
+            // ** DYNAMIC NAVIGATION LOGIC using quizLinkMap **
+            if (quizLinkMap[cleanedChapterName]) {
+                // Redirect using the path found in the dynamically updated map
+                window.location.href = quizLinkMap[cleanedChapterName];
                 return;
             }
             
-            // CORRECTED: Removed the trailing space from the comparison string here.
-            if (cleanedChapterName.includes('10. Work and Energy')) { 
-                window.location.href = './science/physics/work_quiz.html';
-                return;
-            }
-            
-            if (cleanedChapterName.includes("5. The Fundamental Unit of Life")) { 
-                window.location.href = './quizzes/science/biology/cell/cell_quiz.html';
-                return;
-            }
-
-            if (cleanedChapterName.includes('2. Is Matter Around Us Pure')) { 
-                window.location.href = './quizzes/science/chemistry/pure/pure_quiz.html';
-                return;
-            }
-            
-            // Default alert for unimplemented quizzes
+            // Default message for unimplemented quizzes
             const urlSafeName = cleanedChapterName.replace(/[^\w\s]/g, '').replace(/\s+/g, '-').toLowerCase();
-            alert(`Quiz not yet implemented for: ${cleanedChapterName}! (You are logged in) Target URL: /quizzes/science/${urlSafeName}.html`);
+            displayMessageModal(
+                `Quiz Not Found`,
+                `The quiz link for "${cleanedChapterName}" is currently missing in the system map. Target URL: /quizzes/science/${urlSafeName}.html`
+            );
         }
         
         // --- REMAINING FUNCTIONS ---
