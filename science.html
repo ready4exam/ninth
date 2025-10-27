@@ -12,7 +12,6 @@
                 extend: {
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
-                        // Added 'serif' font family back for original science look
                         serif: ['Merriweather', 'serif'],
                     },
                     colors: {
@@ -102,7 +101,7 @@
                 <div class="grid md:grid-cols-3 gap-8">
                     
                     <div class="book-card bg-white p-6 rounded-xl border-t-4 border-accent-blue book-select-btn" data-book="Physics" data-title="Physics: Motion, Force, and Energy" data-color="accent-blue">
-                        <span data-lucide="zap" class="w-10 h-1  0 text-accent-blue mb-3"></span>
+                        <span data-lucide="zap" class="w-10 h-10 text-accent-blue mb-3"></span>
                         <h3 class="text-xl font-bold text-gray-800 mb-1 font-serif">Physics</h3> 
                         <p class="text-gray-500 text-sm">Motion, Laws of Motion, Gravitation, Work, Energy, and Sound.</p>
                     </div>
@@ -201,7 +200,7 @@
         const headerHomeBtn = document.getElementById('header-home-btn');
         const googleSignInBtn = document.getElementById('google-sign-in-btn'); 
 
-        // --- AUTH/MODAL FUNCTIONS (KEPT FROM ECONOMICS) ---
+        // --- AUTH/MODAL FUNCTIONS ---
 
         function showAuthModal() {
             authModal.classList.remove('hidden');
@@ -222,7 +221,7 @@
             }
         }
 
-        // --- GOOGLE SIGN-IN LOGIC (KEPT FROM ECONOMICS) ---
+        // --- GOOGLE SIGN-IN LOGIC ---
 
         googleSignInBtn.addEventListener('click', async () => {
             errorMessage.textContent = 'Signing in with Google...';
@@ -254,7 +253,7 @@
         });
 
 
-        // --- LOGOUT & AUTH STATE (KEPT FROM ECONOMICS) ---
+        // --- LOGOUT & AUTH STATE ---
 
         closeModalBtn.addEventListener('click', hideAuthModal);
 
@@ -271,27 +270,22 @@
             updateAuthUI(user);
         });
 
-        // --- QUIZ DATA (REPLACED WITH SCIENCE CONTENT) ---
+        // --- QUIZ DATA ---
         
         const bookData = {
             'Physics': [
-                // Chapters 7, 8, 9 now cover Motion, Force, and Gravitation
                 { unit: 'UNIT I: Motion & Force', chapters: ['7. Motion', '8. Force and Laws of Motion', '9. Gravitation'] },
-                // Chapters 10, 11 now cover Work and Sound
                 { unit: 'UNIT II: Work & Sound', chapters: ['10. Work and Energy', '11. Sound'] },
             ],
             'Chemistry': [
-                // Chapters 1-4 remain unchanged
                 { unit: 'UNIT III: Matter & Structure', chapters: ['1. Matter in Our Surroundings', '2. Is Matter Around Us Pure', '3. Atoms and Molecules', '4. Structure of the Atom'] }
             ],
             'Biology': [
-                // Chapters 5, 6 remain unchanged
-                // Chapter 15 is now Chapter 12 (Improvement in Food Resources)
                 { unit: 'UNIT IV: Cell, Tissues, and Food Resources', chapters: ['5. The Fundamental Unit of Life', '6. Tissues', '12. Improvement in Food Resources'] }
             ]
         };
 
-        // --- START QUIZ FUNCTION (UPDATED FOR '7. Motion' PATH) ---
+        // --- START QUIZ FUNCTION (FIXED WORK AND ENERGY PATH) ---
 
         function startQuiz(chapterName) {
             const user = auth.currentUser;
@@ -321,28 +315,28 @@
             
             // Quiz Navigation Logic
             
-            if (cleanedChapterName.includes('7. Motion')) {  
-                // UPDATED PATH: The path relative to the current file (science (1).html)
-                // Assuming science (1).html is at the root, the quiz path is correct.
+            if (cleanedChapterName.includes('7. Motion')) { 
                 window.location.href = './science/physics/motion_quiz.html';
                 return;
             }
 
-            // Existing placeholder redirects
-            if (cleanedChapterName.includes('8. Force and Laws of Motion')) {  
+            if (cleanedChapterName.includes('8. Force and Laws of Motion')) { 
                 window.location.href = './science/physics/force_quiz.html';
                 return;
             }
-            if (cleanedChapterName.includes('10. Work and Energy ')) {  
+            
+            // CORRECTED: Removed the trailing space from the comparison string here.
+            if (cleanedChapterName.includes('10. Work and Energy')) { 
                 window.location.href = './science/physics/work_quiz.html';
                 return;
             }
-            if (cleanedChapterName.includes("5. The Fundamental Unit of Life")) {  
+            
+            if (cleanedChapterName.includes("5. The Fundamental Unit of Life")) { 
                 window.location.href = './quizzes/science/biology/cell/cell_quiz.html';
                 return;
             }
 
-            if (cleanedChapterName.includes('2. Is Matter Around Us Pure')) {  
+            if (cleanedChapterName.includes('2. Is Matter Around Us Pure')) { 
                 window.location.href = './quizzes/science/chemistry/pure/pure_quiz.html';
                 return;
             }
@@ -352,7 +346,7 @@
             alert(`Quiz not yet implemented for: ${cleanedChapterName}! (You are logged in) Target URL: /quizzes/science/${urlSafeName}.html`);
         }
         
-        // --- REMAINING FUNCTIONS (KEPT FROM ECONOMICS) ---
+        // --- REMAINING FUNCTIONS ---
 
         function showView(viewId) {
             document.querySelectorAll('#quiz-content-wrapper .view').forEach(view => {
@@ -365,7 +359,6 @@
         function showUnits(bookKey, title, color) {
             const units = bookData[bookKey];
             
-            // Fixed color reference to work with the updated color variables
             unitsViewTitle.textContent = title;
             unitsViewTitle.style.borderColor = 'var(--tw-colors-' + color + ')'; 
 
@@ -398,7 +391,7 @@
             showView('units');
             
             attachEventListeners(); 
-            setTimeout(initAccordion, 10);  
+            setTimeout(initAccordion, 10); 
         }
 
         function initAccordion() {
@@ -427,7 +420,7 @@
             }
         }
 
-        // --- ATTACH EVENT LISTENERS (KEPT FROM ECONOMICS) ---
+        // --- ATTACH EVENT LISTENERS ---
 
         function attachEventListeners() {
             document.querySelectorAll('.quiz-start-btn').forEach(button => {
@@ -443,7 +436,7 @@
             });
         }
 
-        // --- Event Handlers that use Data Attributes (KEPT FROM ECONOMICS) ---
+        // --- Event Handlers that use Data Attributes ---
 
         function handleQuizButtonClick(event) {
             const chapterName = event.currentTarget.dataset.chapter;
@@ -458,7 +451,7 @@
             showUnits(book, title, color);
         }
         
-        // --- Initialization on Document Load (KEPT FROM ECONOMICS) ---
+        // --- Initialization on Document Load ---
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
             document.querySelectorAll('.nav-link').forEach(link => {
