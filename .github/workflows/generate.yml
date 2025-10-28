@@ -5,9 +5,9 @@ on:
     branches:
       - main  # Adjust if your main branch is named differently
     paths:
-      - 'scripts/create_chemistry_quizzes.py' # Triggers when the script is changed
-      - 'science (2).html' 
-      - 'sound_quiz.html' 
+      - 'scripts/create_chemistry_quizzes.py'
+      - 'science (2).html'
+      - 'sound_quiz.html'
 
 jobs:
   build:
@@ -17,7 +17,10 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        token: ${{ secrets.GH_TOKEN }} # Ensure you have this secret set up
+        # CRITICAL FIX 1: Use the built-in GITHUB_TOKEN for commit authorization.
+        token: ${{ secrets.GITHUB_TOKEN }}
+        # CRITICAL FIX 2: Fetch full history (fetch-depth: 0) required for git commit/push actions.
+        fetch-depth: 0 
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -36,6 +39,7 @@ jobs:
     - name: Commit generated files and updated science.html
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
+        # This action automatically uses the GITHUB_TOKEN provided in the checkout step.
         commit_message: "🤖 AUTO: Generated Chemistry quizzes and updated science (2).html map."
         # The files to commit back to the repo
         files: |
