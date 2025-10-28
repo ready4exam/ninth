@@ -5,6 +5,7 @@ on:
     branches:
       - main  # Adjust if your main branch is named differently
     paths:
+      # Workflow triggers when changes are pushed to these specific files:
       - 'scripts/create_chemistry_quizzes.py'
       - 'science (2).html'
       - 'sound_quiz.html'
@@ -14,12 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout repository
+    - name: Checkout repository (Required for Commit)
       uses: actions/checkout@v4
       with:
-        # CRITICAL FIX 1: Use the built-in GITHUB_TOKEN for commit authorization.
+        # FIX 1: Explicitly pass the built-in token for authorization to push commits.
         token: ${{ secrets.GITHUB_TOKEN }}
-        # CRITICAL FIX 2: Fetch full history (fetch-depth: 0) required for git commit/push actions.
+        # FIX 2: Fetch the complete history, which is essential for the git-auto-commit-action.
         fetch-depth: 0 
 
     - name: Set up Python
@@ -33,15 +34,15 @@ jobs:
         pip install beautifulsoup4
 
     - name: Run Chemistry Quiz Generation Script
-      # Execute the script from the root of the repository
+      # This step generates the quiz files and updates science (2).html
       run: python scripts/create_chemistry_quizzes.py
       
     - name: Commit generated files and updated science.html
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
-        # This action automatically uses the GITHUB_TOKEN provided in the checkout step.
+        # The action uses the token provided in the checkout step.
         commit_message: "🤖 AUTO: Generated Chemistry quizzes and updated science (2).html map."
-        # The files to commit back to the repo
+        # Commit the updated science (2).html file and all new quiz files
         files: |
           science (2).html
           science/chemistry/*.html
