@@ -1,0 +1,43 @@
+name: Quiz File Generator
+
+on:
+  push:
+    branches:
+      - main  # Adjust if your main branch is named differently
+    paths:
+      - 'scripts/create_chemistry_quizzes.py' # Triggers when the script is changed
+      - 'science (2).html' 
+      - 'sound_quiz.html' 
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GH_TOKEN }} # Ensure you have this secret set up
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install beautifulsoup4
+
+    - name: Run Chemistry Quiz Generation Script
+      # Execute the script from the root of the repository
+      run: python scripts/create_chemistry_quizzes.py
+      
+    - name: Commit generated files and updated science.html
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: "🤖 AUTO: Generated Chemistry quizzes and updated science (2).html map."
+        # The files to commit back to the repo
+        files: |
+          science (2).html
+          science/chemistry/*.html
