@@ -3,7 +3,7 @@ import re
 from bs4 import BeautifulSoup
 
 # --- Configuration ---
-# Chemistry Chapters (UNIT III)
+# Chapters for Chemistry (UNIT III)
 CHEMISTRY_CHAPTERS = [
     '1. Matter in Our Surroundings',
     '2. Is Matter Around Us Pure',
@@ -14,32 +14,46 @@ CHEMISTRY_CHAPTERS = [
 # Paths relative to the repository root (assuming CWD is root in GitHub Actions)
 QUIZ_TEMPLATE_PATH = 'sound_quiz.html'
 MAIN_SCIENCE_HTML_PATH = 'science (2).html'
-OUTPUT_DIR_BASE = 'science/chemistry' 
+OUTPUT_DIR_BASE = 'science/chemistry' # Output directory for new files
 
 # --- Utility Functions ---
 
 def normalize_chapter_name(chapter_name):
     """
-    Converts a chapter name into a Supabase table name (first word) 
-    and a unique file name (full name).
+    Converts a chapter name into the required Supabase table name 
+    (matter_surroundings, atoms_molecules, etc.) and a unique file name.
     """
     # 1. Remove leading number and dot (e.g., '1. ')
-    name = re.sub(r'^\d+\.\s*', '', chapter_name).strip()
+    name_no_num = re.sub(r'^\d+\.\s*', '', chapter_name).strip()
     
-    # 2. Extract the FIRST WORD for the Supabase Table Name (User Requirement)
-    first_word = name.split(' ')[0]
-    # Table names are simple, lowercase, first word only
-    table_name = first_word.lower().replace('\'', '') 
+    # 2. Derive the NEW Descriptive Table Name (User's requirement)
     
-    # 3. Use the FULL chapter name for the File Name (for uniqueness and readability)
-    full_name_snake = name.lower().replace(' ', '_').replace('\'', '')
+    # We use a specific mapping approach based on the known chapters for reliable output
+    name_map = {
+        'Matter in Our Surroundings': 'matter_surroundings',
+        'Is Matter Around Us Pure': 'matter_pure',
+        'Atoms and Molecules': 'atoms_molecules',
+        'Structure of the Atom': 'structure_atom',
+    }
+    
+    # Clean the name for lookup (e.g., handles "Is Matter Around Us Pure")
+    cleaned_name = name_no_num.strip()
+    
+    table_name = name_map.get(cleaned_name)
+    
+    if not table_name:
+        # Fallback to general snake_case if a new chapter is added
+        print(f"Warning: Specific table name not found for '{cleaned_name}'. Using snake_case fallback.")
+        table_name = cleaned_name.lower().replace(' ', '_').replace('\'', '')
+
+
+    # 3. Use the FULL chapter name for the File Name (for uniqueness)
+    full_name_snake = cleaned_name.lower().replace(' ', '_').replace('\'', '')
     file_name = f"{full_name_snake}_quiz.html"
 
-    # Examples:
-    # '1. Matter in Our Surroundings' -> table_name: 'matter', file_name: 'matter_in_our_surroundings_quiz.html'
-    # '3. Atoms and Molecules' -> table_name: 'atoms', file_name: 'atoms_and_molecules_quiz.html'
+    # Example: '1. Matter in Our Surroundings' -> table_name: 'matter_surroundings', file_name: 'matter_in_our_surroundings_quiz.html'
     
-    return name, table_name, file_name
+    return chapter_name, table_name, file_name # Return original chapter_name for map key
 
 
 def inject_firebase_score_logic(script_content):
@@ -103,13 +117,13 @@ def generate_quiz_file(template_content, chapter_name, file_name, table_name):
     if h2_tag:
         h2_tag.string = f"Choose Difficulty for {chapter_name} Chapter"
         
-    # 4. Update the JavaScript configuration for SUPABASE_TABLE (First Word Only)
+    # 4. Update the JavaScript configuration for SUPABASE_TABLE (New Name)
     script_tag = soup.find_all('script')[-1] 
     script_content = script_tag.string
     
     updated_script_content = re.sub(
         r"const SUPABASE_TABLE = 'sound';", 
-        f"const SUPABASE_TABLE = '{table_name}';", # <-- Uses the single word
+        f"const SUPABASE_TABLE = '{table_name}';", # <-- Uses the new descriptive name
         script_content
     )
     script_tag.string = updated_script_content
@@ -137,16 +151,21 @@ def update_science_html_map(science_html_path, new_chemistry_links):
     start_index = content.find(map_start_tag)
     end_index = content.find(map_end_tag)
     
+    if start_index == -1 or end_index == -1:
+        print("Error: Dynamic block markers not found in science (2).html. Skipping map update.")
+        return
+
     map_block_content = content[start_index : end_index + len(map_end_tag)]
     
     # Extract existing non-Chemistry links
     existing_links = {}
     for match in re.finditer(r"'([^']+)': '([^']+)',", map_block_content):
         chapter, link = match.groups()
+        # Ensure we only keep existing links that are NOT in the 'chemistry' folder
         if 'chemistry' not in link:
              existing_links[chapter] = link
     
-    # Combine all links 
+    # Combine all links (new chemistry links will overwrite any old chemistry links if they exist)
     all_links = {}
     all_links.update(existing_links)
     all_links.update(new_chemistry_links)
@@ -156,6 +175,7 @@ def update_science_html_map(science_html_path, new_chemistry_links):
     # Construct the new map content (including the JS wrapper)
     new_map_entries = "       const quizLinkMap = {\n"
     for chapter, link in sorted_links:
+        # Use .replace to safely handle single quotes in chapter names if they occur
         new_map_entries += f"    '{chapter.replace(\"'\", \"\\'\")}': '{link}',\n"
     new_map_entries += "   };\n"
     
@@ -178,6 +198,7 @@ def run_chemistry_automation():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(os.path.join(script_dir, '..'))
     
+    # Check for files relative to the new CWD (root)
     if not os.path.exists(QUIZ_TEMPLATE_PATH):
         raise FileNotFoundError(f"Template file not found: {QUIZ_TEMPLATE_PATH}")
         
@@ -189,7 +210,7 @@ def run_chemistry_automation():
 
     new_quiz_links = {}
 
-    print("--- Starting Chemistry Quiz Generation ---")
+    print("--- Starting Chemistry Quiz Generation with Descriptive Table Names ---")
     
     for chapter in CHEMISTRY_CHAPTERS:
         readable_name, table_name, file_name = normalize_chapter_name(chapter)
