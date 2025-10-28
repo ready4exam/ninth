@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>sound</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <script src="../../js/config.js"></script>
+    <style>
+        /* Custom font and base styling */
+        body { font-family: 'Inter', sans-serif; }
+        .quiz-card {
+            max-width: 800px; 
+            margin: 2rem auto;
+            min-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+        /* Style for the options on the quiz page */
+        .option-label {
+            transition: all 0.15s;
+        }
+        .option-label:hover:not(.correct):not(.incorrect) {
+            background-color: #f3f4f6;
+            border-color: #1a3e6a;
+        }
+        .correct {
+            background-color: #d1fae5 !important;
+            border-color: #059669 !important;
+            color: #065f46 !important;
+        }
+        .incorrect {
+            background-color: #fee2e2 !important;
+            border-color: #dc2626 !important;
+            color: #991b1b !important;
+        }
+
+        /* Style for the difficulty selection cards (Template Replication) */
+        .difficulty-card {
+            transition: all 0.2s;
+            cursor: pointer;
+            border: 1px solid #e5e7eb; /* Light border */
+            border-radius: 0.5rem; /* rounded-lg */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .difficulty-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* Button styles to match the template colors */
+        .btn-simple { background-color: #10b981; } /* Emerald-500 (Close to Green in Template) */
+        .btn-simple:hover { background-color: #059669; } /* Emerald-600 */
+
+        .btn-medium { background-color: #f59e0b; } /* Amber-500 (Matches Orange/Gold in Template) */
+        .btn-medium:hover { background-color: #d97706; } /* Amber-600 */
+        
+        .btn-advanced { background-color: #ef4444; } /* Red-500 (Matches Red in Template) */
+        .btn-advanced:hover { background-color: #dc2626; } /* Red-600 */
+
+        .submit-sticky {
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#1a3e6a',
+                        'accent-green': '#059669',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-100 p-4">
+
+    <div id="quiz-container" class="quiz-card bg-white p-6 md:p-10 rounded-xl shadow-2xl border-t-8 border-primary-blue">
+        
+        <h1 class="text-3xl font-extrabold text-primary-blue mb-4 text-center">
+            sound
+        </h1>
+
+        <div id="status-message" class="text-center p-4 rounded-lg bg-yellow-100 text-yellow-700 font-medium mb-6">
+            Loading quiz configuration...
+        </div>
+
+        <div id="start-screen" class="p-8 bg-white rounded-xl shadow-lg hidden">
+            <h2 class="text-2xl font-extrabold text-primary-blue mb-8 text-center">
+                Choose Difficulty for Force Chapter
+            </h2>
+            <div class="space-y-6 md:space-y-0 md:grid md:grid-cols-3 md:gap-6">
+                
+                <div class="difficulty-card bg-white">
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">Simple</h3>
+                    <p class="text-gray-600 text-sm mb-4">Easy start, covers foundational concepts.</p>
+                    <div class="text-xs text-gray-500 space-y-1 mb-6">
+                        <p>Available: <span id="simple-available-q" class="font-semibold text-gray-700">--</span> questions.</p>
+                        <p>Starting: <span id="simple-starting-q" class="font-semibold text-gray-700">--</span> questions.</p>
+                    </div>
+                    <button id="btn-simple" onclick="startQuiz('Simple')" class="w-full py-2 text-md font-bold text-white btn-simple rounded-lg shadow-md hover:opacity-90 transition duration-150">
+                        Start Quiz (<span id="btn-simple-qs">-- Qs</span>)
+                    </button>
+                </div>
+
+                <div class="difficulty-card bg-white">
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">Medium</h3>
+                    <p class="text-gray-600 text-sm mb-4">Moderate difficulty, requires application of concepts.</p>
+                    <div class="text-xs text-gray-500 space-y-1 mb-6">
+                        <p>Available: <span id="medium-available-q" class="font-semibold text-gray-700">--</span> questions.</p>
+                        <p>Starting: <span id="medium-starting-q" class="font-semibold text-gray-700">--</span> questions.</p>
+                    </div>
+                    <button id="btn-medium" onclick="startQuiz('Medium')" class="w-full py-2 text-md font-bold text-white btn-medium rounded-lg shadow-md hover:opacity-90 transition duration-150">
+                        Start Quiz (<span id="btn-medium-qs">-- Qs</span>)
+                    </button>
+                </div>
+
+                <div class="difficulty-card bg-white">
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">Advanced</h3>
+                    <p class="text-gray-600 text-sm mb-4">High difficulty, includes numericals and critical analysis.</p>
+                    <div class="text-xs text-gray-500 space-y-1 mb-6">
+                        <p>Available: <span id="advanced-available-q" class="font-semibold text-gray-700">--</span> questions.</p>
+                        <p>Starting: <span id="advanced-starting-q" class="font-semibold text-gray-700">--</span> questions.</p>
+                    </div>
+                    <button id="btn-advanced" onclick="startQuiz('Advanced')" class="w-full py-2 text-md font-bold text-white btn-advanced rounded-lg shadow-md hover:opacity-90 transition duration-150">
+                        Start Quiz (<span id="btn-advanced-qs">-- Qs</span>)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="quiz-content" class="hidden">
+            
+            <p id="difficulty-display" class="text-md font-semibold text-gray-700 mb-6 border-b pb-2"></p>
+            
+            <div id="question-list" class="space-y-8 mb-8">
+                </div>
+
+            <div class="mt-8 submit-sticky bg-white p-4 shadow-2xl rounded-t-xl border-t-2 border-primary-blue">
+                <button id="submit-button" onclick="submitQuiz()"
+                        class="w-full px-6 py-3 text-lg font-bold text-white bg-primary-blue rounded-lg shadow-md hover:bg-blue-800 transition duration-150">
+                    Submit Quiz
+                </button>
+            </div>
+        </div>
+
+        <div id="results-screen" class="hidden text-center p-8 bg-white rounded-xl shadow-lg">
+            <h2 class="text-3xl font-bold text-accent-green mb-4">Quiz Complete! 🎉</h2>
+            <p class="text-lg text-gray-700 mb-2">You scored:</p>
+            <p id="score-display" class="text-6xl font-extrabold text-primary-blue mb-6">0 / 0</p>
+            <button onclick="window.location.reload()"
+                    class="px-6 py-3 text-white bg-accent-green rounded-lg shadow-md hover:bg-green-700 transition duration-150">
+                Start New Quiz
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Configuration ---
+        const SUPABASE_TABLE = 'sound'; 
+        // ---------------------
+
+        let supabaseClient;
+        let questions = [];
+        let selectedAnswers = {}; 
+        let selectedDifficulty = null; 
+
+        // --- DOM Elements ---
+        const statusMessage = document.getElementById('status-message');
+        const quizContainer = document.getElementById('quiz-container');
+        const quizContent = document.getElementById('quiz-content');
+        const resultsScreen = document.getElementById('results-screen');
+        const startScreen = document.getElementById('start-screen');
+        const questionList = document.getElementById('question-list');
+        const submitButton = document.getElementById('submit-button');
+        const scoreDisplay = document.getElementById('score-display');
+        const difficultyDisplay = document.getElementById('difficulty-display');
+
+        // Difficulty screen text elements
+        const difficultyElements = {
+            'Simple': {
+                available: document.getElementById('simple-available-q'),
+                starting: document.getElementById('simple-starting-q'),
+                buttonQs: document.getElementById('btn-simple-qs')
+            },
+            'Medium': {
+                available: document.getElementById('medium-available-q'),
+                starting: document.getElementById('medium-starting-q'),
+                buttonQs: document.getElementById('btn-medium-qs')
+            },
+            'Advanced': {
+                available: document.getElementById('advanced-available-q'),
+                starting: document.getElementById('advanced-starting-q'),
+                buttonQs: document.getElementById('btn-advanced-qs')
+            }
+        };
+
+
+        // --- Initialization ---
+
+        function init() {
+            if (typeof SUPABASE_URL === 'undefined' || typeof SUPABASE_ANON_KEY === 'undefined') {
+                statusMessage.textContent = 'Configuration Error: SUPABASE_URL or SUPABASE_ANON_KEY is undefined. Check "../../js/config.js".';
+                statusMessage.className = 'text-center p-4 rounded-lg bg-red-100 text-red-700 font-medium mb-6';
+                return;
+            }
+
+            try {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
+                // Fetch question counts to update the cards like the template
+                fetchQuestionCounts(); 
+                
+                statusMessage.classList.add('hidden');
+                startScreen.classList.remove('hidden');
+
+            } catch (e) {
+                statusMessage.textContent = `Error initializing Supabase: ${e.message}`;
+                statusMessage.className = 'text-center p-4 rounded-lg bg-red-100 text-red-700 font-medium mb-6';
+            }
+        }
+        
+        // --- Data Fetching for Start Screen ---
+        // This function dynamically gets the count for each difficulty level
+        async function fetchQuestionCounts() {
+            const difficulties = ['Simple', 'Medium', 'Advanced'];
+            
+            for (const difficulty of difficulties) {
+                try {
+                    const { count, error } = await supabaseClient
+                        .from(SUPABASE_TABLE)
+                        .select('id', { count: 'exact', head: true })
+                        .ilike('difficulty', difficulty); 
+
+                    if (error) throw error;
+                    
+                    const countStr = count === null ? '0' : String(count);
+                    
+                    // Update all three elements on the card
+                    difficultyElements[difficulty].available.textContent = countStr;
+                    difficultyElements[difficulty].starting.textContent = countStr;
+                    difficultyElements[difficulty].buttonQs.textContent = `${countStr} Qs`;
+
+                } catch (error) {
+                    console.error(`Error fetching count for ${difficulty}:`, error);
+                    // Use -- on failure
+                    difficultyElements[difficulty].available.textContent = '--';
+                    difficultyElements[difficulty].starting.textContent = '--';
+                    difficultyElements[difficulty].buttonQs.textContent = '-- Qs';
+                }
+            }
+        }
+
+
+        // --- Start Quiz Function ---
+        function startQuiz(difficulty) {
+            selectedDifficulty = difficulty;
+            difficultyDisplay.textContent = `Difficulty Selected: ${difficulty}`;
+            startScreen.classList.add('hidden');
+            quizContent.classList.remove('hidden');
+            fetchQuestions(difficulty);
+        }
+
+        // --- Data Fetching for Quiz ---
+
+        async function fetchQuestions(difficulty) {
+            statusMessage.textContent = `Fetching ${difficulty} questions from table '${SUPABASE_TABLE}'...`;
+            statusMessage.classList.remove('hidden');
+            quizContent.classList.add('hidden');
+            
+            try {
+                let query = supabaseClient
+                    .from(SUPABASE_TABLE)
+                    .select('*');
+                
+                if (difficulty) {
+                    query = query.ilike('difficulty', difficulty); 
+                }
+                
+                query = query.order('id', { ascending: true }); 
+
+                const { data, error } = await query;
+
+                if (error) throw error;
+
+                if (data.length === 0) {
+                    statusMessage.textContent = `No ${difficulty} questions found in table '${SUPABASE_TABLE}'.`;
+                    statusMessage.className = 'text-center p-4 rounded-lg bg-yellow-100 text-yellow-700 font-medium mb-6';
+                    return;
+                }
+
+                questions = data;
+                statusMessage.classList.add('hidden'); 
+                quizContent.classList.remove('hidden');
+                renderQuestions(); 
+                submitButton.disabled = false;
+
+            } catch (error) {
+                console.error('Error fetching questions:', error);
+                statusMessage.textContent = `Error loading questions: ${error.message}`;
+                statusMessage.className = 'text-center p-4 rounded-lg bg-red-100 text-red-700 font-medium mb-6';
+            }
+        }
+        
+        // --- Answer Storage ---
+        function storeAnswer(questionId, selectedKey) {
+            selectedAnswers[questionId] = selectedKey;
+        }
+
+        // --- Rendering Logic (All questions at once) ---
+        function renderQuestions() {
+            questionList.innerHTML = '';
+            questions.forEach((q, index) => {
+                const questionHtml = createQuestionHtml(q, index);
+                questionList.innerHTML += questionHtml;
+            });
+        }
+
+        function createQuestionHtml(q, index) {
+            const questionNumber = index + 1;
+            const optionKeys = ['A', 'B', 'C', 'D'];
+
+            const optionsHtml = optionKeys.map(key => `
+                <label class="option-label block w-full text-left p-3 border-2 border-gray-300 rounded-xl font-medium text-gray-800 transition duration-100 shadow-sm cursor-pointer" data-key="${key}">
+                    <input type="radio" name="question_${q.id}" value="${key}" class="mr-3" onchange="storeAnswer('${q.id}', '${key}')">
+                    <span class="font-bold mr-1">${key}.</span> ${q[`option_${key.toLowerCase()}`] || `(Option ${key} missing)`}
+                </label>
+            `).join('');
+
+            return `
+                <div class="question-item p-5 bg-white rounded-xl shadow-lg border-l-4 border-primary-blue" data-q-id="${q.id}">
+                    <p class="text-lg font-semibold text-primary-blue mb-3">${questionNumber}. ${q.question_text || 'Error: Missing question text.'}</p>
+                    ${q.scenario_reason_text ? `<p class="text-sm italic text-gray-600 mb-4 bg-gray-50 p-2 rounded">Context/Reason: ${q.scenario_reason_text}</p>` : ''}
+                    <div class="options-group space-y-2">
+                        ${optionsHtml}
+                    </div>
+                    <div class="feedback-box mt-3 text-sm font-bold p-2 rounded hidden"></div>
+                </div>
+            `;
+        }
+        
+        // --- Submission Logic ---
+        function submitQuiz() {
+            let finalScore = 0;
+            
+            submitButton.disabled = true;
+            submitButton.textContent = 'Calculating Score...';
+
+            questions.forEach(q => {
+                const questionElement = document.querySelector(`.question-item[data-q-id="${q.id}"]`);
+                const feedbackBox = questionElement.querySelector('.feedback-box');
+                const correctKey = q.correct_answer_key;
+                const selectedKey = selectedAnswers[q.id];
+                let isCorrect = false;
+
+                if (selectedKey && selectedKey === correctKey) {
+                    finalScore++;
+                    isCorrect = true;
+                }
+
+                const optionLabels = questionElement.querySelectorAll('.option-label');
+                optionLabels.forEach(label => {
+                    const labelKey = label.getAttribute('data-key');
+                    const radioInput = label.querySelector('input');
+                    radioInput.disabled = true; 
+                    
+                    label.classList.remove('hover:bg-gray-50');
+
+                    if (labelKey === correctKey) {
+                        label.classList.add('correct', 'shadow-md');
+                        feedbackBox.textContent = isCorrect ? '✅ Correct Answer!' : `✅ Correct answer: ${correctKey}.`;
+                        feedbackBox.classList.add('bg-green-100', 'text-green-700');
+                    } else if (labelKey === selectedKey && !isCorrect) {
+                        label.classList.add('incorrect', 'shadow-md');
+                        if (!feedbackBox.textContent) { 
+                            feedbackBox.textContent = `❌ Incorrect. The correct answer is ${correctKey}.`;
+                            feedbackBox.classList.add('bg-red-100', 'text-red-700');
+                        }
+                    }
+                });
+                
+                if (!selectedKey) {
+                    feedbackBox.textContent = '❓ Unanswered.';
+                    feedbackBox.classList.add('bg-yellow-100', 'text-yellow-700');
+                }
+
+                feedbackBox.classList.remove('hidden');
+            });
+
+            score = finalScore;
+            quizContainer.scrollIntoView({ behavior: 'smooth' });
+            setTimeout(showResults, 1000); 
+        }
+
+        function showResults() {
+            quizContent.classList.add('hidden');
+            resultsScreen.classList.remove('hidden');
+            scoreDisplay.textContent = `${score} / ${questions.length}`;
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
