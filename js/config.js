@@ -1,8 +1,3 @@
-// config.js
-
-// --- Supabase Configuration (Already defined globally in the HTML or earlier in this file) ---
-window.SUPABASE_URL =  // Example: 'https://xyz123.supabase.co'
-window.SUPABASE_ANON_KEY = ''
 
 // js/config.js
 // Global Configuration File for Firebase and Supabase Clients
