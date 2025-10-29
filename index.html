@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CBSE Class 9 — Academic Study Portal</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght=400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -32,99 +32,93 @@
             @apply block p-6 rounded-xl bg-white border border-gray-200 shadow-lg transition-all duration-300 relative overflow-hidden;
         }
         .subject-card:hover:not(.protected-link) {
-            transform: translateY(-4px); 
-            box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.15);
+            @apply shadow-xl border-indigo-400;
+            transform: translateY(-3px);
         }
         .subject-card::before {
-            /* Color stripe at the top */
             content: '';
             position: absolute;
             top: 0;
             left: 0;
+            height: 5px;
             width: 100%;
-            height: 6px;
-            background-color: var(--card-color, #1a3e6a);
-            border-radius: 0.5rem 0.5rem 0 0;
+            background-color: var(--card-color, #1a3e6a); /* Default to CBSE Blue */
         }
-        .card-title { @apply text-xl font-bold font-serif text-heading transition-colors; }
-        .card-description { @apply text-sm text-gray-600 mt-2 mb-4 transition-colors; }
-        .protected-link { 
-            /* Styling for 'Coming Soon' modules */
-            pointer-events: none; cursor: not-allowed; opacity: 0.5; 
+        .card-header {
+            @apply flex items-center space-x-4;
         }
-        .protected-link:hover { transform: none; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); }
+        .card-title {
+            @apply text-xl font-bold text-heading;
+        }
+        .card-description {
+            @apply text-gray-600 mt-3 text-sm;
+        }
     </style>
 </head>
-<body class="bg-cbse-light min-h-screen antialiased font-sans">
-
+<body class="bg-cbse-light min-h-screen">
+    
     <!-- HEADER -->
-    <header class="bg-white shadow-lg sticky top-0 z-10 border-t-8 border-cbse-blue">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row justify-between items-center">
-            <div class="flex items-center space-x-3 mb-4 md:mb-0">
-                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#1a3e6a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-open-check">
-                    <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>
-                    <path d="m9 10 2 2 4-4"/>
-                </svg>
-                <h1 class="text-3xl font-extrabold font-serif text-cbse-blue tracking-tight">
-                    Ready4Exam Academic Portal
-                </h1>
-            </div>
-
-            <!-- Navigation links (can be empty or just a Home link) -->
-            <nav id="main-nav" class="flex flex-wrap justify-center md:justify-end space-x-1 sm:space-x-4 text-sm font-medium">
-                <!-- Links here -->
+    <header class="bg-cbse-blue p-4 shadow-xl">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <h1 class="text-4xl font-extrabold tracking-wider text-white">Ready4Exam</h1>
+            <nav>
+                <button class="px-4 py-1.5 bg-accent-gold text-cbse-blue font-semibold rounded-full shadow-md hover:bg-yellow-400 transition">
+                    Login / Sign-up
+                </button>
             </nav>
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        
-        <!-- --- MAIN SUBJECT SELECTION VIEW --- -->
-        <div id="subject-selection-view">
-            <section class="text-center mb-16">
-                <h2 class="text-5xl font-extrabold font-serif text-heading mb-4">
-                    Structured Learning for Foundational Success
-                </h2>
-                <p class="text-xl text-gray-700 max-w-4xl mx-auto leading-relaxed">
-                    Access professional, chapter-wise resources and timed assessments designed specifically for the CBSE Class 9 curriculum.
-                </p>
-                <p class="text-lg font-semibold text-gray-500 mt-6">
-                    Note: All quiz modules require user authentication and payment for content access.
-                </p>
-            </section>
+    <!-- MAIN CONTENT -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+
+        <h2 class="text-5xl font-extrabold text-heading mb-4 font-serif">Class 9 Study Portal</h2>
+        <p class="text-xl text-gray-500 mb-10">Select a subject to begin your chapter-wise preparation.</p>
+
+        <!-- Subject Cards Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             
-            <h3 class="text-3xl font-bold font-serif text-cbse-blue mb-8 border-b-2 border-cbse-blue pb-2">Select a Subject</h3>
+            <!-- Science Card: Links to the single chapter selection page for topic choice -->
+            <a href="chapter-selection.html?subject=science" class="subject-card" style="--card-color: #10b981;">
+                <div class="card-header">
+                    <i data-lucide="microscope" class="text-emerald-500 h-6 w-6"></i>
+                    <h3 class="card-title">Science</h3>
+                </div>
+                <p class="card-description">Comprehensive coverage of Physics, Chemistry, and Biology chapters based on the latest curriculum.</p>
+                <div class="mt-4 text-center">
+                    <button class="w-full py-2 px-4 rounded-lg bg-emerald-500 text-white font-semibold hover:bg-emerald-600 transition">
+                        View Topics
+                    </button>
+                </div>
+            </a>
+            
+            <!-- Social Science Card (Protected) -->
+            <a href="#" class="subject-card protected-link opacity-50 cursor-not-allowed" style="--card-color: #ef4444;">
+                <div class="card-header">
+                    <i data-lucide="landmark" class="text-red-500 h-6 w-6"></i>
+                    <h3 class="card-title">Social Science</h3>
+                </div>
+                <p class="card-description">Detailed study of History, Geography, Political Science, and Economics.</p>
+                <div class="mt-4 text-center">
+                    <button disabled class="w-full py-2 px-4 rounded-lg bg-gray-200 text-gray-500 font-semibold cursor-not-allowed">
+                        Coming Soon
+                    </button>
+                </div>
+            </a>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                
-                <!-- SCIENCE: Links directly to science.html for Topic/Chapter selection -->
-                <a href="science.html" class="subject-card group" data-module="science" style="--card-color: #2563eb;">
-                    <div class="flex items-center space-x-3 mb-2">
-                        <i data-lucide="flask-round" class="text-blue-700 h-6 w-6"></i>
-                        <h3 class="card-title">Science (Physics, Chem, Bio)</h3>
-                    </div>
-                    <p class="card-description">In-depth modules on Motion, Force and Laws of Motion, Atoms and Molecules, and The Fundamental Unit of Life.</p>
-                    <div class="mt-4 text-center">
-                        <span class="w-full inline-block py-2 px-4 rounded-lg bg-blue-600 text-white font-semibold shadow-md">
-                            Select Topic &rarr;
-                        </span>
-                    </div>
-                </a>
-
-                <!-- MATHEMATICS: Protected/Coming Soon -->
-                <a href="maths.html" class="subject-card protected-link" data-module="maths" style="--card-color: #6d28d9;">
-                    <div class="flex items-center space-x-3 mb-2">
-                        <i data-lucide="square-root" class="text-purple-700 h-6 w-6"></i>
-                        <h3 class="card-title">Mathematics</h3>
-                    </div>
-                    <p class="card-description">Detailed study of Number Systems, Polynomials, Geometry, and Heron's Formula for foundational clarity.</p>
-                    <div class="mt-4 text-center">
-                        <button disabled class="w-full py-2 px-4 rounded-lg bg-gray-200 text-gray-500 font-semibold cursor-not-allowed">
-                            Coming Soon
-                        </button>
-                    </div>
-                </a>
-            </div>
+            <!-- Mathematics Card (Protected) -->
+            <a href="#" class="subject-card protected-link opacity-50 cursor-not-allowed" style="--card-color: #8b5cf6;">
+                <div class="card-header">
+                    <i data-lucide="square-root" class="text-purple-700 h-6 w-6"></i>
+                    <h3 class="card-title">Mathematics</h3>
+                </div>
+                <p class="card-description">Detailed study of Number Systems, Polynomials, Geometry, and Heron's Formula for foundational clarity.</p>
+                <div class="mt-4 text-center">
+                    <button disabled class="w-full py-2 px-4 rounded-lg bg-gray-200 text-gray-500 font-semibold cursor-not-allowed">
+                        Coming Soon
+                    </button>
+                </div>
+            </a>
         </div>
 
     </main>
@@ -143,7 +137,6 @@
             cards.forEach(card => {
                 const color = card.style.getPropertyValue('--card-color');
                 if (color) {
-                    // This sets the color variable for the top stripe
                     card.style.setProperty('--card-color', color);
                 }
             });
