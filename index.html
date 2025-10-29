@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CBSE Class 9 — Academic Study Portal</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght=400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -28,6 +28,7 @@
 
     <style>
         .subject-card {
+            /* Card styling for the subjects */
             @apply block p-6 rounded-xl bg-white border border-gray-200 shadow-lg transition-all duration-300 relative overflow-hidden;
         }
         .subject-card:hover:not(.protected-link) {
@@ -35,6 +36,7 @@
             box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.15);
         }
         .subject-card::before {
+            /* Color stripe at the top */
             content: '';
             position: absolute;
             top: 0;
@@ -46,8 +48,10 @@
         }
         .card-title { @apply text-xl font-bold font-serif text-heading transition-colors; }
         .card-description { @apply text-sm text-gray-600 mt-2 mb-4 transition-colors; }
-        .nav-link { @apply px-4 py-2 rounded-lg text-gray-700 font-medium hover:bg-cbse-light hover:text-cbse-blue transition; }
-        .protected-link { pointer-events: none; cursor: not-allowed; opacity: 0.5; }
+        .protected-link { 
+            /* Styling for 'Coming Soon' modules */
+            pointer-events: none; cursor: not-allowed; opacity: 0.5; 
+        }
         .protected-link:hover { transform: none; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); }
     </style>
 </head>
@@ -66,8 +70,9 @@
                 </h1>
             </div>
 
+            <!-- Navigation links (can be empty or just a Home link) -->
             <nav id="main-nav" class="flex flex-wrap justify-center md:justify-end space-x-1 sm:space-x-4 text-sm font-medium">
-                <!-- Navigation links here (if any) -->
+                <!-- Links here -->
             </nav>
         </div>
     </header>
@@ -92,7 +97,7 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 
-                <!-- SCIENCE: Links to the dedicated subject page -->
+                <!-- SCIENCE: Links directly to science.html for Topic/Chapter selection -->
                 <a href="science.html" class="subject-card group" data-module="science" style="--card-color: #2563eb;">
                     <div class="flex items-center space-x-3 mb-2">
                         <i data-lucide="flask-round" class="text-blue-700 h-6 w-6"></i>
@@ -101,7 +106,7 @@
                     <p class="card-description">In-depth modules on Motion, Force and Laws of Motion, Atoms and Molecules, and The Fundamental Unit of Life.</p>
                     <div class="mt-4 text-center">
                         <span class="w-full inline-block py-2 px-4 rounded-lg bg-blue-600 text-white font-semibold shadow-md">
-                            View Chapters &rarr;
+                            Select Topic &rarr;
                         </span>
                     </div>
                 </a>
@@ -138,7 +143,7 @@
             cards.forEach(card => {
                 const color = card.style.getPropertyValue('--card-color');
                 if (color) {
-                    // Apply border only for visual consistency, but the top border is handled in CSS
+                    // This sets the color variable for the top stripe
                     card.style.setProperty('--card-color', color);
                 }
             });
