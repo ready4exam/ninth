@@ -4,105 +4,149 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Select Chapter & Difficulty</title>
+    
+    <!-- Load consistent font families -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+    
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // IMPORTANT: Re-apply the custom Tailwind config from index.html for consistent styling
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Merriweather', 'serif'],
+                    },
+                    colors: {
+                        'cbse-blue': '#1a3e6a', 
+                        'cbse-light': '#f5f7fa',
+                        'accent-gold': '#ffb703',
+                        'heading': '#0f172a',
+                    }
+                }
+            }
+        }
+    </script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        /* Specific utility classes for selection/card effects */
         body { font-family: 'Inter', sans-serif; }
-        .cbse-blue { background-color: #1a3e6a; }
-        .cbse-light { background-color: #f5f7fa; }
-        .header-bg { background-color: #0d47a1; }
         .card { @apply bg-white p-6 rounded-xl shadow-lg transition-transform duration-300 hover:shadow-xl; }
         .chapter-card { cursor: pointer; }
         .chapter-card:hover { transform: translateY(-3px); }
-        .selected-chapter { @apply border-4 border-blue-500 ring-2 ring-blue-500; }
+        .selected-chapter { @apply border-4 border-accent-gold ring-2 ring-accent-gold; } /* Highlight with accent color */
         .selected-difficulty { @apply bg-blue-600 text-white shadow-md; }
     </style>
 </head>
 <body class="bg-cbse-light min-h-screen">
     
-    <!-- BRANDING HEADER -->
-    <header class="p-4 header-bg text-white shadow-lg sticky top-0 z-10">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center max-w-6xl mx-auto">
-            <h1 class="text-2xl font-extrabold tracking-wider text-accent-gold">Ready4Exam</h1>
-            <p class="text-sm text-gray-300 font-light italic">Your Path to Academic Excellence</p>
+    <!-- BRANDING HEADER (Using bg-cbse-blue for consistency) -->
+    <header class="bg-cbse-blue text-white shadow-lg sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row justify-between items-center">
+            <!-- Brand Name -->
+            <div class="flex items-center space-x-2">
+                <i data-lucide="book-open-check" class="w-8 h-8 text-accent-gold"></i>
+                <h1 class="text-2xl font-extrabold tracking-wider text-accent-gold font-serif">
+                    Ready4Exam
+                </h1>
+            </div>
+            <!-- Title -->
+            <p class="mt-2 md:mt-0 text-lg font-semibold">
+                Class 9 Science - Chapter Selection
+            </p>
         </div>
     </header>
 
-    <main class="max-w-6xl mx-auto p-4 md:p-8 mt-6">
-        
-        <h2 class="text-3xl font-bold text-gray-900 mb-2">CBSE Class 9 Science</h2>
-        <p class="text-xl text-gray-600 mb-8">Select a Chapter and Difficulty to Start the Quiz.</p>
+    <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
 
-        <!-- Chapter Selection -->
-        <h3 class="text-2xl font-semibold text-gray-800 mb-4">1. Choose Chapter</h3>
-        <div id="chapter-list" class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
-            <!-- Data to be loaded from JS -->
+        <h2 class="text-3xl font-bold text-heading mb-8 border-b-2 border-accent-gold pb-2">
+            1. Select a Chapter
+        </h2>
+
+        <!-- Chapter Selection Grid -->
+        <div id="chapter-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            <!-- Chapter cards will be rendered here by JavaScript -->
+            <div class="card text-gray-500">
+                <i data-lucide="loading" class="animate-spin mr-2 h-5 w-5 inline"></i> Loading chapters...
+            </div>
         </div>
 
+        <h2 class="text-3xl font-bold text-heading mb-8 border-b-2 border-accent-gold pb-2">
+            2. Select Difficulty
+        </h2>
+
         <!-- Difficulty Selection -->
-        <h3 class="text-2xl font-semibold text-gray-800 mb-4">2. Select Difficulty</h3>
-        <div id="difficulty-selection" class="flex flex-wrap gap-4 mb-10">
-            <button data-difficulty="simple" class="difficulty-btn px-6 py-3 bg-white text-gray-700 rounded-lg font-medium border-2 hover:border-blue-500 transition">Simple</button>
-            <button data-difficulty="medium" class="difficulty-btn px-6 py-3 bg-white text-gray-700 rounded-lg font-medium border-2 hover:border-blue-500 transition selected-difficulty">Medium</button>
-            <button data-difficulty="advanced" class="difficulty-btn px-6 py-3 bg-white text-gray-700 rounded-lg font-medium border-2 hover:border-blue-500 transition">Advanced (Premium)</button>
+        <div id="difficulty-selection" class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6 justify-center mb-12">
+            <button data-difficulty="simple" class="difficulty-btn w-full sm:w-auto px-8 py-3 bg-white text-gray-700 rounded-lg font-semibold transition hover:bg-gray-100 border border-gray-300">
+                Simple
+            </button>
+            <button data-difficulty="medium" class="difficulty-btn w-full sm:w-auto px-8 py-3 bg-white text-gray-700 rounded-lg font-semibold transition hover:bg-gray-100 border border-gray-300">
+                Medium
+            </button>
+            <button data-difficulty="advanced" class="difficulty-btn w-full sm:w-auto px-8 py-3 bg-white text-gray-700 rounded-lg font-semibold transition hover:bg-gray-100 border border-gray-300">
+                Advanced
+            </button>
         </div>
 
         <!-- Start Quiz Button -->
-        <button id="start-quiz-btn" disabled class="w-full md:w-1/2 mx-auto block py-4 bg-gray-400 text-white text-xl font-bold rounded-xl transition duration-300 cursor-not-allowed">
-            <svg data-lucide="play" class="h-6 w-6 inline-block mr-2"></svg> Start Quiz
-        </button>
-        <p id="error-message" class="text-center text-red-500 mt-2 hidden">Please select a chapter to begin.</p>
-        
+        <div class="text-center">
+            <p id="error-message" class="text-red-600 font-medium mb-4 hidden">Please select both a chapter and a difficulty level to start the quiz.</p>
+            <button id="start-quiz-btn" disabled class="w-full max-w-sm py-4 px-8 rounded-xl text-white font-extrabold text-xl transition transform duration-200 shadow-xl disabled:bg-gray-400 disabled:cursor-not-allowed">
+                Start Quiz
+                <i data-lucide="arrow-right" class="h-6 w-6 inline-block ml-2"></i>
+            </button>
+        </div>
+
     </main>
 
     <!-- FOOTER -->
-    <footer class="cbse-blue mt-16 py-8">
+    <footer class="bg-cbse-blue mt-16 py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
             <small class="text-sm opacity-70 block mt-2">© 2025 Ready4Exam Academic Portal. All Rights Reserved.</small>
         </div>
     </footer>
 
     <script>
-        // Data structure for the chapters (In a real app, this would come from an API)
-        const CHAPTERS = [
-            { id: 'motion', name: 'Motion', icon: 'zap' },
-            { id: 'force', name: 'Force & Laws of Motion', icon: 'move' },
-            { id: 'gravitation', name: 'Gravitation', icon: 'globe' },
-            { id: 'work_energy', name: 'Work & Energy', icon: 'power' },
-            { id: 'sound', name: 'Sound', icon: 'volume-2' },
-            // Placeholder chapters to show the selection functionality
-            { id: 'atoms', name: 'Atoms & Molecules', icon: 'atom' },
-            { id: 'cells', name: 'The Fundamental Unit of Life', icon: 'dna' },
+        // --- DATA & STATE ---
+        let selectedTopic = null;
+        let selectedDifficulty = null;
+        
+        // Define Chapter Data (In a real app, this would be fetched from Firestore/Supabase)
+        const chapterData = [
+            { id: 'motion', title: 'Motion', description: 'Analyze distance, displacement, speed, velocity, and acceleration in various scenarios.', icon: 'move' },
+            { id: 'force-and-laws', title: 'Force and Laws of Motion', description: 'Study balanced/unbalanced forces, inertia, and Newton\'s three laws of motion.', icon: 'gavel' },
+            { id: 'gravitation', title: 'Gravitation', description: 'Explore the Universal Law of Gravitation, free fall, mass, weight, and density.', icon: 'globe' },
+            { id: 'work-and-energy', title: 'Work and Energy', description: 'Concepts of work, power, kinetic energy, potential energy, and the law of conservation of energy.', icon: 'bolt' },
+            { id: 'sound', title: 'Sound', description: 'Nature and propagation of sound, reflection, echo, and the structure of the human ear.', icon: 'volume-2' },
         ];
 
-        let selectedTopic = null;
-        let selectedDifficulty = 'medium'; // Default difficulty
-
-        const chapterListEl = document.getElementById('chapter-list');
+        // --- DOM ELEMENTS ---
+        const chapterGridEl = document.getElementById('chapter-grid');
         const difficultySelectionEl = document.getElementById('difficulty-selection');
         const startQuizBtn = document.getElementById('start-quiz-btn');
         const errorMessageEl = document.getElementById('error-message');
 
+        // --- HANDLERS ---
         function renderChapters() {
-            CHAPTERS.forEach(chapter => {
+            chapterGridEl.innerHTML = ''; // Clear loading message
+            chapterData.forEach(chapter => {
                 const card = document.createElement('div');
                 card.className = 'chapter-card card border border-gray-200';
-                card.setAttribute('data-topic', chapter.id);
+                card.dataset.topic = chapter.id;
                 card.innerHTML = `
-                    <div class="flex items-center space-x-4">
-                        <svg data-lucide="${chapter.icon}" class="text-blue-600 h-8 w-8 flex-shrink-0"></svg>
-                        <div>
-                            <p class="text-lg font-semibold text-gray-800">${chapter.name}</p>
-                            <span class="text-sm text-gray-500">${chapter.id.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</span>
-                        </div>
+                    <div class="flex items-center space-x-4 mb-2">
+                        <i data-lucide="${chapter.icon}" class="text-blue-600 h-8 w-8"></i>
+                        <h3 class="text-xl font-bold text-heading">${chapter.title}</h3>
                     </div>
+                    <p class="text-gray-600">${chapter.description}</p>
                 `;
                 card.addEventListener('click', () => handleChapterSelection(chapter.id, card));
-                chapterListEl.appendChild(card);
+                chapterGridEl.appendChild(card);
             });
-            lucide.createIcons(); // Re-render icons after adding content
+            // Re-create lucide icons after injecting HTML
+            lucide.createIcons();
         }
 
         function handleChapterSelection(topicId, clickedCard) {
@@ -111,47 +155,51 @@
                 card.classList.remove('selected-chapter');
             });
 
-            // Add selection to the clicked card
+            // Apply selection to the clicked card
             clickedCard.classList.add('selected-chapter');
             selectedTopic = topicId;
-            updateStartButton();
+            updateStartButtonState();
         }
 
-        function handleDifficultySelection(difficultyId, clickedBtn) {
+        function handleDifficultySelection(difficulty, clickedBtn) {
             // Remove selection from all buttons
             document.querySelectorAll('.difficulty-btn').forEach(btn => {
                 btn.classList.remove('selected-difficulty');
             });
 
-            // Add selection to the clicked button
+            // Apply selection to the clicked button
             clickedBtn.classList.add('selected-difficulty');
-            selectedDifficulty = difficultyId;
-            updateStartButton();
+            selectedDifficulty = difficulty;
+            updateStartButtonState();
         }
 
-        function updateStartButton() {
+        function updateStartButtonState() {
             if (selectedTopic && selectedDifficulty) {
                 startQuizBtn.disabled = false;
                 startQuizBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
-                startQuizBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+                startQuizBtn.classList.add('bg-accent-gold', 'hover:bg-yellow-600');
                 errorMessageEl.classList.add('hidden');
             } else {
                 startQuizBtn.disabled = true;
                 startQuizBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
-                startQuizBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                startQuizBtn.classList.remove('bg-accent-gold', 'hover:bg-yellow-600');
             }
         }
 
         function handleStartQuiz() {
             if (selectedTopic && selectedDifficulty) {
+                // Determine the subject based on the URL parameter (e.g., 'Science' from index.html)
                 const subject = new URLSearchParams(window.location.search).get('subject') || 'Science';
-                const url = `quiz-engine.html?subject=${subject}&topic=${selectedTopic}&difficulty=${selectedDifficulty}`;
+                
+                // Navigate to the quiz engine page with parameters
+                const url = `quiz-engine.html?class=9&subject=${subject}&topic=${selectedTopic}&difficulty=${selectedDifficulty}`;
                 window.location.href = url;
             } else {
                 errorMessageEl.classList.remove('hidden');
             }
         }
 
+        // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
             renderChapters();
@@ -162,7 +210,7 @@
 
             startQuizBtn.addEventListener('click', handleStartQuiz);
 
-            // Pre-select the 'medium' difficulty button on load
+            // Pre-select the 'medium' difficulty button on load to make it easier for the user
             document.querySelector('.difficulty-btn[data-difficulty="medium"]').click();
         });
     </script>
