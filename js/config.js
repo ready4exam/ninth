@@ -3,6 +3,7 @@
 // as required by the modular JavaScript architecture.
 
 // NOTE: We assume the Supabase client library is loaded via <script> tag in the HTML.
+// The global object created by the CDN script is typically just 'supabase' or accessible via 'window.supabase'.
 
 // --- 1. FIREBASE CONFIGURATION ---
 // IMPORTANT: Replace these placeholder values with your actual Firebase project configuration.
@@ -26,8 +27,9 @@ const supabaseUrl = 'YOUR_SUPABASE_URL';
 const supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
 
 // Initialize Supabase Client
-// We now define it as 'export const' so it can be correctly imported by api.js
-export const supabase = supabase.createClient(supabaseUrl, supabaseAnonKey);
+// FIX: We must use the global 'supabase' function (often window.supabase) 
+// to create the client instance since it's loaded via a CDN script.
+export const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
 
 // NOTE: We no longer need to set window.supabase if we are importing it in api.js.
 
