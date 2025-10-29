@@ -17,10 +17,10 @@ const elements = {
     logoutNavBtn: document.getElementById('logout-nav-btn'),
 
     // Quiz Elements
-    questionContainer: document.getElementById('question-container'), // New element
-    questionCounter: document.getElementById('question-counter'),     // New element
-    prevBtn: document.getElementById('prev-btn'),                     // New element
-    nextBtn: document.getElementById('next-btn'),                     // New element
+    questionContainer: document.getElementById('question-container'),
+    questionCounter: document.getElementById('question-counter'),
+    prevBtn: document.getElementById('prev-btn'),
+    nextBtn: document.getElementById('next-btn'),
     submitButton: document.getElementById('submit-button'),
     
     // Paywall Elements
@@ -63,9 +63,9 @@ export function updateStatus(text) {
 }
 
 /**
- * Hides the loading status element, useful after a successful load.
+ * Hides the loading status element.
  */
-// FIX: Added the missing export for hideStatus
+// *** CRITICAL FIX 1: Exporting hideStatus ***
 export function hideStatus() {
     if (elements.loadingStatus) {
         elements.loadingStatus.classList.add('hidden');
@@ -73,13 +73,14 @@ export function hideStatus() {
 }
 
 /**
- * Initializes the header branding using URL parameters.
+ * Initializes the header branding using URL parameters and calls renderTitles.
  * @param {string} topicTitle - The display name of the topic.
  * @param {string} difficulty - The difficulty level ('simple', 'medium', 'advanced').
  */
-// FIX: Added the missing export for initBranding (and included placeholder subject)
+// *** CRITICAL FIX 2: Exporting initBranding ***
 export function initBranding(topicTitle, difficulty) {
-    const subject = new URLSearchParams(window.location.search).get('subject') || 'Chapter'; // Placeholder for subject if needed
+    const params = new URLSearchParams(window.location.search);
+    const subject = params.get('subject') || 'Chapter'; 
     renderTitles(topicTitle, difficulty, subject);
 }
 
@@ -134,17 +135,17 @@ export function renderQuestion(question, index, total, userAnswer, isSubmitted) 
 
         return `
             <div class="flex items-center space-x-3">
-                <input type="radio" 
-                                   id="${optionId}" 
-                                   name="question_${index}" 
-                                   value="${option}" 
+                <input type="radio"
+                                   id="${optionId}"
+                                   name="question_${index}"
+                                   value="${option}"
                                    class="radio-input"
                                    ${isChecked ? 'checked' : ''}
                                    ${isSubmitted ? 'disabled' : ''}
                 >
                 <label for="${optionId}" class="option-label ${feedbackClass}">
                     <!-- Custom radio indicator -->
-                    <div class="h-5 w-5 rounded-full border-2 mr-3 flex items-center justify-center transition-all duration-150 
+                    <div class="h-5 w-5 rounded-full border-2 mr-3 flex items-center justify-center transition-all duration-150
                                                     ${isChecked && !isSubmitted ? 'bg-cbse-blue border-cbse-blue' : isChecked && isCorrect ? 'bg-green-600 border-green-600' : isChecked && !isCorrect ? 'bg-red-600 border-red-600' : 'bg-white border-gray-400'}">
                         <div class="h-2 w-2 rounded-full ${isChecked ? 'bg-white' : 'bg-transparent'}"></div>
                     </div>
@@ -221,7 +222,13 @@ export function updateNavigation(current, total, isSubmitted) {
     }
 }
 
-// FIX: Added missing export for processResultsAndRender (placeholder logic)
+/**
+ * Calculates the score and prepares the quiz content for review mode.
+ * @param {Array} questions - The array of question objects.
+ * @param {Object} userAnswers - The user's answers.
+ * @returns {number} The final score.
+ */
+// *** CRITICAL FIX 3: Exporting processResultsAndRender ***
 export function processResultsAndRender(questions, userAnswers) {
     let score = 0;
     questions.forEach((q, index) => {
@@ -230,6 +237,8 @@ export function processResultsAndRender(questions, userAnswers) {
             score++;
         }
     });
+    // Note: The actual rendering of feedback happens in renderQuestion 
+    // when isSubmitted is true. This function just calculates the score.
     return score;
 }
 
