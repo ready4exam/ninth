@@ -1,14 +1,13 @@
-import { fetchQuestions } from './api.js'; // CORRECTED PATH: Use './api.js' assuming both files are in the same folder
+import { fetchQuestions, countQuestions, saveResult } from './api.js'; // Correct path: './api.js'
 
-// --- Placeholder/Stubbed Imports for Missing Modules (Assumes all are in the same 'js' folder) ---
-const initializeAuthListener = () => { console.log('Auth initialized.'); };
-const signInWithGoogle = () => {};
-const signOut = () => {};
-const checkPaymentStatus = () => true; 
-const countQuestions = () => 20;
-const saveResult = (result) => { console.log("Saving quiz result:", result); }; 
+// --- Imports for Missing Modules (Assumes all are in the same 'js' folder) ---
+// These functions are now imported from their dedicated files, not stubbed here.
+import { initializeAuthListener, signInWithGoogle, signOut, checkPaymentStatus } from './auth-paywall.js';
+// Note: countQuestions and saveResult are already imported from api.js above.
 
 // --- UI Helper Functions (Basic DOM manipulation for status and visibility) ---
+// These functions usually come from ui-renderer.js, but we'll keep the stubs here for now
+// to avoid introducing another file dependency unless explicitly requested.
 const showView = (id) => { 
     console.log(`Showing view: ${id}`); 
     document.getElementById('loading-status').classList.add('hidden'); 
