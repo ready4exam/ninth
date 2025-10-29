@@ -8,148 +8,97 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Inter Font -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
-        body { font-family: 'Inter', sans-serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Merriweather:wght@700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f5f7fa; }
         /* Custom Styles for Quiz UI */
         .cbse-blue { background-color: #1a3e6a; }
         .cbse-light { background-color: #f5f7fa; }
         .option-label {
-            @apply flex items-center p-4 bg-white border-2 border-gray-300 rounded-lg shadow-sm cursor-pointer transition-all duration-200;
+            @apply flex items-start p-4 bg-white border-2 border-gray-300 rounded-lg shadow-sm cursor-pointer transition-all duration-200;
         }
-        .option-label:hover {
+        .option-label:hover:not([disabled]) {
             @apply border-blue-400 shadow-md;
         }
-        input:checked + .option-label {
+        input:checked + .option-label:not(.correct):not(.incorrect) {
+            /* Highlight selection before submission */
             @apply border-cbse-blue bg-blue-50/50;
         }
-        /* Feedback Styles */
+        /* Feedback Styles (after submission) */
         .option-label.correct {
             @apply border-green-600 bg-green-100/50 text-green-800 font-semibold shadow-inner;
         }
         .option-label.incorrect {
-            @apply border-red-600 bg-red-100/50 text-red-800;
+            /* User selected this, but it was wrong */
+            @apply border-red-600 bg-red-100/50 text-red-800 font-semibold shadow-inner;
         }
-        .feedback-box {
-            @apply mt-4 p-4 rounded-lg bg-gray-50 border border-gray-200 text-sm italic;
-        }
-        .question-number-tab {
-            @apply w-8 h-8 flex items-center justify-center rounded-full text-sm font-semibold transition-all duration-150 cursor-pointer;
-        }
-        .tab-unanswered { @apply bg-gray-300 text-gray-800 hover:bg-gray-400; }
-        .tab-answered { @apply bg-blue-500 text-white hover:bg-blue-600; }
-        .tab-current { @apply ring-4 ring-red-500/50 transform scale-110 !bg-red-600 text-white; }
-        .tab-correct { @apply !bg-green-600 text-white; }
-        .tab-incorrect { @apply !bg-red-600 text-white; }
+        /* Style for radio button to visually hide it while keeping functionality */
+        .radio-input { @apply hidden; }
 
+        .question-card {
+            @apply bg-white p-6 md:p-10 rounded-xl shadow-2xl;
+        }
+        .question-index-tag {
+            @apply inline-block px-3 py-1 text-sm font-bold rounded-full bg-blue-100 text-blue-700;
+        }
     </style>
-    <!-- Firebase/Supabase/Razorpay CDNs required by the JS modules -->
-    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@1.35.7/dist/umd/supabase.min.js"></script>
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
-<body class="bg-gray-100 min-h-screen">
-    
-    <!-- BRANDING HEADER -->
-    <header class="p-4 bg-gray-900 text-white shadow-lg sticky top-0 z-10">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center max-w-6xl mx-auto">
-            
-            <!-- Brand Name and Tagline Container -->
-            <div class="mb-2 md:mb-0">
-                <h1 class="brand-display text-2xl font-extrabold tracking-wider text-red-500" id="brand-name-display">
-                    Ready4Exam
-                </h1>
-                <p class="text-sm text-gray-400 font-light italic" id="brand-tagline-display">
-                    Your path to academic excellence.
-                </p>
-            </div>
-            
-            <!-- Auth & Status -->
-            <div class="flex space-x-4 items-center">
-                <p id="auth-status" class="text-sm text-gray-400 hidden"></p>
-                <button id="logout-nav-btn" class="hidden px-4 py-1 bg-red-600 rounded-lg text-white text-sm font-semibold hover:bg-red-700 transition">
-                    🚪 Logout
-                </button>
-            </div>
-        </div>
-        <!-- Quiz Context Title -->
-        <div class="max-w-6xl mx-auto mt-4 text-center">
-             <h2 class="text-xl font-bold text-white" id="quiz-page-title"></h2>
-        </div>
-    </header>
-    
-    <main class="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
-        
-        <!-- --- 1. Loading/Status View (Default View) --- -->
-        <div id="loading-status" class="flex flex-col items-center justify-center p-12 bg-white rounded-xl shadow-2xl text-cbse-blue font-semibold text-lg">
-            <svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <p id="status-text" class="mt-4 text-center">Initializing Quiz Engine...</p>
-        </div>
-        
-        <!-- --- 2. Paywall View --- -->
-        <div id="paywall-screen" class="hidden flex flex-col items-center justify-center p-12 bg-red-50 rounded-xl shadow-2xl text-gray-800 text-center">
-            <h2 class="text-3xl font-extrabold text-red-700 mb-4">Access Restricted</h2>
-            <p class="text-lg mb-6">This section, focusing on <strong id="access-required-item" class="text-red-900">Gravitation</strong>, requires a premium subscription.</p>
-            <p class="mb-8">Log in or make a one-time payment of <strong class="text-green-600">₹500</strong> to unlock this and all other advanced quizzes.</p>
-            <div class="flex space-x-4">
-                <button id="login-button" class="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition shadow-md">
-                    <span id="login-text">Login with Google</span>
-                </button>
-                <button id="pay-button" class="px-6 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition shadow-md">
-                    Unlock Now (₹500)
-                </button>
-            </div>
-        </div>
-
-        <!-- --- 3. Start Screen View --- -->
-        <div id="start-screen" class="hidden flex flex-col items-center p-8 bg-white rounded-xl shadow-lg">
-            <h2 class="text-2xl font-bold text-heading mb-4">Quiz Ready!</h2>
-            <p class="text-gray-600 mb-6">You are about to start the <span id="quiz-title" class="font-semibold text-red-600"></span> quiz. Total questions available:</p>
-            <div class="flex space-x-4 text-center mb-8">
-                <div class="p-4 rounded-lg bg-green-100/50 w-1/3">
-                    <p class="text-3xl font-extrabold text-green-600" id="simple-available-q">10</p>
-                    <p class="text-sm text-gray-600">Simple</p>
-                </div>
-                <div class="p-4 rounded-lg bg-yellow-100/50 w-1/3">
-                    <p class="text-3xl font-extrabold text-yellow-600" id="medium-available-q">10</p>
-                    <p class="text-sm text-gray-600">Medium</p>
-                </div>
-                <div class="p-4 rounded-lg bg-red-100/50 w-1/3">
-                    <p class="text-3xl font-extrabold text-red-600" id="advanced-available-q">10</p>
-                    <p class="text-sm text-gray-600">Advanced</p>
-                </div>
-            </div>
-            <p class="text-sm text-gray-500 mb-4">Selected Difficulty: <strong id="difficulty-display" class="uppercase text-red-600">MEDIUM</strong></p>
-            <button id="start-quiz-btn" class="px-8 py-3 bg-red-600 text-white rounded-xl font-bold text-lg hover:bg-red-700 transition shadow-xl">
-                Begin Quiz
+<body>
+    <!-- HEADER -->
+    <header class="header-bg bg-cbse-blue shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <a href="index.html" class="text-2xl font-extrabold text-white tracking-tight hover:text-accent-gold transition">
+                Ready4Exam
+            </a>
+            <button id="logout-nav-btn" class="hidden text-sm py-2 px-4 rounded-full bg-red-500 text-white font-semibold transition hover:bg-red-600">
+                🚪 Logout
             </button>
         </div>
+    </header>
 
+    <!-- MAIN CONTENT -->
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 mb-16">
+        
+        <!-- Topic/Difficulty Display -->
+        <div class="mb-8 text-center">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-heading mb-1" id="quiz-page-title">Loading Quiz...</h1>
+            <p class="text-lg text-gray-500" id="difficulty-display"></p>
+        </div>
 
-        <!-- --- 4. Quiz Content View --- -->
-        <div id="quiz-content" class="hidden">
-            <!-- Question Navigation Bar -->
-            <div id="question-nav-bar" class="flex flex-wrap gap-2 justify-center p-4 bg-white rounded-xl shadow-lg mb-6">
-                <!-- Question tabs will be rendered here -->
-            </div>
+        <!-- --- 1. Loading/Status View --- -->
+        <div id="loading-status" class="flex flex-col items-center justify-center p-12 bg-white rounded-xl shadow-lg">
+            <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-cbse-blue mb-4"></div>
+            <p class="text-xl font-semibold text-cbse-blue" id="status-text">Initializing services and checking authentication...</p>
+        </div>
 
-            <!-- Question & Options Container -->
-            <div id="question-container" class="bg-white p-6 rounded-xl shadow-lg mb-6">
-                <!-- Question and options rendered by JS -->
-                <p class="text-gray-500 text-center">Quiz content will appear here.</p>
-            </div>
-            
-            <!-- Navigation/Action Buttons -->
-            <div class="flex justify-between items-center">
-                <button id="prev-btn" class="px-6 py-2 bg-gray-300 text-gray-800 rounded-lg font-semibold hover:bg-gray-400 transition" disabled>
-                    Previous
+        <!-- --- 2. Paywall View --- -->
+        <div id="paywall-screen" class="hidden flex flex-col items-center p-12 bg-red-50 rounded-xl shadow-2xl border-2 border-red-200 text-center">
+            <h2 class="text-3xl font-extrabold text-red-700 mb-4">Access Restricted</h2>
+            <p class="text-lg text-gray-700 mb-6">
+                Full access to the **<span id="access-required-item" class="font-bold">...</span>** quiz is reserved for subscribers.
+            </p>
+            <div class="space-y-4 w-full max-w-sm">
+                <button id="login-button" class="w-full py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition">
+                    Sign In to Continue
                 </button>
-                <div class="flex space-x-4">
-                    <button id="next-btn" class="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition">
+                <button id="pay-button" class="w-full py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition">
+                    Unlock All Content (Payment Disabled)
+                </button>
+            </div>
+            <a href="index.html" class="mt-6 text-sm text-blue-600 hover:text-blue-800 transition">Return to Home</a>
+        </div>
+        
+        <!-- --- 3. Quiz Content View --- -->
+        <div id="quiz-content" class="hidden">
+            <!-- Question Navigation and Counter -->
+            <div class="flex flex-col md:flex-row justify-between items-center mb-6 p-3 bg-white rounded-xl shadow-sm border border-gray-200">
+                <p class="text-lg font-bold text-gray-700 mb-4 md:mb-0">
+                    Question: <span id="question-counter">1 / 20</span>
+                </p>
+                <div id="quiz-navigation" class="space-x-2 flex">
+                    <button id="prev-btn" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg font-semibold hover:bg-gray-400 transition" disabled>
+                        Previous
+                    </button>
+                    <button id="next-btn" class="px-4 py-2 bg-cbse-blue text-white rounded-lg font-semibold hover:bg-blue-700 transition">
                         Next
                     </button>
                     <button id="submit-button" class="px-6 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition hidden">
@@ -157,9 +106,19 @@
                     </button>
                 </div>
             </div>
+            
+            <!-- Question Rendering Area -->
+            <div id="question-container" class="question-card">
+                <!-- Question, type, and options rendered here by js/ui-renderer.js -->
+            </div>
+            
+            <!-- Placeholder for Question List/Review TBD -->
+            <div id="question-list" class="hidden mt-6">
+                <!-- Question status indicators (for review mode) -->
+            </div>
         </div>
 
-        <!-- --- 5. Results View --- -->
+        <!-- --- 4. Results View --- -->
         <div id="results-screen" class="hidden flex flex-col items-center p-12 bg-white rounded-xl shadow-2xl text-gray-800 text-center">
             <h2 class="text-4xl font-extrabold text-green-600 mb-4">Quiz Completed!</h2>
             <p class="text-xl text-gray-600 mb-6">Your final score is:</p>
@@ -178,6 +137,5 @@
     <script type="module" src="./js/api.js"></script>
     <script type="module" src="./js/ui-renderer.js"></script>
     <script type="module" src="./js/quiz-engine.js"></script>
-
 </body>
 </html>
