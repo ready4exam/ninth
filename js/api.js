@@ -17,10 +17,11 @@ export async function fetchQuestions(topicSlug, difficulty) {
 
         if (!supabase) {
             console.error("[API FATAL] Supabase client is not initialized.");
-            throw new Error("Supabase client not available.");
+            // Throw a generic error to the UI
+            throw new Error("Data service not ready. Please try refreshing."); 
         }
         
-        console.log(`[API] Fetching questions from table: '${topicSlug}' for difficulty: ${difficulty}`);
+        console.log(`[API] Fetching questions from table: ${QUIZZES_TABLE} for topic: '${topicSlug}' and difficulty: ${difficulty}`);
 
         const questionsToFetch = [
             { type: 'mcq', limit: 10 },
@@ -50,13 +51,18 @@ export async function fetchQuestions(topicSlug, difficulty) {
         const results = await Promise.all(fetchPromises);
         allQuestions = results.flat();
 
+        // Check if we successfully got any questions at all
+        if (allQuestions.length === 0) {
+            throw new Error(`No questions found for topic '${topicSlug}' at difficulty '${difficulty}'. Check database content.`);
+        }
+
         // Shuffle the combined array for a non-sequential quiz experience
         return allQuestions.sort(() => Math.random() - 0.5);
 
     } catch (e) {
         console.error("[API FATAL] General error in fetchQuestions:", e);
         // Re-throw a generic, user-friendly error message
-        throw new Error("Data retrieval failed due to an internal error."); 
+        throw e; // Propagate the error up to loadQuiz
     }
 }
 
@@ -68,14 +74,7 @@ export async function countQuestions(topicSlug) {
 
 export async function saveResult(quizResult) { 
     // Implement result saving logic here (e.g., to a 'quiz_results' table)
-    console.log("Saving result:", quizResult);
+    console.log("[API] Saving result:", quizResult);
+    // Placeholder implementation
     return { success: true };
 }
-```eof
-
-### Next Step
-
-1.  Confirm that you have implemented the changes in **`config.js`** to use `document.addEventListener('DOMContentLoaded', initServices)` and export the **`getInitializedClients`** function.
-2.  Replace the content of your **`js/api.js`** file with the code above.
-
-This combination ensures the Supabase client is initialized *before* it's accessed, which should finally resolve the `TypeError: Cannot read properties of undefined (reading 'from')` error and allow data to load.
