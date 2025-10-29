@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-   <meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>gravitation</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -14,6 +14,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
     
     <script src="../../js/config.js"></script>
+    
     <style>
         /* Custom font and base styling */
         body { font-family: 'Inter', sans-serif; }
@@ -176,9 +177,6 @@
         // --- Configuration ---
         const SUPABASE_TABLE = 'gravitation'; 
         // ---------------------
-
-        // The initialized Supabase client is now the global 'supabase' variable 
-        // provided by ../../js/config.js. We don't need to re-declare or re-initialize it.
         
         let questions = [];
         let selectedAnswers = {}; 
@@ -219,14 +217,12 @@
 
         function init() {
             // Check for the global Supabase client instance created by config.js
+            // This is the line where the final error was reported
             if (typeof supabase === 'undefined' || typeof supabase.from !== 'function') {
-                statusMessage.textContent = 'Configuration Error: Supabase client is not initialized. Ensure the Supabase library and "../../js/config.js" are loaded correctly.';
+                statusMessage.textContent = 'Configuration Error: Supabase client is not initialized. Ensure the Supabase library, Firebase scripts, and "../../js/config.js" are loaded correctly.';
                 statusMessage.className = 'text-center p-4 rounded-lg bg-red-100 text-red-700 font-medium mb-6';
                 return;
             }
-            
-            // The client is already initialized as the global 'supabase' from config.js, 
-            // so we proceed directly to fetching data.
             
             fetchQuestionCounts(); 
             
