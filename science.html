@@ -1,494 +1,487 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CBSE Class 9 Science Curriculum</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        serif: ['Merriweather', 'serif'],
-                    },
-                    colors: {
-                        'cbse-blue': '#1a3e6a', 
-                        'cbse-light': '#f0f4f8', 
-                        'accent-green': '#059669', // Chemistry
-                        'accent-red': '#dc2626',   // Biology
-                        'accent-blue': '#2563eb',  // Physics
-                        'unit-bg': '#e3f2fd', 
-                    }
-                }
-            }
-        }
-    </script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        .book-card {
-            transition: all 0.3s ease;
-            cursor: pointer;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
-            transform: translate(0);
-        }
-        .book-card:hover {
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-            transform: translateY(-4px);
-        }
-        .unit-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.4s ease-in-out;
-        }
-        .unit-header.active .icon-rotate {
-            transform: rotate(180deg);
-        }
-        .back-btn {
-            display: inline-flex;
-            align-items: center;
-            font-size: 1.125rem;
-            font-weight: 500;
-            color: #1a3e6a;
-            margin-bottom: 1.5rem;
-            transition: color 150ms;
-        }
-        .back-btn:hover {
-            color: rgba(26, 62, 106, 0.8);
-        }
-        .auth-container {
-            max-width: 400px;
-            margin: 0 auto;
-            padding: 2rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 50;
-        }
-    </style>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CBSE Class 9 Science Curriculum</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Merriweather', 'serif'],
+                    },
+                    colors: {
+                        'cbse-blue': '#1a3e6a', 
+                        'cbse-light': '#f0f4f8', 
+                        'accent-green': '#059669', // Chemistry
+                        'accent-red': '#dc2626',   // Biology
+                        'accent-blue': '#2563eb',  // Physics
+                        'unit-bg': '#e3f2fd', 
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .book-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+            transform: translate(0);
+        }
+        .book-card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+            transform: translateY(-4px);
+        }
+        .unit-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-in-out;
+        }
+        .unit-header.active .icon-rotate {
+            transform: rotate(180deg);
+        }
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: #1a3e6a;
+            margin-bottom: 1.5rem;
+            transition: color 150ms;
+        }
+        .back-btn:hover {
+            color: rgba(26, 62, 106, 0.8);
+        }
+        .auth-container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+    </style>
 </head>
 <body class="bg-cbse-light min-h-screen antialiased">
 
-    <header class="bg-white shadow-lg sticky top-0 z-10 border-t-8 border-cbse-blue">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row justify-between items-center">
-            <div class="flex items-center space-x-3 mb-4 md:mb-0 cursor-pointer" id="header-home-btn">
-                <span data-lucide="flask-round" class="text-cbse-blue w-8 h-8"></span>
-                <h1 class="text-2xl font-extrabold text-cbse-blue">CBSE Class 9 Science Portal</h1>
-            </div>
-            <nav class="flex space-x-2 sm:space-x-4">
-                <button id="logout-nav-btn" class="nav-link hidden">🚪 Logout</button>
-            </nav>
-        </div>
-    </header>
+    <header class="bg-white shadow-lg sticky top-0 z-10 border-t-8 border-cbse-blue">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row justify-between items-center">
+            <div class="flex items-center space-x-3 mb-4 md:mb-0 cursor-pointer" id="header-home-btn">
+                <span data-lucide="flask-round" class="text-cbse-blue w-8 h-8"></span>
+                <h1 class="text-2xl font-extrabold text-cbse-blue">CBSE Class 9 Science Portal</h1>
+            </div>
+            <nav class="flex space-x-2 sm:space-x-4">
+                <button id="logout-nav-btn" class="nav-link hidden">🚪 Logout</button>
+            </nav>
+        </div>
+    </header>
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        <div id="quiz-content-wrapper"> 
-            <div id="book-select-view" class="view">
-                <h2 class="text-3xl font-bold text-gray-800 mb-8 border-b-2 border-cbse-blue pb-2">Select Your Book</h2>
-                <div class="grid md:grid-cols-3 gap-8">
-                    
-                    <div class="book-card bg-white p-6 rounded-xl border-t-4 border-accent-blue book-select-btn" data-book="Physics" data-title="Physics: Motion, Force, and Energy" data-color="accent-blue">
-                        <span data-lucide="zap" class="w-10 h-10 text-accent-blue mb-3"></span>
-                        <h3 class="text-xl font-bold text-gray-800 mb-1 font-serif">Physics</h3> 
-                        <p class="text-gray-500 text-sm">Motion, Laws of Motion, Gravitation, Work, Energy, and Sound.</p>
-                    </div>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <div id="quiz-content-wrapper"> 
+            <div id="book-select-view" class="view">
+                <h2 class="text-3xl font-bold text-gray-800 mb-8 border-b-2 border-cbse-blue pb-2">Select Your Book</h2>
+                <div class="grid md:grid-cols-3 gap-8">
+                    
+                    <div class="book-card bg-white p-6 rounded-xl border-t-4 border-accent-blue book-select-btn" data-book="Physics" data-title="Physics: Motion, Force, and Energy" data-color="accent-blue">
+                        <span data-lucide="zap" class="w-10 h-10 text-accent-blue mb-3"></span>
+                        <h3 class="text-xl font-bold text-gray-800 mb-1 font-serif">Physics</h3> 
+                        <p class="text-gray-500 text-sm">Motion, Laws of Motion, Gravitation, Work, Energy, and Sound.</p>
+                    </div>
 
-                    <div class="book-card bg-white p-6 rounded-xl border-t-4 border-accent-green book-select-btn" data-book="Chemistry" data-title="Chemistry: Matter and Atomic Structure" data-color="accent-green">
-                        <span data-lucide="atom" class="w-10 h-10 text-accent-green mb-3"></span>
-                        <h3 class="text-xl font-bold text-gray-800 mb-1 font-serif">Chemistry</h3> 
-                        <p class="text-gray-500 text-sm">Matter in Our Surroundings, Is Matter Around Us Pure, Atoms and Molecules, Structure of the Atom.</p>
-                    </div>
+                    <div class="book-card bg-white p-6 rounded-xl border-t-4 border-accent-green book-select-btn" data-book="Chemistry" data-title="Chemistry: Matter and Atomic Structure" data-color="accent-green">
+                        <span data-lucide="atom" class="w-10 h-10 text-accent-green mb-3"></span>
+                        <h3 class="text-xl font-bold text-gray-800 mb-1 font-serif">Chemistry</h3> 
+                        <p class="text-gray-500 text-sm">Matter in Our Surroundings, Is Matter Around Us Pure, Atoms and Molecules, Structure of the Atom.</p>
+                    </div>
 
-                    <div class="book-card bg-white p-6 rounded-xl border-t-4 border-accent-red book-select-btn" data-book="Biology" data-title="Biology: Cell, Tissues, and Food Resources" data-color="accent-red">
-                        <span data-lucide="dna" class="w-10 h-10 text-accent-red mb-3"></span>
-                        <h3 class="text-xl font-bold text-gray-800 mb-1 font-serif">Biology</h3> 
-                        <p class="text-gray-500 text-sm">Fundamental Unit of Life, Tissues, Health, and Improvement in Food Resources.</p>
-                    </div>
-                    
-                </div>
-                
-                <section id="mock-test" class="bg-white p-8 rounded-xl shadow-lg border-t-2 border-b-2 border-cbse-blue mt-12 flex flex-col items-center text-center">
-                    <h4 class="text-3xl font-extrabold text-cbse-blue mb-2">Full Syllabus Mock Test</h4>
-                    <p class="text-gray-600 text-lg mb-4">Test your readiness with a full-length, 90-minute examination covering all CBSE Class 9 Science chapters.</p>
-                    <button class="px-8 py-3 bg-accent-red text-white font-bold rounded-lg shadow-xl hover:bg-red-700 transition duration-150 text-xl quiz-start-btn" data-chapter="Master Quiz">
-                        Start Master Quiz
-                    </button>
-                </section>
-            </div>
+                    <div class="book-card bg-white p-6 rounded-xl border-t-4 border-accent-red book-select-btn" data-book="Biology" data-title="Biology: Cell, Tissues, and Food Resources" data-color="accent-red">
+                        <span data-lucide="dna" class="w-10 h-10 text-accent-red mb-3"></span>
+                        <h3 class="text-xl font-bold text-gray-800 mb-1 font-serif">Biology</h3> 
+                        <p class="text-gray-500 text-sm">Fundamental Unit of Life, Tissues, Health, and Improvement in Food Resources.</p>
+                    </div>
+                    
+                </div>
+                
+                <section id="mock-test" class="bg-white p-8 rounded-xl shadow-lg border-t-2 border-b-2 border-cbse-blue mt-12 flex flex-col items-center text-center">
+                    <h4 class="text-3xl font-extrabold text-cbse-blue mb-2">Full Syllabus Mock Test</h4>
+                    <p class="text-gray-600 text-lg mb-4">Test your readiness with a full-length, 90-minute examination covering all CBSE Class 9 Science chapters.</p>
+                    <button class="px-8 py-3 bg-accent-red text-white font-bold rounded-lg shadow-xl hover:bg-red-700 transition duration-150 text-xl quiz-start-btn" data-chapter="Master Quiz">
+                        Start Master Quiz
+                    </button>
+                </section>
+            </div>
 
-            <div id="units-view" class="view hidden">
-                <button id="back-to-books-btn" class="back-btn">
-                    <span data-lucide="arrow-left" class="w-5 h-5 mr-2"></span> Back to Books
-                </button>
-                <h2 id="units-view-title" class="text-3xl font-bold text-gray-800 mb-6 border-b-2 pb-2"></h2>
-                <div id="units-list">
-                </div>
-            </div>
-        </div>
-        </main>
+            <div id="units-view" class="view hidden">
+                <button id="back-to-books-btn" class="back-btn">
+                    <span data-lucide="arrow-left" class="w-5 h-5 mr-2"></span> Back to Books
+                </button>
+                <h2 id="units-view-title" class="text-3xl font-bold text-gray-800 mb-6 border-b-2 pb-2"></h2>
+                <div id="units-list">
+                </div>
+            </div>
+        </div>
+        </main>
 
-    <div id="auth-modal" class="modal-overlay hidden">
-        <div id="auth-view" class="auth-container bg-white relative">
-            <button id="close-modal-btn" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition">
-                <span data-lucide="x" class="w-6 h-6"></span>
-            </button>
-            <h2 id="auth-header" class="text-2xl font-bold text-center mb-6 text-cbse-blue">
-                Login to Access Quizzes
-            </h2>
+    <div id="auth-modal" class="modal-overlay hidden">
+        <div id="auth-view" class="auth-container bg-white relative">
+            <button id="close-modal-btn" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition">
+                <span data-lucide="x" class="w-6 h-6"></span>
+            </button>
+            <h2 id="auth-header" class="text-2xl font-bold text-center mb-6 text-cbse-blue">
+                Login to Access Quizzes
+            </h2>
 
-            <div class="mt-4">
-                <button id="google-sign-in-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition flex items-center justify-center space-x-3 shadow-md">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/4/4a/Logo_google_g_standard.png" alt="Google logo" class="w-6 h-6 bg-white rounded-full">
-                    <span>Sign in with Google</span>
-                </button>
-            </div>
+            <div class="mt-4">
+                <button id="google-sign-in-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition flex items-center justify-center space-x-3 shadow-md">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/4/4a/Logo_google_g_standard.png" alt="Google logo" class="w-6 h-6 bg-white rounded-full">
+                    <span>Sign in with Google</span>
+                </button>
+            </div>
 
-            <p id="error-message" class="mt-4 text-center text-red-500 font-medium"></p>
-        </div>
-    </div>
-    
-    <div id="message-modal" class="modal-overlay hidden">
-        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full relative">
-            <h3 id="message-title" class="text-xl font-bold text-cbse-blue mb-2">Notice</h3>
-            <p id="message-body" class="text-gray-700 mb-4"></p>
-            <button id="close-message-btn" class="w-full bg-cbse-blue text-white font-semibold py-2 rounded-lg hover:bg-cbse-blue/90 transition">Close</button>
-        </div>
-        
-    </div>
+            <p id="error-message" class="mt-4 text-center text-red-500 font-medium"></p>
+        </div>
+    </div>
+    
+    <div id="message-modal" class="modal-overlay hidden">
+        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full relative">
+            <h3 id="message-title" class="text-xl font-bold text-cbse-blue mb-2">Notice</h3>
+            <p id="message-body" class="text-gray-700 mb-4"></p>
+            <button id="close-message-btn" class="w-full bg-cbse-blue text-white font-semibold py-2 rounded-lg hover:bg-cbse-blue/90 transition">Close</button>
+        </div>
+    </div>
 
-    <footer class="bg-cbse-blue mt-12 py-6">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
-            <small class="text-sm opacity-80">© 2025 CBSE Class 9 Academic Portal | Redesigned Curriculum View</small>
-        </div>
-    </footer>
+    <footer class="bg-cbse-blue mt-12 py-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
+            <small class="text-sm opacity-80">© 2025 CBSE Class 9 Academic Portal | Redesigned Curriculum View</small>
+        </div>
+    </footer>
 
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> 
 
-    <script>
-        // FIREBASE CONFIGURATION 
-        const firebaseConfig = {
-            apiKey: "AIzaSyAXdKiYRxBKAj280YcNuNwlKKDp85xpOWQ",
-            authDomain: "quiz-signon.firebaseapp.com",
-            projectId: "quiz-signon",
-            storageBucket: "quiz-signon.firebasestorage.app",
-            messagingSenderId: "863414222321",
-            appId: "1:863414222321:web:819f5564825308bcd9d850",
-            measurementId: "G-4EFDM0CRYY"
-        };
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
+    
+    <script src="./js/config.js"></script> 
 
-        const app = firebase.initializeApp(firebaseConfig);
-        const auth = app.auth(); 
-        const db = app.firestore(); 
-        // Analytics initialization and test events removed to clean code.
+    <script>
+        // Global variables `auth`, `db`, `analytics`, `supabase`, and `codeVersion` 
+        // are now available from the loaded ./js/config.js file.
 
-        let isUserLoggedIn = false; 
+        let isUserLoggedIn = false; 
 
-        // --- DOM Elements ---
-        const authModal = document.getElementById('auth-modal');
-        const logoutNavBtn = document.getElementById('logout-nav-btn');
-        const errorMessage = document.getElementById('error-message');
-        const unitsList = document.getElementById('units-list');
-        const unitsViewTitle = document.getElementById('units-view-title');
-        const backToBooksBtn = document.getElementById('back-to-books-btn');
-        const closeModalBtn = document.getElementById('close-modal-btn');
-        const headerHomeBtn = document.getElementById('header-home-btn');
-        const googleSignInBtn = document.getElementById('google-sign-in-btn'); 
-        
-        // Custom Message Modal Elements
-        const messageModal = document.getElementById('message-modal');
-        const messageTitle = document.getElementById('message-title');
-        const messageBody = document.getElementById('message-body');
-        const closeMessageBtn = document.getElementById('close-message-btn');
+        // --- DOM Elements ---
+        const authModal = document.getElementById('auth-modal');
+        const logoutNavBtn = document.getElementById('logout-nav-btn');
+        const errorMessage = document.getElementById('error-message');
+        const unitsList = document.getElementById('units-list');
+        const unitsViewTitle = document.getElementById('units-view-title');
+        const backToBooksBtn = document.getElementById('back-to-books-btn');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const headerHomeBtn = document.getElementById('header-home-btn');
+        const googleSignInBtn = document.getElementById('google-sign-in-btn'); 
+        
+        // Custom Message Modal Elements
+        const messageModal = document.getElementById('message-modal');
+        const messageTitle = document.getElementById('message-title');
+        const messageBody = document.getElementById('message-body');
+        const closeMessageBtn = document.getElementById('close-message-btn');
 
 
-        // --- GENERIC MESSAGE/MODAL FUNCTIONS (Replaces alert()) ---
-        function displayMessageModal(title, body) {
-            messageTitle.textContent = title;
-            messageBody.textContent = body;
-            messageModal.classList.remove('hidden');
-        }
+        // --- GENERIC MESSAGE/MODAL FUNCTIONS (Replaces alert()) ---
+        function displayMessageModal(title, body) {
+            messageTitle.textContent = title;
+            messageBody.textContent = body;
+            messageModal.classList.remove('hidden');
+        }
 
-        closeMessageBtn.addEventListener('click', () => {
-            messageModal.classList.add('hidden');
-        });
+        closeMessageBtn.addEventListener('click', () => {
+            messageModal.classList.add('hidden');
+        });
 
-        // --- AUTH/MODAL FUNCTIONS ---
+        // --- AUTH/MODAL FUNCTIONS ---
 
-        function showAuthModal() {
-            authModal.classList.remove('hidden');
-            errorMessage.textContent = '';
-        }
+        function showAuthModal() {
+            authModal.classList.remove('hidden');
+            errorMessage.textContent = '';
+        }
 
-        function hideAuthModal() {
-            authModal.classList.add('hidden');
-        }
-        
-        function updateAuthUI(user) {
-             if (user) {
-                 isUserLoggedIn = true;
-                 logoutNavBtn.classList.remove('hidden');
-            } else {
-                 isUserLoggedIn = false;
-                 logoutNavBtn.classList.add('hidden');
-            }
-        }
+        function hideAuthModal() {
+            authModal.classList.add('hidden');
+        }
+        
+        function updateAuthUI(user) {
+             if (user) {
+                 isUserLoggedIn = true;
+                 logoutNavBtn.classList.remove('hidden');
+            } else {
+                 isUserLoggedIn = false;
+                 logoutNavBtn.classList.add('hidden');
+            }
+        }
 
-        // --- GOOGLE SIGN-IN LOGIC ---
+        // --- GOOGLE SIGN-IN LOGIC ---
 
-        googleSignInBtn.addEventListener('click', async () => {
-            errorMessage.textContent = 'Signing in with Google...';
-            googleSignInBtn.disabled = true;
+        googleSignInBtn.addEventListener('click', async () => {
+            errorMessage.textContent = 'Signing in with Google...';
+            googleSignInBtn.disabled = true;
 
-            const provider = new firebase.auth.GoogleAuthProvider();
+            const provider = new firebase.auth.GoogleAuthProvider();
 
-            try {
-                await auth.signInWithPopup(provider);
-                hideAuthModal(); 
-                displayMessageModal("Login Successful!", "You can now access the quizzes.");
-                
-                // Analytics sign-in event logging removed to clean code.
+            try {
+                // `auth` is available globally from ./js/config.js
+                await auth.signInWithPopup(provider);
+                hideAuthModal(); 
+                displayMessageModal("Login Successful!", "You can now access the quizzes.");
 
-            } catch (error) {
-                console.error("Error signing in with Google:", error);
-                
-                let displayMessage = 'Sign-in failed. Check the console for details.';
-                if (error.code === 'auth/popup-closed-by-user') {
-                    displayMessage = 'Sign-in window closed by user.';
-                } else if (error.code === 'auth/cancelled-popup-request') {
-                    displayMessage = 'Sign-in was blocked by a previous attempt.';
-                } else {
-                    displayMessage = 'Google Sign-in failed: ' + error.message;
-                }
+            } catch (error) {
+                console.error("Error signing in with Google:", error);
+                
+                let displayMessage = 'Sign-in failed. Check the console for details.';
+                if (error.code === 'auth/popup-closed-by-user') {
+                    displayMessage = 'Sign-in window closed by user.';
+                } else if (error.code === 'auth/cancelled-popup-request') {
+                    displayMessage = 'Sign-in was blocked by a previous attempt.';
+                } else {
+                    displayMessage = 'Google Sign-in failed: ' + error.message;
+                }
 
-                errorMessage.textContent = displayMessage;
-            } finally {
-                 googleSignInBtn.disabled = false;
-            }
-        });
+                errorMessage.textContent = displayMessage;
+            } finally {
+                 googleSignInBtn.disabled = false;
+            }
+        });
 
 
-        // --- LOGOUT & AUTH STATE ---
+        // --- LOGOUT & AUTH STATE ---
 
-        closeModalBtn.addEventListener('click', hideAuthModal);
+        closeModalBtn.addEventListener('click', hideAuthModal);
 
-        logoutNavBtn.addEventListener('click', async () => {
-            try {
-                await auth.signOut();
-                displayMessageModal("Logged Out", "You have been successfully logged out.");
-            } catch (error) {
-                console.error("Error signing out:", error);
-            }
-        });
+        logoutNavBtn.addEventListener('click', async () => {
+            try {
+                // `auth` is available globally from ./js/config.js
+                await auth.signOut();
+                displayMessageModal("Logged Out", "You have been successfully logged out.");
+            } catch (error) {
+                console.error("Error signing out:", error);
+            }
+        });
 
-        auth.onAuthStateChanged((user) => {
-            updateAuthUI(user);
-        });
+        auth.onAuthStateChanged((user) => {
+            updateAuthUI(user);
+        });
 
-        // --- QUIZ NAVIGATION MAP (TARGET FOR GITHUB ACTION) ---
-        // ** THIS BLOCK WILL BE DYNAMICALLY UPDATED BY THE PYTHON SCRIPT **
-       const quizLinkMap = {
-    '10. Work and Energy': './science/physics/work_quiz.html',
-    '11. Sound': './science/physics/sound_quiz.html',
-    '2. Is Matter Around Us Pure': './quizzes/science/chemistry/pure/pure_quiz.html',
-    '5. The Fundamental Unit of Life': './quizzes/science/biology/cell/cell_quiz.html',
-    '7. Motion': './science/physics/motion_quiz.html',
-    '8. Force and Laws of Motion': './science/physics/force_quiz.html',
-    '9. Gravitation': './science/physics/gravitation_quiz.html',
-   };
-        // --- END QUIZ NAVIGATION MAP ---
-        
-        // --- QUIZ DATA ---
-        
-        const bookData = {
-            'Physics': [
-                { unit: 'UNIT I: Motion & Force', chapters: ['7. Motion', '8. Force and Laws of Motion', '9. Gravitation'] },
-                { unit: 'UNIT II: Work & Sound', chapters: ['10. Work and Energy', '11. Sound'] },
-            ],
-            'Chemistry': [
-                { unit: 'UNIT III: Matter & Structure', chapters: ['1. Matter in Our Surroundings', '2. Is Matter Around Us Pure', '3. Atoms and Molecules', '4. Structure of the Atom'] }
-            ],
-            'Biology': [
-                { unit: 'UNIT IV: Cell, Tissues, and Food Resources', chapters: ['5. The Fundamental Unit of Life', '6. Tissues', '12. Improvement in Food Resources'] }
-            ]
-        };
+        // --- QUIZ NAVIGATION MAP (TARGET FOR GITHUB ACTION) ---
+        // ** THIS BLOCK WILL BE DYNAMICALLY UPDATED BY THE PYTHON SCRIPT **
+       const quizLinkMap = {
+    '10. Work and Energy': './science/physics/work_quiz.html',
+    '11. Sound': './science/physics/sound_quiz.html',
+    '2. Is Matter Around Us Pure': './quizzes/science/chemistry/pure/pure_quiz.html',
+    '5. The Fundamental Unit of Life': './quizzes/science/biology/cell/cell_quiz.html',
+    '7. Motion': './science/physics/motion_quiz.html',
+    '8. Force and Laws of Motion': './science/physics/force_quiz.html',
+    '9. Gravitation': './science/physics/gravitation_quiz.html',
+   };
+        // --- END QUIZ NAVIGATION MAP ---
+        
+        // --- QUIZ DATA ---
+        
+        const bookData = {
+            'Physics': [
+                { unit: 'UNIT I: Motion & Force', chapters: ['7. Motion', '8. Force and Laws of Motion', '9. Gravitation'] },
+                { unit: 'UNIT II: Work & Sound', chapters: ['10. Work and Energy', '11. Sound'] },
+            ],
+            'Chemistry': [
+                { unit: 'UNIT III: Matter & Structure', chapters: ['1. Matter in Our Surroundings', '2. Is Matter Around Us Pure', '3. Atoms and Molecules', '4. Structure of the Atom'] }
+            ],
+            'Biology': [
+                { unit: 'UNIT IV: Cell, Tissues, and Food Resources', chapters: ['5. The Fundamental Unit of Life', '6. Tissues', '12. Improvement in Food Resources'] }
+            ]
+        };
 
-        // --- START QUIZ FUNCTION (USES DYNAMIC MAP) ---
+        // --- START QUIZ FUNCTION (USES DYNAMIC MAP) ---
 
-        function startQuiz(chapterName) {
-            const user = auth.currentUser;
-            
-            if (!user) {
-                showAuthModal();
-                return; 
-            }
-            
-            const cleanedChapterName = chapterName.trim();
-            
-            // --- LOG THE ATTEMPT TO FIRESTORE (Quiz Start) ---
-            db.collection("quiz_attempts").add({
-                userId: user.uid,
-                email: user.email || 'N/A', 
-                chapter: cleanedChapterName,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(), 
-                action: 'Quiz Attempted'
-            })
-            .then(() => {
-                console.log("Quiz attempt logged successfully for:", cleanedChapterName);
-            })
-            .catch((error) => {
-                console.error("Error logging quiz attempt (Check Firestore Rules!): ", error);
-            });
-            // --- END LOGIC ---
-            
-            // ** DYNAMIC NAVIGATION LOGIC using quizLinkMap **
-            if (quizLinkMap[cleanedChapterName]) {
-                // Redirect using the path found in the dynamically updated map
-                window.location.href = quizLinkMap[cleanedChapterName];
-                return;
-            }
-            
-            // Default message for unimplemented quizzes
-            const urlSafeName = cleanedChapterName.replace(/[^\w\s]/g, '').replace(/\s+/g, '-').toLowerCase();
-            displayMessageModal(
-                `Quiz Not Found`,
-                `The quiz link for "${cleanedChapterName}" is currently missing in the system map. Target URL: /quizzes/science/${urlSafeName}.html`
-            );
-        }
-        
-        // --- REMAINING FUNCTIONS ---
+        function startQuiz(chapterName) {
+            // `auth` is available globally from ./js/config.js
+            const user = auth.currentUser;
+            
+            if (!user) {
+                showAuthModal();
+                return; 
+            }
+            
+            const cleanedChapterName = chapterName.trim();
+            
+            // --- LOG THE ATTEMPT TO FIRESTORE (Quiz Start) ---
+            // `db` and `codeVersion` are available globally from ./js/config.js
+            db.collection("quiz_attempts").add({
+                userId: user.uid,
+                email: user.email || 'N/A', 
+                chapter: cleanedChapterName,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(), 
+                action: 'Quiz Attempted',
+                code_version: typeof codeVersion !== 'undefined' ? codeVersion : 'unknown'
+            })
+            .then(() => {
+                console.log("Quiz attempt logged successfully for:", cleanedChapterName);
+            })
+            .catch((error) => {
+                console.error("Error logging quiz attempt (Check Firestore Rules!): ", error);
+            });
+            // --- END LOGIC ---
+            
+            // ** DYNAMIC NAVIGATION LOGIC using quizLinkMap **
+            if (quizLinkMap[cleanedChapterName]) {
+                // Redirect using the path found in the dynamically updated map
+                window.location.href = quizLinkMap[cleanedChapterName];
+                return;
+            }
+            
+            // Default message for unimplemented quizzes
+            const urlSafeName = cleanedChapterName.replace(/[^\w\s]/g, '').replace(/\s+/g, '-').toLowerCase();
+            displayMessageModal(
+                `Quiz Not Found`,
+                `The quiz link for "${cleanedChapterName}" is currently missing in the system map. Target URL: /quizzes/science/${urlSafeName}.html`
+            );
+        }
+        
+        // --- REMAINING FUNCTIONS ---
 
-        function showView(viewId) {
-            document.querySelectorAll('#quiz-content-wrapper .view').forEach(view => {
-                view.classList.add('hidden');
-            });
-            document.getElementById(viewId + '-view').classList.remove('hidden');
-            window.scrollTo(0, 0);
-        }
+        function showView(viewId) {
+            document.querySelectorAll('#quiz-content-wrapper .view').forEach(view => {
+                view.classList.add('hidden');
+            });
+            document.getElementById(viewId + '-view').classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
 
-        function showUnits(bookKey, title, color) {
-            const units = bookData[bookKey];
-            
-            unitsViewTitle.textContent = title;
-            unitsViewTitle.style.borderColor = 'var(--tw-colors-' + color + ')'; 
+        function showUnits(bookKey, title, color) {
+            const units = bookData[bookKey];
+            
+            unitsViewTitle.textContent = title;
+            unitsViewTitle.style.borderColor = 'var(--tw-colors-' + color + ')'; 
 
-            let html = '';
-            units.forEach((unitItem, index) => {
-                const unitId = `${bookKey}-unit-${index}`;
-                
-                let chaptersHtml = unitItem.chapters.map((chapter) => `
-                    <div class="chapter-card bg-white p-4 rounded-lg shadow border-l-2 border-current flex justify-between items-center" style="border-color: var(--tw-colors-${color});">
-                        <span class="text-gray-700 font-medium">${chapter}</span>
-                        <button class="quiz-btn bg-cbse-blue text-white px-3 py-1 text-sm rounded-md hover:bg-cbse-blue/90 transition quiz-start-btn" data-chapter="${chapter.replace(/'/g, '\\\'')}">Quiz</button>
-                    </div>
-                `).join('');
+            let html = '';
+            units.forEach((unitItem, index) => {
+                const unitId = `${bookKey}-unit-${index}`;
+                
+                let chaptersHtml = unitItem.chapters.map((chapter) => `
+                    <div class="chapter-card bg-white p-4 rounded-lg shadow border-l-2 border-current flex justify-between items-center" style="border-color: var(--tw-colors-${color});">
+                        <span class="text-gray-700 font-medium">${chapter}</span>
+                        <button class="quiz-btn bg-cbse-blue text-white px-3 py-1 text-sm rounded-md hover:bg-cbse-blue/90 transition quiz-start-btn" data-chapter="${chapter.replace(/'/g, '\\\'')}">Quiz</button>
+                    </div>
+                `).join('');
 
-                html += `
-                    <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
-                        <div class="unit-header bg-unit-bg p-4 flex justify-between items-center font-semibold text-gray-700 hover:bg-unit-bg/80 active" data-target="${unitId}">
-                            <span>${unitItem.unit}</span>
-                            <span data-lucide="chevron-down" class="icon-rotate w-5 h-5 transition-transform duration-300"></span>
-                        </div>
-                        <div id="${unitId}" class="unit-content p-4 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-                            ${chaptersHtml}
-                        </div>
-                    </div>
-                `;
-            });
+                html += `
+                    <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
+                        <div class="unit-header bg-unit-bg p-4 flex justify-between items-center font-semibold text-gray-700 hover:bg-unit-bg/80 active" data-target="${unitId}">
+                            <span>${unitItem.unit}</span>
+                            <span data-lucide="chevron-down" class="icon-rotate w-5 h-5 transition-transform duration-300"></span>
+                        </div>
+                        <div id="${unitId}" class="unit-content p-4 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+                            ${chaptersHtml}
+                        </div>
+                    </div>
+                `;
+            });
 
-            unitsList.innerHTML = html;
-            lucide.createIcons(); 
-            showView('units');
-            
-            attachEventListeners(); 
-            setTimeout(initAccordion, 10); 
-        }
+            unitsList.innerHTML = html;
+            lucide.createIcons(); 
+            showView('units');
+            
+            attachEventListeners(); 
+            setTimeout(initAccordion, 10); 
+        }
 
-        function initAccordion() {
-            document.querySelectorAll('.unit-header').forEach(header => {
-                const content = document.getElementById(header.dataset.target);
-                if (content) {
-                    if (header.classList.contains('active')) {
-                        content.style.maxHeight = content.scrollHeight + "px";
-                    }
-                    
-                    header.removeEventListener('click', handleAccordionClick);
-                    header.addEventListener('click', handleAccordionClick);
-                }
-            });
-        }
-        
-        function handleAccordionClick(event) {
-            const header = event.currentTarget;
-            const content = document.getElementById(header.dataset.target);
-            
-            header.classList.toggle('active');
-            if (header.classList.contains('active')) {
-                content.style.maxHeight = content.scrollHeight + "px";
-            } else {
-                content.style.maxHeight = '0';
-            }
-        }
+        function initAccordion() {
+            document.querySelectorAll('.unit-header').forEach(header => {
+                const content = document.getElementById(header.dataset.target);
+                if (content) {
+                    if (header.classList.contains('active')) {
+                        content.style.maxHeight = content.scrollHeight + "px";
+                    }
+                    
+                    header.removeEventListener('click', handleAccordionClick);
+                    header.addEventListener('click', handleAccordionClick);
+                }
+            });
+        }
+        
+        function handleAccordionClick(event) {
+            const header = event.currentTarget;
+            const content = document.getElementById(header.dataset.target);
+            
+            header.classList.toggle('active');
+            if (header.classList.contains('active')) {
+                content.style.maxHeight = content.scrollHeight + "px";
+            } else {
+                content.style.maxHeight = '0';
+            }
+        }
 
-        // --- ATTACH EVENT LISTENERS ---
+        // --- ATTACH EVENT LISTENERS ---
 
-        function attachEventListeners() {
-            // Attach listeners for QUIZ buttons (in units-view and mock test)
-            document.querySelectorAll('.quiz-start-btn').forEach(button => {
-                button.removeEventListener('click', handleQuizButtonClick); 
-                button.addEventListener('click', handleQuizButtonClick);
-            });
-            
-            // Attach listeners for BOOK selection cards (in book-select-view)
-            document.querySelectorAll('.book-select-btn').forEach(card => {
-                card.removeEventListener('click', handleBookSelectClick);
-                card.addEventListener('click', handleBookSelectClick);
-            });
-        }
+        function attachEventListeners() {
+            // Attach listeners for QUIZ buttons (in units-view and mock test)
+            document.querySelectorAll('.quiz-start-btn').forEach(button => {
+                button.removeEventListener('click', handleQuizButtonClick); 
+                button.addEventListener('click', handleQuizButtonClick);
+            });
+            
+            // Attach listeners for BOOK selection cards (in book-select-view)
+            document.querySelectorAll('.book-select-btn').forEach(card => {
+                card.removeEventListener('click', handleBookSelectClick);
+                card.addEventListener('click', handleBookSelectClick);
+            });
+        }
 
-        // --- Event Handlers that use Data Attributes ---
+        // --- Event Handlers that use Data Attributes ---
 
-        function handleQuizButtonClick(event) {
-            const chapterName = event.currentTarget.dataset.chapter;
-            startQuiz(chapterName);
-        }
+        function handleQuizButtonClick(event) {
+            const chapterName = event.currentTarget.dataset.chapter;
+            startQuiz(chapterName);
+        }
 
-        function handleBookSelectClick(event) {
-            const card = event.currentTarget;
-            const book = card.dataset.book;
-            const title = card.dataset.title;
-            const color = card.dataset.color;
-            showUnits(book, title, color);
-        }
-        
-        // --- Initialization on Document Load ---
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.add('px-3', 'py-1', 'rounded-lg', 'text-gray-600', 'hover:bg-cbse-light', 'hover:text-cbse-blue', 'transition');
-            });
+        function handleBookSelectClick(event) {
+            const card = event.currentTarget;
+            const book = card.dataset.book;
+            const title = card.dataset.title;
+            const color = card.dataset.color;
+            showUnits(book, title, color);
+        }
+        
+        // --- Initialization on Document Load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.add('px-3', 'py-1', 'rounded-lg', 'text-gray-600', 'hover:bg-cbse-light', 'hover:text-cbse-blue', 'transition');
+            });
 
-            attachEventListeners();
-            
-            headerHomeBtn.addEventListener('click', () => showView('book-select'));
-            backToBooksBtn.addEventListener('click', () => showView('book-select'));
-        });
-        
-    </script>
+            attachEventListeners();
+            
+            headerHomeBtn.addEventListener('click', () => showView('book-select'));
+            backToBooksBtn.addEventListener('click', () => showView('book-select'));
+        });
+        
+    </script>
 </body>
 </html>
