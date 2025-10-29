@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CBSE Class 9 Science Curriculum</title>
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -15,12 +16,13 @@
                         serif: ['Merriweather', 'serif'],
                     },
                     colors: {
-                        'cbse-blue': '#1a3e6a', 
-                        'cbse-light': '#f0f4f8', 
-                        'accent-green': '#059669', // Chemistry
-                        'accent-red': '#dc2626',   // Biology
-                        'accent-blue': '#2563eb',  // Physics
-                        'unit-bg': '#e3f2fd', 
+                        'cbse-blue': '#1a3e6a', // Deep Academic Blue
+                        'cbse-light': '#f0f4f8', // Light background for this specific page
+                        'accent-chemistry': '#059669', // Emerald Green
+                        'accent-biology': '#dc2626',   // Crimson Red
+                        'accent-physics': '#2563eb',  // Bright Blue
+                        'unit-bg': '#e3f2fd', // Very light blue for unit backgrounds
+                        'heading': '#0f172a',
                     }
                 }
             }
@@ -32,437 +34,201 @@
             transition: all 0.3s ease;
             cursor: pointer;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
-            transform: translate(0);
+            border-top: 5px solid var(--book-color); /* Dynamic top border */
         }
         .book-card:hover {
+            transform: translateY(-2px);
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-            transform: translateY(-4px);
         }
-        .unit-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.4s ease-in-out;
+        .topic-button {
+            transition: all 0.2s ease;
         }
-        .unit-header.active .icon-rotate {
-            transform: rotate(180deg);
-        }
-        .back-btn {
-            display: inline-flex;
-            align-items: center;
-            font-size: 1.125rem;
-            font-weight: 500;
-            color: #1a3e6a;
-            margin-bottom: 1.5rem;
-            transition: color 150ms;
-        }
-        .back-btn:hover {
-            color: rgba(26, 62, 106, 0.8);
-        }
-        .auth-container {
-            max-width: 400px;
-            margin: 0 auto;
-            padding: 2rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 50;
+        .topic-button:hover {
+            opacity: 0.95;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>
-<body class="bg-cbse-light min-h-screen antialiased">
+<body class="bg-cbse-light min-h-screen antialiased font-sans">
 
     <header class="bg-white shadow-lg sticky top-0 z-10 border-t-8 border-cbse-blue">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row justify-between items-center">
-            <div class="flex items-center space-x-3 mb-4 md:mb-0 cursor-pointer" id="header-home-btn">
-                <span data-lucide="flask-round" class="text-cbse-blue w-8 h-8"></span>
-                <h1 class="text-2xl font-extrabold text-cbse-blue">CBSE Class 9 Science Portal</h1>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3 cursor-pointer" id="header-home-btn">
+                <i data-lucide="flask-round" class="text-cbse-blue h-7 w-7"></i>
+                <h1 class="text-2xl font-extrabold font-serif text-cbse-blue tracking-tight">
+                    Science Modules
+                </h1>
             </div>
-            <nav class="flex space-x-2 sm:space-x-4">
-                <button id="logout-nav-btn" class="nav-link hidden">🚪 Logout</button>
+            <nav id="main-nav">
+                <a href="index.html" class="nav-link px-3 py-1 rounded-lg text-gray-700 hover:bg-cbse-light hover:text-cbse-blue transition">Main Portal</a>
             </nav>
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        <div id="quiz-content-wrapper"> 
-            <div id="book-select-view" class="view">
-                <h2 class="text-3xl font-bold text-gray-800 mb-8 border-b-2 border-cbse-blue pb-2">Select Your Book</h2>
-                <div class="grid md:grid-cols-3 gap-8">
-                    
-                    <div class="book-card bg-white p-6 rounded-xl border-t-4 border-accent-blue book-select-btn" data-book="Physics" data-title="Physics: Motion, Force, and Energy" data-color="accent-blue">
-                        <span data-lucide="zap" class="w-10 h-10 text-accent-blue mb-3"></span>
-                        <h3 class="text-xl font-bold text-gray-800 mb-1 font-serif">Physics</h3> 
-                        <p class="text-gray-500 text-sm">Motion, Laws of Motion, Gravitation, Work, Energy, and Sound.</p>
-                    </div>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <h2 class="text-4xl font-extrabold font-serif text-heading mb-10 text-center">
+            Class 9 Science: Discipline & Topic Selection
+        </h2>
 
-                    <div class="book-card bg-white p-6 rounded-xl border-t-4 border-accent-green book-select-btn" data-book="Chemistry" data-title="Chemistry: Matter and Atomic Structure" data-color="accent-green">
-                        <span data-lucide="atom" class="w-10 h-10 text-accent-green mb-3"></span>
-                        <h3 class="text-xl font-bold text-gray-800 mb-1 font-serif">Chemistry</h3> 
-                        <p class="text-gray-500 text-sm">Matter in Our Surroundings, Is Matter Around Us Pure, Atoms and Molecules, Structure of the Atom.</p>
+        <div id="book-select-view">
+            <h3 class="text-2xl font-bold text-cbse-blue mb-6">Step 1: Choose a Science Discipline</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                
+                <div class="book-card bg-white p-6 rounded-xl book-select-btn" data-book="physics" data-title="Physics" data-color="#2563eb" style="--book-color: #2563eb;">
+                    <div class="flex items-center space-x-3 mb-3">
+                        <i data-lucide="zap" class="text-accent-physics h-6 w-6"></i>
+                        <h4 class="text-xl font-bold font-serif text-heading">Physics</h4>
                     </div>
-
-                    <div class="book-card bg-white p-6 rounded-xl border-t-4 border-accent-red book-select-btn" data-book="Biology" data-title="Biology: Cell, Tissues, and Food Resources" data-color="accent-red">
-                        <span data-lucide="dna" class="w-10 h-10 text-accent-red mb-3"></span>
-                        <h3 class="text-xl font-bold text-gray-800 mb-1 font-serif">Biology</h3> 
-                        <p class="text-gray-500 text-sm">Fundamental Unit of Life, Tissues, Health, and Improvement in Food Resources.</p>
-                    </div>
-                    
+                    <p class="text-sm text-gray-600 mb-4">Focuses on matter, energy, motion, and force. Includes mechanics and sound.</p>
+                    <span class="inline-block text-accent-physics font-semibold">View Chapters &rarr;</span>
                 </div>
                 
-                <section id="mock-test" class="bg-white p-8 rounded-xl shadow-lg border-t-2 border-b-2 border-cbse-blue mt-12 flex flex-col items-center text-center">
-                    <h4 class="text-3xl font-extrabold text-cbse-blue mb-2">Full Syllabus Mock Test</h4>
-                    <p class="text-gray-600 text-lg mb-4">Test your readiness with a full-length, 90-minute examination covering all CBSE Class 9 Science chapters.</p>
-                    <button class="px-8 py-3 bg-accent-red text-white font-bold rounded-lg shadow-xl hover:bg-red-700 transition duration-150 text-xl quiz-start-btn" data-chapter="Master Quiz">
-                        Start Master Quiz
-                    </button>
-                </section>
-            </div>
-
-            <div id="units-view" class="view hidden">
-                <button id="back-to-books-btn" class="back-btn">
-                    <span data-lucide="arrow-left" class="w-5 h-5 mr-2"></span> Back to Books
-                </button>
-                <h2 id="units-view-title" class="text-3xl font-bold text-gray-800 mb-6 border-b-2 pb-2"></h2>
-                <div id="units-list">
+                <div class="book-card bg-white p-6 rounded-xl book-select-btn" data-book="chemistry" data-title="Chemistry" data-color="#059669" style="--book-color: #059669;">
+                    <div class="flex items-center space-x-3 mb-3">
+                        <i data-lucide="atom" class="text-accent-chemistry h-6 w-6"></i>
+                        <h4 class="text-xl font-bold font-serif text-heading">Chemistry</h4>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-4">Study of substances, their structure, properties, and reactions. Focus on matter and atomic structure.</p>
+                    <span class="inline-block text-accent-chemistry font-semibold">View Chapters &rarr;</span>
                 </div>
+
+                <div class="book-card bg-white p-6 rounded-xl protected-link" data-book="biology" data-title="Biology" data-color="#dc2626" style="--book-color: #dc2626; opacity: 0.6; pointer-events: none; cursor: not-allowed;">
+                    <div class="flex items-center space-x-3 mb-3">
+                        <i data-lucide="dna" class="text-accent-biology h-6 w-6"></i>
+                        <h4 class="text-xl font-bold font-serif text-heading">Biology</h4>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-4">The study of living organisms, their structure, function, growth, evolution, and distribution.</p>
+                    <span class="inline-block text-gray-500 font-semibold">Coming Soon</span>
+                </div>
+                
             </div>
         </div>
-        </main>
 
-    <div id="auth-modal" class="modal-overlay hidden">
-        <div id="auth-view" class="auth-container bg-white relative">
-            <button id="close-modal-btn" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition">
-                <span data-lucide="x" class="w-6 h-6"></span>
+        <div id="units-view" class="hidden">
+            <button id="back-to-books-btn" class="text-cbse-blue hover:text-accent-physics transition mb-6 flex items-center space-x-2">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                <span class="font-semibold">Back to Disciplines</span>
             </button>
-            <h2 id="auth-header" class="text-2xl font-bold text-center mb-6 text-cbse-blue">
-                Login to Access Quizzes
-            </h2>
+            
+            <h3 class="text-3xl font-bold font-serif mb-6 flex items-center space-x-3" id="units-view-title">
+                </h3>
 
-            <div class="mt-4">
-                <button id="google-sign-in-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition flex items-center justify-center space-x-3 shadow-md">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/4/4a/Logo_google_g_standard.png" alt="Google logo" class="w-6 h-6 bg-white rounded-full">
-                    <span>Sign in with Google</span>
+            <div id="physics-units" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden">
+                <a href="quiz-engine.html?class=9&subject=science&topic=motion" class="topic-button py-4 px-6 rounded-lg bg-accent-physics text-white font-semibold text-lg text-left shadow-md">
+                    1. Motion
+                </a>
+                <a href="quiz-engine.html?class=9&subject=science&topic=force_and_laws_of_motion" class="topic-button py-4 px-6 rounded-lg bg-accent-physics text-white font-semibold text-lg text-left shadow-md">
+                    2. Force and Laws of Motion
+                </a>
+                <a href="quiz-engine.html?class=9&subject=science&topic=gravitation" class="topic-button py-4 px-6 rounded-lg bg-accent-physics text-white font-semibold text-lg text-left shadow-md">
+                    3. Gravitation
+                </a>
+                <a href="quiz-engine.html?class=9&subject=science&topic=work_and_energy" class="topic-button py-4 px-6 rounded-lg bg-accent-physics text-white font-semibold text-lg text-left shadow-md">
+                    4. Work and Energy
+                </a>
+                <a href="quiz-engine.html?class=9&subject=science&topic=sound" class="topic-button py-4 px-6 rounded-lg bg-accent-physics text-white font-semibold text-lg text-left shadow-md">
+                    5. Sound
+                </a>
+                <button disabled class="topic-button py-4 px-6 rounded-lg bg-gray-300 text-gray-700 font-semibold text-lg text-left cursor-not-allowed">
+                    6. Floatation (Coming Soon)
                 </button>
             </div>
 
-            <p id="error-message" class="mt-4 text-center text-red-500 font-medium"></p>
-        </div>
-    </div>
-    
-    <div id="message-modal" class="modal-overlay hidden">
-        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full relative">
-            <h3 id="message-title" class="text-xl font-bold text-cbse-blue mb-2">Notice</h3>
-            <p id="message-body" class="text-gray-700 mb-4"></p>
-            <button id="close-message-btn" class="w-full bg-cbse-blue text-white font-semibold py-2 rounded-lg hover:bg-cbse-blue/90 transition">Close</button>
-        </div>
-    </div>
+            <div id="chemistry-units" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden">
+                 <a href="quiz-engine.html?class=9&subject=science&topic=matter_in_our_surroundings" class="topic-button py-4 px-6 rounded-lg bg-accent-chemistry text-white font-semibold text-lg text-left shadow-md">
+                    1. Matter in Our Surroundings
+                </a>
+                <a href="quiz-engine.html?class=9&subject=science&topic=atoms_and_molecules" class="topic-button py-4 px-6 rounded-lg bg-accent-chemistry text-white font-semibold text-lg text-left shadow-md">
+                    2. Atoms and Molecules
+                </a>
+                <button disabled class="topic-button py-4 px-6 rounded-lg bg-gray-300 text-gray-700 font-semibold text-lg text-left cursor-not-allowed">
+                    3. Is Matter Around Us Pure (Coming Soon)
+                </button>
+            </div>
 
-    <footer class="bg-cbse-blue mt-12 py-6">
+             <div id="biology-units" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden">
+                <button disabled class="topic-button py-4 px-6 rounded-lg bg-gray-300 text-gray-700 font-semibold text-lg text-left cursor-not-allowed">
+                    1. The Fundamental Unit of Life (Coming Soon)
+                </button>
+                 <button disabled class="topic-button py-4 px-6 rounded-lg bg-gray-300 text-gray-700 font-semibold text-lg text-left cursor-not-allowed">
+                    2. Tissues (Coming Soon)
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="bg-cbse-blue mt-16 py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
-            <small class="text-sm opacity-80">© 2025 CBSE Class 9 Academic Portal | Redesigned Curriculum View</small>
+            <div class="flex justify-center space-x-6 mb-3">
+                <a href="#" class="text-sm opacity-90 hover:opacity-100 transition border-b border-cbse-blue hover:border-white">Terms of Use</a>
+                <a href="#" class="text-sm opacity-90 hover:opacity-100 transition border-b border-cbse-blue hover:border-white">Privacy Policy</a>
+                <a href="#" class="text-sm opacity-90 hover:opacity-100 transition border-b border-cbse-blue hover:border-white">Contact Administration</a>
+            </div>
+            <small class="text-sm opacity-70 block mt-2">© 2025 CBSE Class 9 Academic Portal. All Rights Reserved. Dedicated to Student Success.</small>
         </div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> 
-
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
-    
-    <script src="./js/config.js"></script> 
 
     <script>
-        // Global variables `auth`, `db`, `analytics`, `supabase`, and `codeVersion` 
-        // are now available from the loaded ./js/config.js file.
-
-        let isUserLoggedIn = false; 
-
         // --- DOM Elements ---
-        const authModal = document.getElementById('auth-modal');
-        const logoutNavBtn = document.getElementById('logout-nav-btn');
-        const errorMessage = document.getElementById('error-message');
-        const unitsList = document.getElementById('units-list');
+        const bookSelectView = document.getElementById('book-select-view');
+        const unitsView = document.getElementById('units-view');
         const unitsViewTitle = document.getElementById('units-view-title');
         const backToBooksBtn = document.getElementById('back-to-books-btn');
-        const closeModalBtn = document.getElementById('close-modal-btn');
         const headerHomeBtn = document.getElementById('header-home-btn');
-        const googleSignInBtn = document.getElementById('google-sign-in-btn'); 
-        
-        // Custom Message Modal Elements
-        const messageModal = document.getElementById('message-modal');
-        const messageTitle = document.getElementById('message-title');
-        const messageBody = document.getElementById('message-body');
-        const closeMessageBtn = document.getElementById('close-message-btn');
 
+        // Unit containers (Physics, Chemistry, Biology)
+        const physicsUnits = document.getElementById('physics-units');
+        const chemistryUnits = document.getElementById('chemistry-units');
+        const biologyUnits = document.getElementById('biology-units');
 
-        // --- GENERIC MESSAGE/MODAL FUNCTIONS (Replaces alert()) ---
-        function displayMessageModal(title, body) {
-            messageTitle.textContent = title;
-            messageBody.textContent = body;
-            messageModal.classList.remove('hidden');
-        }
-
-        closeMessageBtn.addEventListener('click', () => {
-            messageModal.classList.add('hidden');
-        });
-
-        // --- AUTH/MODAL FUNCTIONS ---
-
-        function showAuthModal() {
-            authModal.classList.remove('hidden');
-            errorMessage.textContent = '';
-        }
-
-        function hideAuthModal() {
-            authModal.classList.add('hidden');
-        }
-        
-        function updateAuthUI(user) {
-             if (user) {
-                 isUserLoggedIn = true;
-                 logoutNavBtn.classList.remove('hidden');
-            } else {
-                 isUserLoggedIn = false;
-                 logoutNavBtn.classList.add('hidden');
-            }
-        }
-
-        // --- GOOGLE SIGN-IN LOGIC ---
-
-        googleSignInBtn.addEventListener('click', async () => {
-            errorMessage.textContent = 'Signing in with Google...';
-            googleSignInBtn.disabled = true;
-
-            const provider = new firebase.auth.GoogleAuthProvider();
-
-            try {
-                // `auth` is available globally from ./js/config.js
-                await auth.signInWithPopup(provider);
-                hideAuthModal(); 
-                displayMessageModal("Login Successful!", "You can now access the quizzes.");
-
-            } catch (error) {
-                console.error("Error signing in with Google:", error);
-                
-                let displayMessage = 'Sign-in failed. Check the console for details.';
-                if (error.code === 'auth/popup-closed-by-user') {
-                    displayMessage = 'Sign-in window closed by user.';
-                } else if (error.code === 'auth/cancelled-popup-request') {
-                    displayMessage = 'Sign-in was blocked by a previous attempt.';
-                } else {
-                    displayMessage = 'Google Sign-in failed: ' + error.message;
-                }
-
-                errorMessage.textContent = displayMessage;
-            } finally {
-                 googleSignInBtn.disabled = false;
-            }
-        });
-
-
-        // --- LOGOUT & AUTH STATE ---
-
-        closeModalBtn.addEventListener('click', hideAuthModal);
-
-        logoutNavBtn.addEventListener('click', async () => {
-            try {
-                // `auth` is available globally from ./js/config.js
-                await auth.signOut();
-                displayMessageModal("Logged Out", "You have been successfully logged out.");
-            } catch (error) {
-                console.error("Error signing out:", error);
-            }
-        });
-
-        auth.onAuthStateChanged((user) => {
-            updateAuthUI(user);
-        });
-
-        // --- QUIZ NAVIGATION MAP (TARGET FOR GITHUB ACTION) ---
-        // ** THIS BLOCK WILL BE DYNAMICALLY UPDATED BY THE PYTHON SCRIPT **
-       const quizLinkMap = {
-    '10. Work and Energy': './science/physics/work_quiz.html',
-    '11. Sound': './science/physics/sound_quiz.html',
-    '2. Is Matter Around Us Pure': './quizzes/science/chemistry/pure/pure_quiz.html',
-    '5. The Fundamental Unit of Life': './quizzes/science/biology/cell/cell_quiz.html',
-    '7. Motion': './science/physics/motion_quiz.html',
-    '8. Force and Laws of Motion': './science/physics/force_quiz.html',
-    '9. Gravitation': './science/physics/gravitation_quiz.html',
-   };
-        // --- END QUIZ NAVIGATION MAP ---
-        
-        // --- QUIZ DATA ---
-        
-        const bookData = {
-            'Physics': [
-                { unit: 'UNIT I: Motion & Force', chapters: ['7. Motion', '8. Force and Laws of Motion', '9. Gravitation'] },
-                { unit: 'UNIT II: Work & Sound', chapters: ['10. Work and Energy', '11. Sound'] },
-            ],
-            'Chemistry': [
-                { unit: 'UNIT III: Matter & Structure', chapters: ['1. Matter in Our Surroundings', '2. Is Matter Around Us Pure', '3. Atoms and Molecules', '4. Structure of the Atom'] }
-            ],
-            'Biology': [
-                { unit: 'UNIT IV: Cell, Tissues, and Food Resources', chapters: ['5. The Fundamental Unit of Life', '6. Tissues', '12. Improvement in Food Resources'] }
-            ]
-        };
-
-        // --- START QUIZ FUNCTION (USES DYNAMIC MAP) ---
-
-        function startQuiz(chapterName) {
-            // `auth` is available globally from ./js/config.js
-            const user = auth.currentUser;
-            
-            if (!user) {
-                showAuthModal();
-                return; 
-            }
-            
-            const cleanedChapterName = chapterName.trim();
-            
-            // --- LOG THE ATTEMPT TO FIRESTORE (Quiz Start) ---
-            // `db` and `codeVersion` are available globally from ./js/config.js
-            db.collection("quiz_attempts").add({
-                userId: user.uid,
-                email: user.email || 'N/A', 
-                chapter: cleanedChapterName,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(), 
-                action: 'Quiz Attempted',
-                code_version: typeof codeVersion !== 'undefined' ? codeVersion : 'unknown'
-            })
-            .then(() => {
-                console.log("Quiz attempt logged successfully for:", cleanedChapterName);
-            })
-            .catch((error) => {
-                console.error("Error logging quiz attempt (Check Firestore Rules!): ", error);
-            });
-            // --- END LOGIC ---
-            
-            // ** DYNAMIC NAVIGATION LOGIC using quizLinkMap **
-            if (quizLinkMap[cleanedChapterName]) {
-                // Redirect using the path found in the dynamically updated map
-                window.location.href = quizLinkMap[cleanedChapterName];
-                return;
-            }
-            
-            // Default message for unimplemented quizzes
-            const urlSafeName = cleanedChapterName.replace(/[^\w\s]/g, '').replace(/\s+/g, '-').toLowerCase();
-            displayMessageModal(
-                `Quiz Not Found`,
-                `The quiz link for "${cleanedChapterName}" is currently missing in the system map. Target URL: /quizzes/science/${urlSafeName}.html`
-            );
-        }
-        
-        // --- REMAINING FUNCTIONS ---
-
+        // --- View Toggling Function ---
         function showView(viewId) {
-            document.querySelectorAll('#quiz-content-wrapper .view').forEach(view => {
-                view.classList.add('hidden');
-            });
-            document.getElementById(viewId + '-view').classList.remove('hidden');
-            window.scrollTo(0, 0);
-        }
+            bookSelectView.classList.add('hidden');
+            unitsView.classList.add('hidden');
 
-        function showUnits(bookKey, title, color) {
-            const units = bookData[bookKey];
-            
-            unitsViewTitle.textContent = title;
-            unitsViewTitle.style.borderColor = 'var(--tw-colors-' + color + ')'; 
-
-            let html = '';
-            units.forEach((unitItem, index) => {
-                const unitId = `${bookKey}-unit-${index}`;
-                
-                let chaptersHtml = unitItem.chapters.map((chapter) => `
-                    <div class="chapter-card bg-white p-4 rounded-lg shadow border-l-2 border-current flex justify-between items-center" style="border-color: var(--tw-colors-${color});">
-                        <span class="text-gray-700 font-medium">${chapter}</span>
-                        <button class="quiz-btn bg-cbse-blue text-white px-3 py-1 text-sm rounded-md hover:bg-cbse-blue/90 transition quiz-start-btn" data-chapter="${chapter.replace(/'/g, '\\\'')}">Quiz</button>
-                    </div>
-                `).join('');
-
-                html += `
-                    <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
-                        <div class="unit-header bg-unit-bg p-4 flex justify-between items-center font-semibold text-gray-700 hover:bg-unit-bg/80 active" data-target="${unitId}">
-                            <span>${unitItem.unit}</span>
-                            <span data-lucide="chevron-down" class="icon-rotate w-5 h-5 transition-transform duration-300"></span>
-                        </div>
-                        <div id="${unitId}" class="unit-content p-4 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-                            ${chaptersHtml}
-                        </div>
-                    </div>
-                `;
-            });
-
-            unitsList.innerHTML = html;
-            lucide.createIcons(); 
-            showView('units');
-            
-            attachEventListeners(); 
-            setTimeout(initAccordion, 10); 
-        }
-
-        function initAccordion() {
-            document.querySelectorAll('.unit-header').forEach(header => {
-                const content = document.getElementById(header.dataset.target);
-                if (content) {
-                    if (header.classList.contains('active')) {
-                        content.style.maxHeight = content.scrollHeight + "px";
-                    }
-                    
-                    header.removeEventListener('click', handleAccordionClick);
-                    header.addEventListener('click', handleAccordionClick);
-                }
-            });
-        }
-        
-        function handleAccordionClick(event) {
-            const header = event.currentTarget;
-            const content = document.getElementById(header.dataset.target);
-            
-            header.classList.toggle('active');
-            if (header.classList.contains('active')) {
-                content.style.maxHeight = content.scrollHeight + "px";
-            } else {
-                content.style.maxHeight = '0';
+            if (viewId === 'book-select') {
+                bookSelectView.classList.remove('hidden');
+            } else if (viewId === 'units') {
+                unitsView.classList.remove('hidden');
             }
+            // Scroll to the top of the main content area
+            document.querySelector('main').scrollIntoView({ behavior: 'smooth' });
         }
 
-        // --- ATTACH EVENT LISTENERS ---
+        // --- Unit Display Function ---
+        function showUnits(book, title, color) {
+            // 1. Hide all unit containers
+            physicsUnits.classList.add('hidden');
+            chemistryUnits.classList.add('hidden');
+            biologyUnits.classList.add('hidden');
 
-        function attachEventListeners() {
-            // Attach listeners for QUIZ buttons (in units-view and mock test)
-            document.querySelectorAll('.quiz-start-btn').forEach(button => {
-                button.removeEventListener('click', handleQuizButtonClick); 
-                button.addEventListener('click', handleQuizButtonClick);
-            });
-            
-            // Attach listeners for BOOK selection cards (in book-select-view)
-            document.querySelectorAll('.book-select-btn').forEach(card => {
-                card.removeEventListener('click', handleBookSelectClick);
-                card.addEventListener('click', handleBookSelectClick);
-            });
+            // 2. Set the title and color
+            unitsViewTitle.textContent = title + " Chapters";
+            unitsViewTitle.style.color = color;
+
+            // 3. Show the correct container based on the selected book
+            switch (book) {
+                case 'physics':
+                    physicsUnits.classList.remove('hidden');
+                    break;
+                case 'chemistry':
+                    chemistryUnits.classList.remove('hidden');
+                    break;
+                case 'biology':
+                    biologyUnits.classList.remove('hidden');
+                    break;
+            }
+
+            // 4. Switch the main view
+            showView('units');
         }
 
         // --- Event Handlers that use Data Attributes ---
-
-        function handleQuizButtonClick(event) {
-            const chapterName = event.currentTarget.dataset.chapter;
-            startQuiz(chapterName);
-        }
-
         function handleBookSelectClick(event) {
             const card = event.currentTarget;
+            // Use data- attributes to get context
             const book = card.dataset.book;
             const title = card.dataset.title;
             const color = card.dataset.color;
@@ -470,14 +236,25 @@
         }
         
         // --- Initialization on Document Load ---
+        function attachEventListeners() {
+            // Attach listeners for BOOK selection cards (in book-select-view)
+            document.querySelectorAll('.book-select-btn').forEach(card => {
+                card.removeEventListener('click', handleBookSelectClick);
+                card.addEventListener('click', handleBookSelectClick);
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
-            document.querySelectorAll('.nav-link').forEach(link => {
+            
+            // Setup navigation links style (replaces the class definition from the old file)
+             document.querySelectorAll('.nav-link').forEach(link => {
                 link.classList.add('px-3', 'py-1', 'rounded-lg', 'text-gray-600', 'hover:bg-cbse-light', 'hover:text-cbse-blue', 'transition');
             });
-
+            
             attachEventListeners();
             
+            // Set up Back/Home buttons
             headerHomeBtn.addEventListener('click', () => showView('book-select'));
             backToBooksBtn.addEventListener('click', () => showView('book-select'));
         });
