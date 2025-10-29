@@ -3,8 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CBSE Class 9 Science Curriculum</title>
-    
+    <title>CBSE Class 9 — Science Topics</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -16,249 +15,533 @@
                         serif: ['Merriweather', 'serif'],
                     },
                     colors: {
-                        'cbse-blue': '#1a3e6a', // Deep Academic Blue
-                        'cbse-light': '#f0f4f8', // Light background for this specific page
-                        'accent-chemistry': '#059669', // Emerald Green
-                        'accent-biology': '#dc2626',   // Crimson Red
-                        'accent-physics': '#2563eb',  // Bright Blue
-                        'unit-bg': '#e3f2fd', // Very light blue for unit backgrounds
+                        'cbse-blue': '#1a3e6a', 
+                        'cbse-light': '#f5f7fa',
+                        'accent-gold': '#ffb703',
                         'heading': '#0f172a',
                     }
                 }
             }
         }
     </script>
+    <!-- Load Lucide icons library -->
     <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Firebase Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, orderBy, where, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables provided by the environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // Expose Firebase services globally
+        window.app = null;
+        window.db = null;
+        window.auth = null;
+        window.userId = null;
+        window.isAuthReady = false; // New critical readiness flag
+
+        window.initFirebaseAndAuth = function() {
+            try {
+                // 1. Initialize Firebase App and Services
+                window.app = initializeApp(firebaseConfig);
+                window.db = getFirestore(window.app);
+                window.auth = getAuth(window.app);
+                setLogLevel('Debug'); // Enable logging for debugging
+
+                console.log("Firebase services initialized.");
+
+                // 2. Set up Auth State Listener and Sign-in Logic
+                onAuthStateChanged(window.auth, async (user) => {
+                    if (user) {
+                        window.userId = user.uid;
+                        console.log("User signed in with UID:", window.userId);
+                    } else {
+                        // Attempt sign-in only on the initial state change check
+                        if (!window.isAuthReady) {
+                            try {
+                                if (initialAuthToken) {
+                                    const userCredential = await signInWithCustomToken(window.auth, initialAuthToken);
+                                    window.userId = userCredential.user.uid;
+                                    console.log("Signed in with custom token.");
+                                } else {
+                                    const userCredential = await signInAnonymously(window.auth);
+                                    window.userId = userCredential.user.uid;
+                                    console.log("Signed in anonymously. Using generated UID.");
+                                }
+                            } catch (error) {
+                                console.error("Authentication failed:", error);
+                                // Fallback: generate a random ID if sign-in completely fails
+                                window.userId = crypto.randomUUID(); 
+                            }
+                        } else {
+                             // This path is hit if a user signs out after being ready, use a temp ID
+                             window.userId = crypto.randomUUID(); 
+                        }
+                    }
+
+                    // 3. Mark Auth as Ready and Display User ID
+                    window.isAuthReady = true;
+                    console.log("Authentication complete. userId:", window.userId);
+                    
+                    const userIdElement = document.getElementById('user-id-display');
+                    if (userIdElement && window.userId) {
+                        userIdElement.textContent = `User ID: ${window.userId}`;
+                    }
+
+                    // Attempt to load any pending quiz data if the user clicked before auth was ready (optional)
+                    // For simplicity, we just rely on the click handler to check isAuthReady.
+                });
+            } catch (error) {
+                console.error("Failed to initialize Firebase:", error);
+                alert("Critical error initializing the data service. Please try refreshing.");
+            }
+        };
+
+        // Call initialization right away
+        window.initFirebaseAndAuth();
+
+        // Export necessary functions to the global scope for use by the script block below
+        window.getDoc = getDoc;
+        window.doc = doc;
+        window.collection = collection;
+        window.onSnapshot = onSnapshot;
+        window.query = query;
+    </script>
+
     <style>
-        .book-card {
-            transition: all 0.3s ease;
-            cursor: pointer;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
-            border-top: 5px solid var(--book-color); /* Dynamic top border */
+        .card {
+            @apply p-6 bg-white rounded-xl shadow-lg border border-gray-200 transition-all duration-300 cursor-pointer hover:shadow-xl hover:ring-2 hover:ring-cbse-blue/50;
         }
-        .book-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+        .chapter-list li {
+            @apply flex justify-between items-center py-4 px-6 mb-4 bg-gray-50 rounded-lg border border-gray-100 shadow-sm transition-colors duration-200;
         }
-        .topic-button {
-            transition: all 0.2s ease;
+        .chapter-list li:hover {
+            @apply bg-blue-50 border-blue-200;
         }
-        .topic-button:hover {
-            opacity: 0.95;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        .chapter-button {
+            @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500;
+        }
+        .quiz-option {
+            @apply w-full p-4 mb-3 border border-gray-300 rounded-lg text-left transition-colors duration-200;
+        }
+        .quiz-option:hover {
+            @apply bg-blue-50 border-blue-500;
+        }
+        .correct-answer {
+            @apply bg-green-100 border-green-600;
+        }
+        .incorrect-answer {
+            @apply bg-red-100 border-red-600;
+        }
+        .disabled-button {
+            pointer-events: none;
+            opacity: 0.6;
         }
     </style>
 </head>
 <body class="bg-cbse-light min-h-screen antialiased font-sans">
 
+    <!-- HEADER -->
     <header class="bg-white shadow-lg sticky top-0 z-10 border-t-8 border-cbse-blue">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-            <div class="flex items-center space-x-3 cursor-pointer" id="header-home-btn">
-                <i data-lucide="flask-round" class="text-cbse-blue h-7 w-7"></i>
-                <h1 class="text-2xl font-extrabold font-serif text-cbse-blue tracking-tight">
-                    Science Modules
-                </h1>
+            <div class="flex items-center space-x-3">
+                <a href="index.html" class="text-xl font-extrabold font-serif text-cbse-blue tracking-tight hover:text-accent-gold transition-colors">
+                    &larr; Back to Subjects
+                </a>
             </div>
-            <nav id="main-nav">
-                <a href="index.html" class="nav-link px-3 py-1 rounded-lg text-gray-700 hover:bg-cbse-light hover:text-cbse-blue transition">Main Portal</a>
-            </nav>
+            <h1 class="text-2xl font-bold text-heading">
+                Class 9 Science Portal
+            </h1>
         </div>
     </header>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        <h2 class="text-4xl font-extrabold font-serif text-heading mb-10 text-center">
-            Class 9 Science: Discipline & Topic Selection
-        </h2>
-
-        <div id="book-select-view">
-            <h3 class="text-2xl font-bold text-cbse-blue mb-6">Step 1: Choose a Science Discipline</h3>
+        
+        <!-- --- TOPIC SELECTION VIEW (Physics, Chemistry, Biology) --- -->
+        <div id="topic-selection-view">
+            <h2 class="text-4xl font-extrabold font-serif text-heading mb-8 border-b-2 border-accent-gold pb-2">
+                Step 1: Select a Science Topic
+            </h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 
-                <div class="book-card bg-white p-6 rounded-xl book-select-btn" data-book="physics" data-title="Physics" data-color="#2563eb" style="--book-color: #2563eb;">
-                    <div class="flex items-center space-x-3 mb-3">
-                        <i data-lucide="zap" class="text-accent-physics h-6 w-6"></i>
-                        <h4 class="text-xl font-bold font-serif text-heading">Physics</h4>
-                    </div>
-                    <p class="text-sm text-gray-600 mb-4">Focuses on matter, energy, motion, and force. Includes mechanics and sound.</p>
-                    <span class="inline-block text-accent-physics font-semibold">View Chapters &rarr;</span>
-                </div>
-                
-                <div class="book-card bg-white p-6 rounded-xl book-select-btn" data-book="chemistry" data-title="Chemistry" data-color="#059669" style="--book-color: #059669;">
-                    <div class="flex items-center space-x-3 mb-3">
-                        <i data-lucide="atom" class="text-accent-chemistry h-6 w-6"></i>
-                        <h4 class="text-xl font-bold font-serif text-heading">Chemistry</h4>
-                    </div>
-                    <p class="text-sm text-gray-600 mb-4">Study of substances, their structure, properties, and reactions. Focus on matter and atomic structure.</p>
-                    <span class="inline-block text-accent-chemistry font-semibold">View Chapters &rarr;</span>
+                <div class="card cursor-pointer" onclick="showChapterSelection('Physics', 'Motion, Force, & Gravitation')">
+                    <i data-lucide="zap" class="text-yellow-500 h-8 w-8 mb-3"></i>
+                    <h3 class="text-xl font-bold text-heading">Physics</h3>
+                    <p class="text-sm text-gray-600 mt-2">Motion, Force & Laws of Motion, Gravitation, Work & Energy, Sound.</p>
                 </div>
 
-                <div class="book-card bg-white p-6 rounded-xl protected-link" data-book="biology" data-title="Biology" data-color="#dc2626" style="--book-color: #dc2626; opacity: 0.6; pointer-events: none; cursor: not-allowed;">
-                    <div class="flex items-center space-x-3 mb-3">
-                        <i data-lucide="dna" class="text-accent-biology h-6 w-6"></i>
-                        <h4 class="text-xl font-bold font-serif text-heading">Biology</h4>
-                    </div>
-                    <p class="text-sm text-gray-600 mb-4">The study of living organisms, their structure, function, growth, evolution, and distribution.</p>
-                    <span class="inline-block text-gray-500 font-semibold">Coming Soon</span>
+                <div class="card cursor-pointer" onclick="showChapterSelection('Chemistry', 'Atoms, Molecules, & Structure')">
+                    <i data-lucide="beaker" class="text-green-500 h-8 w-8 mb-3"></i>
+                    <h3 class="text-xl font-bold text-heading">Chemistry</h3>
+                    <p class="text-sm text-gray-600 mt-2">Matter, Atoms and Molecules, Structure of the Atom.</p>
                 </div>
-                
+
+                <div class="card cursor-pointer" onclick="showChapterSelection('Biology', 'Cell, Tissues, & Diversity')">
+                    <i data-lucide="dna" class="text-red-500 h-8 w-8 mb-3"></i>
+                    <h3 class="text-xl font-bold text-heading">Biology</h3>
+                    <p class="text-sm text-gray-600 mt-2">Fundamental Unit of Life (Cell), Tissues, Diversity in Living Organisms.</p>
+                </div>
+
             </div>
         </div>
 
-        <div id="units-view" class="hidden">
-            <button id="back-to-books-btn" class="text-cbse-blue hover:text-accent-physics transition mb-6 flex items-center space-x-2">
-                <i data-lucide="arrow-left" class="w-5 h-5"></i>
-                <span class="font-semibold">Back to Disciplines</span>
+        <!-- --- CHAPTER SELECTION VIEW --- -->
+        <div id="chapter-selection-view" class="hidden mt-12">
+            <h2 class="text-4xl font-extrabold font-serif text-heading mb-4">
+                Step 2: <span id="current-topic-display" class="text-cbse-blue"></span>
+            </h2>
+            <p class="text-lg text-gray-700 mb-8 max-w-2xl" id="topic-description"></p>
+
+            <ul id="chapter-list" class="chapter-list">
+                <!-- Chapter items will be populated here -->
+            </ul>
+
+            <button onclick="goBackToTopics()" class="mt-6 chapter-button bg-gray-500 hover:bg-gray-600">
+                &larr; Change Topic
             </button>
+        </div>
+
+        <!-- --- QUIZ VIEW --- -->
+        <div id="quiz-view" class="hidden mt-12 max-w-3xl mx-auto">
+            <h2 class="text-3xl font-extrabold font-serif text-cbse-blue mb-6 border-b pb-2">
+                Quiz: <span id="quiz-chapter-title"></span>
+            </h2>
+            <div id="quiz-container">
+                <!-- Quiz content will be loaded here -->
+            </div>
+            <div id="quiz-results" class="hidden mt-8 p-6 rounded-lg bg-green-50 border-2 border-green-300">
+                <h3 class="text-2xl font-bold text-green-800 mb-2">Quiz Complete!</h3>
+                <p class="text-lg text-green-700">You scored <span id="score-display" class="font-extrabold"></span> out of <span id="total-questions-display" class="font-extrabold"></span>.</p>
+            </div>
             
-            <h3 class="text-3xl font-bold font-serif mb-6 flex items-center space-x-3" id="units-view-title">
-                </h3>
+            <button onclick="goBackToChapters()" class="mt-8 chapter-button bg-gray-500 hover:bg-gray-600">
+                &larr; Back to Chapters
+            </button>
 
-            <div id="physics-units" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden">
-                <a href="quiz-engine.html?class=9&subject=science&topic=motion" class="topic-button py-4 px-6 rounded-lg bg-accent-physics text-white font-semibold text-lg text-left shadow-md">
-                    1. Motion
-                </a>
-                <a href="quiz-engine.html?class=9&subject=science&topic=force_and_laws_of_motion" class="topic-button py-4 px-6 rounded-lg bg-accent-physics text-white font-semibold text-lg text-left shadow-md">
-                    2. Force and Laws of Motion
-                </a>
-                <a href="quiz-engine.html?class=9&subject=science&topic=gravitation" class="topic-button py-4 px-6 rounded-lg bg-accent-physics text-white font-semibold text-lg text-left shadow-md">
-                    3. Gravitation
-                </a>
-                <a href="quiz-engine.html?class=9&subject=science&topic=work_and_energy" class="topic-button py-4 px-6 rounded-lg bg-accent-physics text-white font-semibold text-lg text-left shadow-md">
-                    4. Work and Energy
-                </a>
-                <a href="quiz-engine.html?class=9&subject=science&topic=sound" class="topic-button py-4 px-6 rounded-lg bg-accent-physics text-white font-semibold text-lg text-left shadow-md">
-                    5. Sound
-                </a>
-                <button disabled class="topic-button py-4 px-6 rounded-lg bg-gray-300 text-gray-700 font-semibold text-lg text-left cursor-not-allowed">
-                    6. Floatation (Coming Soon)
-                </button>
-            </div>
-
-            <div id="chemistry-units" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden">
-                 <a href="quiz-engine.html?class=9&subject=science&topic=matter_in_our_surroundings" class="topic-button py-4 px-6 rounded-lg bg-accent-chemistry text-white font-semibold text-lg text-left shadow-md">
-                    1. Matter in Our Surroundings
-                </a>
-                <a href="quiz-engine.html?class=9&subject=science&topic=atoms_and_molecules" class="topic-button py-4 px-6 rounded-lg bg-accent-chemistry text-white font-semibold text-lg text-left shadow-md">
-                    2. Atoms and Molecules
-                </a>
-                <button disabled class="topic-button py-4 px-6 rounded-lg bg-gray-300 text-gray-700 font-semibold text-lg text-left cursor-not-allowed">
-                    3. Is Matter Around Us Pure (Coming Soon)
-                </button>
-            </div>
-
-             <div id="biology-units" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden">
-                <button disabled class="topic-button py-4 px-6 rounded-lg bg-gray-300 text-gray-700 font-semibold text-lg text-left cursor-not-allowed">
-                    1. The Fundamental Unit of Life (Coming Soon)
-                </button>
-                 <button disabled class="topic-button py-4 px-6 rounded-lg bg-gray-300 text-gray-700 font-semibold text-lg text-left cursor-not-allowed">
-                    2. Tissues (Coming Soon)
-                </button>
-            </div>
+            <!-- Error/Loading Message Box -->
+            <div id="message-box" class="hidden mt-4 p-4 rounded-lg text-center font-semibold border-l-4" role="alert"></div>
         </div>
 
     </main>
 
-    <footer class="bg-cbse-blue mt-16 py-8">
+    <!-- FOOTER WITH USER ID -->
+    <footer class="bg-cbse-blue mt-16 py-4">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
-            <div class="flex justify-center space-x-6 mb-3">
-                <a href="#" class="text-sm opacity-90 hover:opacity-100 transition border-b border-cbse-blue hover:border-white">Terms of Use</a>
-                <a href="#" class="text-sm opacity-90 hover:opacity-100 transition border-b border-cbse-blue hover:border-white">Privacy Policy</a>
-                <a href="#" class="text-sm opacity-90 hover:opacity-100 transition border-b border-cbse-blue hover:border-white">Contact Administration</a>
-            </div>
-            <small class="text-sm opacity-70 block mt-2">© 2025 CBSE Class 9 Academic Portal. All Rights Reserved. Dedicated to Student Success.</small>
+            <small id="user-id-display" class="text-sm opacity-70 block">Initializing data service...</small>
+            <small class="text-sm opacity-70 block mt-1">© 2025 Ready4Exam Academic Portal.</small>
         </div>
     </footer>
 
-
+    <!-- Main Application Logic -->
     <script>
-        // --- DOM Elements ---
-        const bookSelectView = document.getElementById('book-select-view');
-        const unitsView = document.getElementById('units-view');
-        const unitsViewTitle = document.getElementById('units-view-title');
-        const backToBooksBtn = document.getElementById('back-to-books-btn');
-        const headerHomeBtn = document.getElementById('header-home-btn');
+        // Data structure for the chapters (simplified for this app)
+        const CHAPTER_DATA = {
+            'Physics': [
+                { id: 'physics_motion', title: 'Chapter 1: Motion', quizId: 'quiz_motion' },
+                { id: 'physics_force', title: 'Chapter 2: Force & Laws of Motion', quizId: 'quiz_force' },
+                { id: 'physics_gravitation', title: 'Chapter 3: Gravitation', quizId: 'quiz_gravitation' }
+            ],
+            'Chemistry': [
+                { id: 'chemistry_matter', title: 'Chapter 4: Matter in Our Surroundings', quizId: 'quiz_matter' },
+                { id: 'chemistry_atoms', title: 'Chapter 5: Atoms and Molecules', quizId: 'quiz_atoms' }
+            ],
+            'Biology': [
+                { id: 'biology_cell', title: 'Chapter 6: The Fundamental Unit of Life (Cell)', quizId: 'quiz_cell' },
+                { id: 'biology_tissues', title: 'Chapter 7: Tissues', quizId: 'quiz_tissues' }
+            ]
+        };
 
-        // Unit containers (Physics, Chemistry, Biology)
-        const physicsUnits = document.getElementById('physics-units');
-        const chemistryUnits = document.getElementById('chemistry-units');
-        const biologyUnits = document.getElementById('biology-units');
+        // Current state
+        let currentQuizData = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let selectedTopic = '';
 
-        // --- View Toggling Function ---
+        // --- UI Navigation Handlers ---
+
         function showView(viewId) {
-            bookSelectView.classList.add('hidden');
-            unitsView.classList.add('hidden');
-
-            if (viewId === 'book-select') {
-                bookSelectView.classList.remove('hidden');
-            } else if (viewId === 'units') {
-                unitsView.classList.remove('hidden');
-            }
-            // Scroll to the top of the main content area
-            document.querySelector('main').scrollIntoView({ behavior: 'smooth' });
+            document.getElementById('topic-selection-view').classList.add('hidden');
+            document.getElementById('chapter-selection-view').classList.add('hidden');
+            document.getElementById('quiz-view').classList.add('hidden');
+            document.getElementById(viewId).classList.remove('hidden');
         }
 
-        // --- Unit Display Function ---
-        function showUnits(book, title, color) {
-            // 1. Hide all unit containers
-            physicsUnits.classList.add('hidden');
-            chemistryUnits.classList.add('hidden');
-            biologyUnits.classList.add('hidden');
-
-            // 2. Set the title and color
-            unitsViewTitle.textContent = title + " Chapters";
-            unitsViewTitle.style.color = color;
-
-            // 3. Show the correct container based on the selected book
-            switch (book) {
-                case 'physics':
-                    physicsUnits.classList.remove('hidden');
-                    break;
-                case 'chemistry':
-                    chemistryUnits.classList.remove('hidden');
-                    break;
-                case 'biology':
-                    biologyUnits.classList.remove('hidden');
-                    break;
-            }
-
-            // 4. Switch the main view
-            showView('units');
+        function goBackToTopics() {
+            showView('topic-selection-view');
         }
 
-        // --- Event Handlers that use Data Attributes ---
-        function handleBookSelectClick(event) {
-            const card = event.currentTarget;
-            // Use data- attributes to get context
-            const book = card.dataset.book;
-            const title = card.dataset.title;
-            const color = card.dataset.color;
-            showUnits(book, title, color);
+        function goBackToChapters() {
+            // Hide quiz, reset state, and show chapter view
+            document.getElementById('quiz-results').classList.add('hidden');
+            document.getElementById('quiz-container').innerHTML = ''; // Clear quiz content
+            currentQuizData = [];
+            currentQuestionIndex = 0;
+            score = 0;
+            showView('chapter-selection-view');
+            hideMessageBox();
         }
         
-        // --- Initialization on Document Load ---
-        function attachEventListeners() {
-            // Attach listeners for BOOK selection cards (in book-select-view)
-            document.querySelectorAll('.book-select-btn').forEach(card => {
-                card.removeEventListener('click', handleBookSelectClick);
-                card.addEventListener('click', handleBookSelectClick);
-            });
+        function showMessageBox(message, type = 'error') {
+            const box = document.getElementById('message-box');
+            box.textContent = message;
+            box.classList.remove('hidden', 'border-red-400', 'bg-red-100', 'text-red-800', 'border-green-400', 'bg-green-100', 'text-green-800');
+
+            if (type === 'error') {
+                box.classList.add('border-red-400', 'bg-red-100', 'text-red-800');
+            } else if (type === 'success') {
+                box.classList.add('border-green-400', 'bg-green-100', 'text-green-800');
+            }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
+        function hideMessageBox() {
+            document.getElementById('message-box').classList.add('hidden');
+        }
+
+
+        // --- Chapter Selection Logic ---
+
+        function showChapterSelection(topicName, description) {
+            selectedTopic = topicName;
+            document.getElementById('current-topic-display').textContent = topicName;
+            document.getElementById('topic-description').textContent = 'Key concepts include: ' + description + '.';
+
+            const chapterListEl = document.getElementById('chapter-list');
+            chapterListEl.innerHTML = '';
+            
+            const chapters = CHAPTER_DATA[topicName] || [];
+            
+            chapters.forEach(chapter => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span class="text-lg font-medium text-gray-800">${chapter.title}</span>
+                    <button class="chapter-button" onclick="loadQuizData('${chapter.quizId}')">
+                        Start Quiz 
+                        <i data-lucide="play-circle" class="h-4 w-4 ml-2"></i>
+                    </button>
+                `;
+                chapterListEl.appendChild(li);
+            });
+
+            // Re-render icons for new elements
+            lucide.createIcons();
+            showView('chapter-selection-view');
+        }
+
+        // --- QUIZ DATA and RENDER LOGIC ---
+
+        async function loadQuizData(chapterId) {
+            showView('quiz-view');
+            hideMessageBox();
+            document.getElementById('quiz-container').innerHTML = '<div class="text-center py-12"><i data-lucide="loader-circle" class="animate-spin text-blue-500 h-10 w-10 mx-auto mb-4"></i><p class="text-gray-600 font-semibold">Loading quiz data...</p></div>';
             lucide.createIcons();
             
-            // Setup navigation links style (replaces the class definition from the old file)
-             document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.add('px-3', 'py-1', 'rounded-lg', 'text-gray-600', 'hover:bg-cbse-light', 'hover:text-cbse-blue', 'transition');
-            });
+            // CRITICAL FIX: Ensure Firebase is ready before attempting to use it
+            if (!window.db || !window.isAuthReady) {
+                console.error("Data service not ready. Firestore DB or Auth is not initialized.");
+                showMessageBox("Failed to load quiz content. (Data service not ready. Please try refreshing.)", 'error');
+                return;
+            }
+
+            try {
+                // Construct the Firestore path: /artifacts/{appId}/public/data/quizzes/{quizId}
+                const quizRef = window.doc(window.db, `artifacts/${window.appId}/public/data/quizzes`, chapterId);
+                const docSnap = await window.getDoc(quizRef);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    currentQuizData = JSON.parse(data.questionsJson); // Assuming questions are stored as a JSON string
+                    
+                    if (currentQuizData.length > 0) {
+                        const chapterInfo = Object.values(CHAPTER_DATA).flat().find(c => c.quizId === chapterId);
+                        document.getElementById('quiz-chapter-title').textContent = chapterInfo ? chapterInfo.title : 'Quiz';
+                        currentQuestionIndex = 0;
+                        score = 0;
+                        renderQuestion();
+                    } else {
+                        showMessageBox("The quiz is empty or improperly formatted.", 'error');
+                    }
+                } else {
+                    // Quiz data not found, so we must generate it and save it first.
+                    showMessageBox(`Quiz data for '${chapterId}' not found. Generating content...`, 'success');
+                    await generateAndSaveQuiz(chapterId);
+                }
+            } catch (error) {
+                console.error("Error loading or generating quiz data:", error);
+                showMessageBox("Failed to load quiz content. Please try refreshing or check your internet connection.", 'error');
+            }
+        }
+
+        async function generateAndSaveQuiz(chapterId) {
+            document.getElementById('quiz-container').innerHTML = '<div class="text-center py-12"><i data-lucide="dices" class="animate-pulse text-accent-gold h-10 w-10 mx-auto mb-4"></i><p class="text-gray-600 font-semibold">Generating 5 practice questions for you...</p></div>';
+
+            const userQuery = `Generate 5 multiple-choice questions for the CBSE Class 9 chapter titled: ${chapterId.replace('_', ' ').toUpperCase().split(' ').slice(1).join(' ')}. Each question must have 4 options and one correct answer, and must be formatted as a JSON array.`;
             
-            attachEventListeners();
+            const systemPrompt = "You are an expert CBSE curriculum quiz generator. You must respond ONLY with a single JSON array object that adheres to the provided schema. Do not include any introductory or concluding text. The questions should be engaging and accurately reflect the learning material.";
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                "question": { "type": "STRING", "description": "The question text." },
+                                "options": { "type": "ARRAY", "items": { "type": "STRING" }, "description": "An array of four possible answers." },
+                                "correctAnswerIndex": { "type": "INTEGER", "description": "The 0-based index of the correct answer in the options array." }
+                            },
+                            "required": ["question", "options", "correctAnswerIndex"]
+                        }
+                    }
+                }
+            };
             
-            // Set up Back/Home buttons
-            headerHomeBtn.addEventListener('click', () => showView('book-select'));
-            backToBooksBtn.addEventListener('click', () => showView('book-select'));
-        });
+            let generatedJsonText;
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                generatedJsonText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (!generatedJsonText) {
+                     throw new Error("API returned no content.");
+                }
+
+                // 1. Parse and validate
+                const generatedQuiz = JSON.parse(generatedJsonText);
+                currentQuizData = generatedQuiz;
+
+                // 2. Save the generated quiz to Firestore
+                const quizRef = window.doc(window.db, `artifacts/${window.appId}/public/data/quizzes`, chapterId);
+                await window.setDoc(quizRef, {
+                    quizId: chapterId,
+                    createdAt: new Date().toISOString(),
+                    questionsJson: JSON.stringify(generatedQuiz)
+                });
+                
+                // 3. Start the quiz
+                const chapterInfo = Object.values(CHAPTER_DATA).flat().find(c => c.quizId === chapterId);
+                document.getElementById('quiz-chapter-title').textContent = chapterInfo ? chapterInfo.title : 'Quiz';
+                currentQuestionIndex = 0;
+                score = 0;
+                hideMessageBox();
+                renderQuestion();
+
+            } catch (error) {
+                console.error("Error generating or saving quiz:", error, generatedJsonText);
+                showMessageBox(`Error processing content: ${error.message}. Please try a different chapter.`, 'error');
+            }
+        }
         
+        // --- QUIZ RENDERING AND INTERACTION ---
+
+        function renderQuestion() {
+            document.getElementById('quiz-results').classList.add('hidden');
+            const container = document.getElementById('quiz-container');
+            container.innerHTML = '';
+            
+            if (currentQuestionIndex >= currentQuizData.length) {
+                showResults();
+                return;
+            }
+
+            const questionData = currentQuizData[currentQuestionIndex];
+            
+            let optionsHtml = questionData.options.map((option, index) => `
+                <button class="quiz-option text-lg" data-index="${index}" onclick="checkAnswer(this, ${index}, ${questionData.correctAnswerIndex})">
+                    ${String.fromCharCode(65 + index)}. ${option}
+                </button>
+            `).join('');
+
+            container.innerHTML = `
+                <div class="p-6 bg-white rounded-xl shadow-lg">
+                    <p class="text-xl font-semibold text-heading mb-4">Question ${currentQuestionIndex + 1} of ${currentQuizData.length}</p>
+                    <p class="text-2xl font-serif text-gray-800 mb-8">${questionData.question}</p>
+                    <div id="options-container" class="space-y-3">
+                        ${optionsHtml}
+                    </div>
+                    <button id="next-button" class="mt-6 chapter-button disabled-button" onclick="nextQuestion()">
+                        Next Question &rarr;
+                    </button>
+                </div>
+            `;
+        }
+        
+        function checkAnswer(selectedButton, selectedIndex, correctIndex) {
+            const optionsContainer = document.getElementById('options-container');
+            const options = optionsContainer.querySelectorAll('.quiz-option');
+            
+            // Disable all options after selection
+            options.forEach(button => {
+                button.disabled = true;
+                button.classList.remove('hover:bg-blue-50', 'hover:border-blue-500');
+                
+                // Highlight correct and incorrect
+                const index = parseInt(button.dataset.index);
+                if (index === correctIndex) {
+                    button.classList.add('correct-answer');
+                } else if (index === selectedIndex) {
+                    button.classList.add('incorrect-answer');
+                }
+            });
+
+            // Update score
+            if (selectedIndex === correctIndex) {
+                score++;
+            }
+            
+            // Enable next button
+            document.getElementById('next-button').classList.remove('disabled-button');
+        }
+
+        function nextQuestion() {
+            document.getElementById('next-button').classList.add('disabled-button');
+            currentQuestionIndex++;
+            renderQuestion();
+        }
+
+        function showResults() {
+            document.getElementById('quiz-container').innerHTML = '';
+            document.getElementById('score-display').textContent = score;
+            document.getElementById('total-questions-display').textContent = currentQuizData.length;
+            document.getElementById('quiz-results').classList.remove('hidden');
+            
+            // Determine if user passed (e.g., 60%)
+            const passThreshold = currentQuizData.length * 0.6;
+            const resultsBox = document.getElementById('quiz-results');
+
+            if (score >= passThreshold) {
+                resultsBox.classList.remove('bg-red-50', 'border-red-300');
+                resultsBox.classList.add('bg-green-50', 'border-green-300');
+                resultsBox.querySelector('h3').textContent = "Excellent Work!";
+            } else {
+                resultsBox.classList.remove('bg-green-50', 'border-green-300');
+                resultsBox.classList.add('bg-red-50', 'border-red-300');
+                resultsBox.querySelector('h3').textContent = "Good Attempt! Review Needed.";
+            }
+        }
+        
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            // Since initFirebaseAndAuth is called immediately in the script type="module",
+            // we just need to ensure the initial view is correct.
+            showView('topic-selection-view'); 
+        });
+
     </script>
 </body>
 </html>
