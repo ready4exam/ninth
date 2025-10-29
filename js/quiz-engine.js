@@ -1,143 +1,67 @@
-import { fetchQuestions, countQuestions, saveResult } from './api.js'; // Correct path: './api.js'
+import { fetchQuestions, saveResult } from './api.js';
+import { initializeAuthListener, signInWithGoogle, signOut, checkAccess } from './auth-paywall.js';
+import { showView, updateStatus, updateHeader, renderQuestionList, showResults, updateResultDisplay, updateAuthUI, updatePaywallContent, getElements } from './ui-renderer.js';
 
-// --- Imports for Missing Modules (Assumes all are in the same 'js' folder) ---
-// These functions are now imported from their dedicated files, not stubbed here.
-import { initializeAuthListener, signInWithGoogle, signOut, checkPaymentStatus } from './auth-paywall.js';
-// Note: countQuestions and saveResult are already imported from api.js above.
-
-// --- UI Helper Functions (Basic DOM manipulation for status and visibility) ---
-// These functions usually come from ui-renderer.js, but we'll keep the stubs here for now
-// to avoid introducing another file dependency unless explicitly requested.
-const showView = (id) => { 
-    console.log(`Showing view: ${id}`); 
-    document.getElementById('loading-status').classList.add('hidden'); 
-    document.getElementById(id)?.classList.remove('hidden');
-};
-const updateStatus = (msg) => { 
-    // Uses generic status messages, avoiding mention of Supabase/Firestore
-    const el = document.getElementById('loading-status');
-    if (el) {
-        el.textContent = msg;
-        el.classList.remove('hidden');
-    }
-};
-const hideStatus = () => { 
-    document.getElementById('loading-status')?.classList.add('hidden');
-};
-const renderTitles = (title) => { 
-    const el = document.getElementById('quiz-title'); 
-    if(el) el.textContent = title; 
-};
-const renderQuestionOrResult = (data, userAnswers, currentQ) => { 
-    // This is a placeholder. In a complete app, this would render the question and options dynamically.
-    console.log(`Rendering Question #${currentQ + 1} of ${data.length}`);
+// --- Global Quiz State ---
+const currentQuiz = {
+    class: null,
+    subject: null,
+    topic: null, // The slug (e.g., 'gravitation')
+    topicName: null, // The friendly name (e.g., 'Gravitation')
+    difficulty: 'medium',
+    questions: [],
+    userAnswers: [], // Array to store answers: [null, 'Option B', null, ...]
+    isSubmitted: false,
 };
 
-
-// --- Global Constants ---
-const BRAND_NAME = "Ready4Industry";
-const BRAND_TAGLINE = "Ready4Exam: Master the subject, own your confidence, and pass any school exam with flying colors. Prepare for Ready4Industry success."; 
-// Regex to strip LaTeX/KaTeX delimiters (e.g., $formula$ or $$formula$$)
-const STRIP_LATEX_REGEX = /(\$\$?)(.*?)\1/g; 
-
-// --- State Variables ---
-let currentQuiz = {
-    class: '',
-    subject: '',
-    topic: '',
-    difficulty: '',
-    questions: [], // Stores the fetched and TRANSFORMED question data
-    userAnswers: [],
-};
-let currentQuestionIndex = 0;
-
-
-// --- Branding Initialization ---
-function initBranding() {
-    const nameEl = document.getElementById('brand-name-display');
-    const taglineEl = document.getElementById('brand-tagline-display');
-    
-    if (nameEl) {
-        nameEl.textContent = BRAND_NAME;
-    }
-    if (taglineEl) {
-        taglineEl.textContent = BRAND_TAGLINE;
-    }
-}
-
-// --- Data Transformation & Cleanup ---
+// --- Initialization Helpers ---
 
 /**
- * Applies all data cleanup rules to a single raw question object.
+ * Placeholder for fetching the friendly topic name (e.g., 'gravitation' -> 'Gravitation').
+ * In a real app, this would come from a dedicated config/lookup table.
+ * For now, it just capitalizes the slug.
+ * @param {string} slug 
  */
-function transformQuestion(q) {
-    const answerKeyToIdx = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 };
-    
-    let scenarioText = q.scenario_reason_text || '';
-    
-    // Function to strip LaTeX symbols
-    const stripLatex = (text) => text ? text.replace(STRIP_LATEX_REGEX, (match, p1, p2) => p2 || match) : '';
-
-    // 1. Sanitize scenario_reason_text based on question_type
-    switch (q.question_type) {
-        case 'mcq':
-            // Rule 1: For MCQs, scenario_reason_text must be empty
-            scenarioText = ''; 
-            break;
-        case 'assertion_reasoning':
-            // Rule 2: scenario_reason_text holds the Reasoning
-            break;
-        case 'case_study':
-            // Rule 3: scenario_reason_text holds the Scenario
-            break;
-    }
-
-    // Transform and clean fields
-    return {
-        id: q.id,
-        text: stripLatex(q.question_text),
-        type: q.question_type, 
-        options: [
-            stripLatex(q.option_a), 
-            stripLatex(q.option_b), 
-            stripLatex(q.option_c), 
-            stripLatex(q.option_d)
-        ],
-        scenarioText: stripLatex(scenarioText), // Cleaned scenario/reasoning text
-        correct_answer_index: answerKeyToIdx[q.correct_answer_key.toUpperCase()],
-    };
+function getTopicFriendlyName(slug) {
+    if (!slug) return 'Unknown Topic';
+    return slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 }
 
 
-// --- Quiz Loading Function ---
-
+/**
+ * Loads the quiz data and determines the view to show.
+ */
 async function loadQuiz() {
-    const { topic, difficulty } = currentQuiz;
+    updateStatus("Loading quiz content...");
     
-    // Generic user-facing loading message
-    updateStatus(`Preparing your quiz on ${topic.replace(/_/g, ' ')}...`);
+    currentQuiz.topicName = getTopicFriendlyName(currentQuiz.topic);
+    updateHeader(`${currentQuiz.topicName} Quiz`, currentQuiz.topicName, currentQuiz.difficulty);
+
+    // 1. Check Access
+    const hasAccess = await checkAccess(currentQuiz.topic); 
+
+    if (!hasAccess) {
+        updatePaywallContent(currentQuiz.topicName);
+        showView('paywall-screen');
+        updateStatus("Access denied.");
+        return; 
+    }
     
     try {
-        // 1. Fetch raw data from API (in api.js)
-        const rawQuestions = await fetchQuestions(topic, difficulty);
-
-        if (rawQuestions.length === 0) {
-            throw new Error("We couldn't find any questions for this topic. Please check the link or try another section.");
-        }
-
-        // 2. Transform and clean the data
-        currentQuiz.questions = rawQuestions.map(transformQuestion);
+        // 2. Fetch Questions
+        currentQuiz.questions = await fetchQuestions(currentQuiz.topic, currentQuiz.difficulty);
+        
+        // 3. Initialize user answers array
         currentQuiz.userAnswers = new Array(currentQuiz.questions.length).fill(null);
         
-        // 3. Update UI and start quiz
-        const titleText = currentQuiz.topic.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-        renderTitles(titleText); 
+        // 4. Render Quiz and show view
+        renderQuestionList(currentQuiz.questions, handleOptionSelect);
+
+        // Attach event listener for submit button (moved here to ensure it's attached only once)
+        getElements().submitButton?.addEventListener('click', handleSubmitQuiz);
         
-        // Initial render of the first question
-        renderQuestionOrResult(currentQuiz.questions, currentQuiz.userAnswers, currentQuestionIndex);
-        
-        showView('quiz-view');
-        hideStatus();
+        showView('quiz-content');
+        updateStatus(`Quiz loaded. ${currentQuiz.questions.length} questions available.`);
 
     } catch (error) {
         console.error("Quiz Initialization Failed:", error);
@@ -146,34 +70,115 @@ async function loadQuiz() {
     }
 }
 
+// --- Event Handlers ---
+
+/**
+ * Handles selection of a radio option for a question.
+ * @param {number} index - The index of the question in the array.
+ * @param {string} selectedAnswer - The text value of the selected answer.
+ */
+function handleOptionSelect(index, selectedAnswer) {
+    if (currentQuiz.isSubmitted) return; // Prevent changes after submission
+    currentQuiz.userAnswers[index] = selectedAnswer;
+}
+
+
+/**
+ * Handles the submission of the entire quiz.
+ */
+async function handleSubmitQuiz() {
+    if (currentQuiz.isSubmitted) return; 
+
+    // 1. Calculate and display results on the UI
+    const score = showResults(currentQuiz.questions, currentQuiz.userAnswers);
+    currentQuiz.isSubmitted = true;
+    
+    // 2. Hide the submit button
+    getElements().submitButton.classList.add('hidden');
+
+    // 3. Show the results screen (but we need to wait for the user to scroll through)
+    // For a smoother UX, we will scroll to the top of the quiz results element after a slight delay
+    // and then display the results summary.
+    setTimeout(() => {
+        updateResultDisplay(score, currentQuiz.questions.length);
+        showView('results-screen');
+        document.getElementById('results-screen').scrollIntoView({ behavior: 'smooth' });
+    }, 500);
+
+
+    // 4. Save result to database (API call)
+    const resultToSave = {
+        topic: currentQuiz.topic,
+        difficulty: currentQuiz.difficulty,
+        score: score,
+        totalQuestions: currentQuiz.questions.length,
+        userAnswers: currentQuiz.userAnswers.map((ans, i) => ({
+            questionId: currentQuiz.questions[i].id, // Assuming each question has an ID
+            userAnswer: ans,
+            correctAnswer: currentQuiz.questions[i].options[currentQuiz.questions[i].correctAnswerIndex],
+            isCorrect: ans === currentQuiz.questions[i].options[currentQuiz.questions[i].correctAnswerIndex],
+        })),
+    };
+
+    try {
+        await saveResult(resultToSave);
+        console.log("Quiz results saved successfully.");
+    } catch (e) {
+        console.error("Failed to save quiz results:", e);
+    }
+}
+
+/**
+ * Handles the sign-in process via the UI.
+ */
+async function handleSignIn() {
+    try {
+        const user = await signInWithGoogle();
+        if (user) {
+            // After successful sign-in, re-run loadQuiz to check access status again
+            await loadQuiz(); 
+        }
+    } catch (e) {
+        console.error("Sign in failed:", e);
+        updateStatus("Sign-in failed. Please try again.");
+    }
+}
+
+/**
+ * Handles the sign-out process.
+ */
+function handleSignOut() {
+    signOut(); // signOut will trigger the auth listener, which updates the UI
+}
 
 // --- Initialization ---
 
 document.addEventListener('DOMContentLoaded', async () => {
     // 1. Parse URL parameters to set context
     const params = new URLSearchParams(window.location.search);
-    currentQuiz.class = params.get('class');
-    currentQuiz.subject = params.get('subject');
+    currentQuiz.class = params.get('class'); // Currently unused
+    currentQuiz.subject = params.get('subject'); // Currently unused
     currentQuiz.topic = params.get('topic');
     currentQuiz.difficulty = params.get('difficulty') || 'medium'; 
-
-    // 2. Display Branding and Tagline immediately
-    initBranding(); 
     
-    // 3. Initialize Auth
-    initializeAuthListener(); 
-    
-    // 4. Check Payment/Subscription status
-    if (!checkPaymentStatus()) {
-        updateStatus("Access Denied: Please subscribe to view quizzes.");
-        return; 
+    if (!currentQuiz.topic) {
+        updateStatus("Error: No quiz topic specified in the URL.");
+        return;
     }
-
-    // 5. Load the Quiz Data
-    await loadQuiz();
     
-    // --- Event Listeners (Placeholder) ---
-    // Example navigation listeners
-    document.getElementById('prev-btn')?.addEventListener('click', () => { /* Logic for previous question */ });
-    document.getElementById('next-btn')?.addEventListener('click', () => { /* Logic for next question */ });
+    // 2. Attach Auth UI Listeners
+    initializeAuthListener(updateAuthUI);
+    
+    // 3. Attach Paywall/Auth Action Listeners
+    getElements().loginButton?.addEventListener('click', handleSignIn);
+    getElements().logoutNavBtn?.addEventListener('click', handleSignOut);
+    getElements().payButton?.addEventListener('click', () => {
+        // Simple Razorpay flow
+        // In a real app, you'd calculate amount based on topic
+        window.open('https://razorpay.com/payment-link-demo', '_blank'); // Open demo link
+        console.log("Simulating payment attempt...");
+    });
+    
+    // 4. Load the Quiz Data
+    await loadQuiz();
 });
