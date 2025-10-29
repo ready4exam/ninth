@@ -1,12 +1,6 @@
 import { fetchQuestions, saveResult } from './api.js';
-// FIX: Ensure all named exports from auth-paywall.js are imported correctly.
-import { 
-    initializeAuthListener, 
-    checkPaymentStatus, // This is the function causing the error in some environments. We ensure it's here.
-    getCurrentUser, 
-    signInWithGoogle, 
-    signOut 
-} from './auth-paywall.js';
+// FIX: Using namespace import (import * as Auth from...) to avoid the "does not provide an export" SyntaxError
+import * as Auth from './auth-paywall.js'; 
 import { 
     showView, 
     updateStatus, 
@@ -120,7 +114,8 @@ async function handleSubmit() {
 
     // 3. Save the result to the database
     const quizResult = {
-        userId: getCurrentUser()?.uid || 'anonymous',
+        // Updated to use namespace import
+        userId: Auth.getCurrentUser()?.uid || 'anonymous',
         topic: currentQuiz.topic,
         difficulty: currentQuiz.difficulty,
         score: score,
@@ -192,8 +187,8 @@ async function loadQuiz() {
 async function checkAccessAndLoad() {
     updateStatus('Checking access...');
     
-    // Note: checkPaymentStatus is simplified to just check for authentication status
-    const hasAccess = await checkPaymentStatus();
+    // Updated to use namespace import
+    const hasAccess = await Auth.checkPaymentStatus();
 
     if (hasAccess) {
         // Access granted: load the quiz
@@ -221,7 +216,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // 3. Initialize Auth listener
     // The onAuthChange callback will handle the subsequent checkAccessAndLoad
-    initializeAuthListener(onAuthChange); 
+    // Updated to use namespace import
+    Auth.initializeAuthListener(onAuthChange); 
     
     // We only need to set up event listeners once.
     document.getElementById('prev-btn')?.addEventListener('click', handlePrevious);
