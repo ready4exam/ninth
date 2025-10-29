@@ -1,19 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title id="page-title">Loading Quiz...</title>
     
-    <link rel="icon" type="image/png" href="favicon.png"> 
-    
-    <title id="quiz-page-title">Ready4Exam | Loading Quiz...</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght@700;900&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
-
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script>
+        // Tailwind Configuration (Matching the science.html design)
         tailwind.config = {
             theme: {
                 extend: {
@@ -22,246 +20,431 @@
                         serif: ['Merriweather', 'serif'],
                     },
                     colors: {
-                        // Global brand colors (Main LMS branding)
-                        'cbse-blue': '#1a3e6a', // Deep primary blue
-                        'cbse-light': '#f0f4f8', // Light background for contrast
-                        'cbse-dark': '#0f2940', // Darker blue for text/accents
-                        // Subject accent colors (Used for branding borders/buttons)
-                        'accent-chemistry': '#059669', // Green
-                        'accent-biology': '#dc2626',   // Red
-                        'accent-physics': '#2563eb',  // Blue
-                        'accent-maths': '#f59e0b',    // Amber/Orange
-                        'unit-bg': '#e3f2fd', 
+                        'cbse-blue': '#1a3e6a', 
+                        'cbse-light': '#f0f4f8', 
+                        'heading': '#0f172a',
+                        'accent-success': '#059669', // Emerald
+                        'accent-danger': '#ef4444',   // Red
+                        'accent-info': '#3b82f6',     // Blue
                     }
                 }
             }
         }
     </script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-    
-    <script src="js/config.js"></script> 
-    
     <style>
-        /* Base Styles: Setting the stage for the professional look */
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: #f3f4f6; /* Light gray background */
-            min-height: 100vh;
+        .option-button {
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            text-align: left;
+            white-space: normal;
         }
-        .quiz-card {
-            max-width: 1000px; /* Slightly wider max-width for desktop wow factor */
-            margin: 2rem auto;
-            min-height: 85vh;
-            display: flex;
-            flex-direction: column;
-            /* Enhanced Shadow for a 'floating card' effect */
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 10px 15px -3px rgba(0, 0, 0, 0.05);
-        }
-        
-        /* Interactive element styles */
-        .option-label { 
-            transition: all 0.2s ease-in-out; 
-            border: 2px solid #e5e7eb;
-            user-select: none; /* Prevents text selection when clicking options */
-        }
-        /* Wow factor: Subtle hover effect for unselected options */
-        .option-label:hover:not(.correct):not(.incorrect) {
-            background-color: #f9fafb;
-            border-color: #cbse-blue;
+        .option-button:hover:not(:disabled) {
             transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
-        
-        /* Feedback colors - High Contrast */
-        .correct { background-color: #d1fae5 !important; border-color: #059669 !important; color: #065f46 !important; box-shadow: 0 0 10px rgba(5, 150, 105, 0.2); }
-        .incorrect { background-color: #fee2e2 !important; border-color: #dc2626 !important; color: #991b1b !important; box-shadow: 0 0 10px rgba(220, 38, 38, 0.2); }
-
-        /* Difficulty Cards: Interactive and premium look */
-        .difficulty-card {
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            cursor: pointer;
-            border: 1px solid #e5e7eb;
+        .correct {
+            background-color: var(--accent-success); 
+            color: white;
+            border-color: var(--accent-success);
         }
-        .difficulty-card:hover {
-            transform: translateY(-4px); /* Deeper lift */
-            box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.15); /* More pronounced shadow */
+        .incorrect {
+            background-color: var(--accent-danger); 
+            color: white;
+            border-color: var(--accent-danger);
         }
-        
-        /* Responsive/Fixed Elements */
-        .submit-sticky {
-            position: sticky;
-            bottom: 0;
-            z-index: 10;
+        .selected {
+            border: 3px solid var(--accent-info);
+            transform: scale(1.01);
         }
-
-        /* Responsive Typography */
-        @media (max-width: 768px) {
-            .quiz-card {
-                margin: 0.5rem;
-                padding: 1.5rem;
-                min-height: auto;
-            }
-            #quiz-title { font-size: 2rem; }
+        .pulse-loader {
+            display: inline-block;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
         }
     </style>
 </head>
-<body>
-    
-    <header class="bg-white shadow-lg sticky top-0 z-20 border-t-8 border-cbse-blue">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col md:flex-row justify-between items-center">
-            
-            <div class="flex items-center space-x-3 mb-3 md:mb-0 cursor-pointer" id="header-home-btn" onclick="window.location.href='index.html'">
-                <img src="favicon.png" alt="Ready4Industry Logo" class="w-8 h-8">
-                <h1 class="text-2xl font-extrabold text-cbse-blue tracking-tight">Ready4Exam</h1>
-            </div>
-            
-            <nav class="flex space-x-4 items-center">
-                <a href="https://ready4industry.in" target="_blank" class="text-sm font-semibold text-gray-600 hover:text-cbse-blue transition">Ready4Industry.in</a>
-                <button id="logout-nav-btn" class="hidden px-3 py-1 rounded-lg text-white bg-accent-biology hover:bg-red-700 transition font-semibold text-sm">🚪 Logout</button>
+<body class="bg-cbse-light min-h-screen antialiased font-sans">
+
+    <!-- Header -->
+    <header class="bg-white shadow-lg sticky top-0 z-10 border-t-8 border-cbse-blue">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <a href="science.html" class="flex items-center space-x-3 cursor-pointer">
+                <i data-lucide="flask-round" class="text-cbse-blue h-7 w-7"></i>
+                <h1 class="text-2xl font-extrabold font-serif text-cbse-blue tracking-tight">
+                    Quiz Engine
+                </h1>
+            </a>
+            <nav>
+                <a href="science.html" class="px-3 py-1 rounded-lg text-gray-700 hover:bg-cbse-light hover:text-cbse-blue transition">Back to Chapters</a>
             </nav>
         </div>
     </header>
 
-
-    <div id="quiz-container" class="quiz-card bg-white p-6 md:p-10 rounded-xl shadow-xl">
-        
-        <h1 id="quiz-title" class="text-4xl md:text-5xl font-extrabold font-serif text-cbse-dark mb-2 text-center tracking-tight">
-            Quiz Engine
-        </h1>
-        <p id="quiz-subtitle" class="text-lg md:text-xl font-semibold text-gray-600 mb-8 text-center border-b pb-4">
-            Awaiting Initialization...
-        </p>
-
-
-        <div id="status-message" class="text-center p-4 md:p-6 rounded-xl bg-cbse-light text-cbse-blue font-bold shadow-inner mb-6 flex items-center justify-center space-x-2">
-            <i data-lucide="loader-circle" class="w-5 h-5 animate-spin"></i>
-            <span id="status-text">Initializing architecture...</span>
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <h2 class="text-3xl font-extrabold font-serif text-heading mb-4 text-center">
+            <span id="quiz-topic-title"></span> Quiz
+        </h2>
+        <div class="text-center text-gray-600 mb-8">
+            <span id="quiz-progress-display"></span>
         </div>
 
-
-        <div id="paywall-screen" class="hidden text-center p-8 bg-white border-4 border-accent-biology rounded-xl shadow-2xl">
-            <i data-lucide="lock" class="w-16 h-16 mx-auto text-accent-biology mb-4 stroke-1"></i>
-            <h2 class="text-3xl font-extrabold font-serif text-cbse-dark mb-4">Unlock This Chapter</h2>
-            <p class="text-xl text-gray-700 mb-6">Gain full access to: <span id="access-required-item" class="font-bold text-accent-biology"></span></p>
-            
-            <div class="space-y-4">
-                <button id="login-button" 
-                        class="w-full px-6 py-4 text-xl font-bold text-white bg-cbse-blue rounded-xl shadow-lg hover:bg-cbse-dark transition duration-200 flex items-center justify-center space-x-2">
-                    <i data-lucide="user-plus" class="w-5 h-5"></i>
-                    <span>Log In / Sign Up</span>
-                </button>
-                <button id="pay-button"
-                        class="w-full px-6 py-4 text-xl font-bold text-white bg-accent-chemistry rounded-xl shadow-lg hover:opacity-90 transition duration-200 flex items-center justify-center space-x-2">
-                    <i data-lucide="credit-card" class="w-5 h-5"></i>
-                    <span>Pay Now with Razorpay</span>
-                </button>
-            </div>
+        <!-- 1. Loading/Error View -->
+        <div id="loading-view" class="bg-white p-8 rounded-xl shadow-lg text-center">
+            <i data-lucide="loader" class="h-10 w-10 text-cbse-blue mx-auto mb-4 animate-spin"></i>
+            <p id="loading-message" class="text-lg font-semibold text-cbse-blue">Initializing Services and Fetching Questions...</p>
         </div>
 
-
-        <div id="start-screen" class="p-8 bg-cbse-light rounded-xl shadow-inner hidden">
-            <h2 class="text-2xl font-bold text-cbse-dark mb-8 text-center">
-                Select Your Challenge
-            </h2>
-            <div class="space-y-6 md:space-y-0 md:grid md:grid-cols-3 md:gap-6">
+        <!-- 2. Quiz View -->
+        <div id="quiz-view" class="hidden">
+            <div class="bg-white p-6 sm:p-8 rounded-xl shadow-lg border-t-4 border-accent-info">
+                <!-- Question Text -->
+                <p id="question-text" class="text-xl font-serif text-heading mb-6 min-h-[50px]"></p>
                 
-                <div class="difficulty-card bg-white p-6 rounded-xl border-t-4 border-accent-chemistry">
-                    <h3 class="text-2xl font-bold text-gray-800 mb-3 flex items-center space-x-2">
-                        <i data-lucide="zap" class="w-5 h-5 text-accent-chemistry"></i>
-                        <span>Simple</span>
-                    </h3>
-                    <p class="text-gray-600 text-base mb-4">Covers foundational concepts. Ideal for review.</p>
-                    <div class="text-sm text-gray-500 space-y-1 mb-6">
-                        <p>Available: <span id="simple-available-q" class="font-semibold text-gray-700">--</span> Qs</p>
-                    </div>
-                    <button data-difficulty="Simple" class="w-full py-3 text-md font-bold text-white bg-accent-chemistry rounded-lg shadow-md hover:bg-green-700 transition duration-150 start-quiz-btn">
-                        Start Now
-                    </button>
+                <!-- Options -->
+                <div id="options-container" class="space-y-4">
+                    <!-- Option buttons generated here -->
                 </div>
 
-                <div class="difficulty-card bg-white p-6 rounded-xl border-t-4 border-accent-maths">
-                    <h3 class="text-2xl font-bold text-gray-800 mb-3 flex items-center space-x-2">
-                         <i data-lucide="flame" class="w-5 h-5 text-accent-maths"></i>
-                        <span>Medium</span>
-                    </h3>
-                    <p class="text-gray-600 text-base mb-4">Requires application of concepts and moderate effort.</p>
-                    <div class="text-sm text-gray-500 space-y-1 mb-6">
-                        <p>Available: <span id="medium-available-q" class="font-semibold text-gray-700">--</span> Qs</p>
-                    </div>
-                    <button data-difficulty="Medium" class="w-full py-3 text-md font-bold text-white bg-accent-maths rounded-lg shadow-md hover:bg-amber-600 transition duration-150 start-quiz-btn">
-                        Start Now
+                <!-- Navigation -->
+                <div class="mt-8 flex justify-between">
+                    <button id="prev-btn" class="px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition" disabled>
+                        <i data-lucide="arrow-left" class="w-5 h-5 inline-block mr-1"></i> Previous
                     </button>
-                </div>
-
-                <div class="difficulty-card bg-white p-6 rounded-xl border-t-4 border-accent-biology">
-                    <h3 class="text-2xl font-bold text-gray-800 mb-3 flex items-center space-x-2">
-                        <i data-lucide="graduation-cap" class="w-5 h-5 text-accent-biology"></i>
-                        <span>Advanced</span>
-                    </h3>
-                    <p class="text-gray-600 text-base mb-4">Includes numericals, high-order thinking, and analysis.</p>
-                    <div class="text-sm text-gray-500 space-y-1 mb-6">
-                        <p>Available: <span id="advanced-available-q" class="font-semibold text-gray-700">--</span> Qs</p>
-                    </div>
-                    <button data-difficulty="Advanced" class="w-full py-3 text-md font-bold text-white bg-accent-biology rounded-lg shadow-md hover:bg-red-700 transition duration-150 start-quiz-btn">
-                        Start Now
+                    <button id="next-btn" class="px-6 py-3 bg-cbse-blue text-white font-semibold rounded-lg hover:bg-accent-info transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        Next <i data-lucide="arrow-right" class="w-5 h-5 inline-block ml-1"></i>
                     </button>
                 </div>
             </div>
         </div>
 
-        <div id="quiz-content" class="hidden flex-grow">
+        <!-- 3. Results View -->
+        <div id="results-view" class="hidden bg-white p-8 rounded-xl shadow-lg text-center">
+            <i data-lucide="award" class="h-12 w-12 text-accent-success mx-auto mb-4"></i>
+            <h3 class="text-3xl font-extrabold font-serif text-heading mb-4">Quiz Complete!</h3>
+            <p class="text-2xl mb-6">Your Score: <span id="final-score" class="font-bold text-accent-success"></span></p>
             
-            <p id="difficulty-display" class="text-xl font-bold text-cbse-blue mb-6 border-b-2 pb-2"></p>
-            
-            <div id="question-list" class="space-y-8 mb-8">
-                </div>
+            <p id="results-message" class="text-gray-700 mb-6"></p>
 
-            <div class="mt-8 submit-sticky bg-white p-4 shadow-2xl rounded-t-xl border-t-4 border-cbse-blue">
-                <button id="submit-button"
-                        class="w-full px-6 py-3 text-xl font-bold text-white bg-cbse-blue rounded-xl shadow-lg hover:bg-cbse-dark transition duration-150">
-                    Submit Quiz & Get Results
-                </button>
-            </div>
-        </div>
-
-        <div id="results-screen" class="hidden text-center p-8 bg-cbse-light rounded-xl shadow-2xl border-t-4 border-accent-chemistry">
-            <i data-lucide="trophy" class="w-16 h-16 mx-auto text-accent-chemistry mb-4 fill-accent-chemistry stroke-1"></i>
-            <h2 class="text-4xl font-extrabold font-serif text-accent-chemistry mb-4">Quiz Complete! Phenomenal Effort!</h2>
-            <p class="text-xl text-gray-700 mb-4">Your Final Score:</p>
-            <p id="score-display" class="text-7xl font-extrabold text-cbse-blue mb-8">0 / 0</p>
-            <button onclick="window.location.reload()"
-                    class="px-8 py-3 text-white bg-cbse-blue rounded-lg shadow-md hover:bg-cbse-dark transition duration-150 text-lg font-semibold">
-                Start New Quiz
+            <button onclick="window.location.href='science.html'" class="px-8 py-3 bg-cbse-blue text-white font-semibold rounded-lg hover:bg-accent-info transition shadow-lg">
+                <i data-lucide="redo" class="w-5 h-5 inline-block mr-2"></i> Go Back to Chapters
             </button>
         </div>
 
-    </div>
-    
-    <footer class="bg-cbse-dark mt-12 py-6">
+        <!-- Custom Modal for Errors/Messages -->
+        <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden flex items-center justify-center p-4 z-50">
+            <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl">
+                <h4 id="modal-title" class="text-xl font-bold text-accent-danger mb-3">Error</h4>
+                <p id="modal-content" class="text-gray-700 mb-4">An unexpected error occurred.</p>
+                <button onclick="document.getElementById('custom-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 rounded-lg text-gray-800 hover:bg-gray-300 transition">Close</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer (Matching the science.html design) -->
+    <footer class="bg-cbse-blue mt-16 py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
-            <p class="text-lg font-bold mb-2">Ready4Exam</p>
-            <small class="text-sm opacity-80">A project by Ready4Industry.in | Academic Success Portal | © 2025</small>
+            <small class="text-sm opacity-70 block">© 2025 CBSE Class 9 Academic Portal. Dedicated to Student Success.</small>
         </div>
     </footer>
 
+    <script type="module">
+        // --- GLOBAL VARIABLES & SDK IMPORTS ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, setLogLevel, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        let db;
+        let auth;
+        let supabase;
+        let userId = 'anonymous'; 
+        
+        let quizData = [];
+        let userAnswers = [];
+        let currentQuestionIndex = 0;
+        let topicSlug = '';
+        let quizTitle = '';
 
-    <script type="module" src="js/auth-paywall.js"></script>
-    <script type="module" src="js/api.js"></script>
-    <script type="module" src="js/ui-renderer.js"></script>
-    <script type="module" src="js/quiz-engine.js"></script>
+        // --- DOM Elements ---
+        const pageTitle = document.getElementById('page-title');
+        const loadingView = document.getElementById('loading-view');
+        const loadingMessage = document.getElementById('loading-message');
+        const quizView = document.getElementById('quiz-view');
+        const resultsView = document.getElementById('results-view');
+        const quizTopicTitle = document.getElementById('quiz-topic-title');
+        const quizProgressDisplay = document.getElementById('quiz-progress-display');
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const finalScore = document.getElementById('final-score');
+        const resultsMessage = document.getElementById('results-message');
+        const modal = document.getElementById('custom-modal');
 
-    <script>
-        // Initialize Lucide icons after the main content is loaded
-        document.addEventListener('DOMContentLoaded', () => {
+        // --- UTILITY FUNCTIONS ---
+        function showModal(title, content, isError = true) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-content').textContent = content;
+            document.getElementById('modal-title').classList.toggle('text-accent-danger', isError);
+            document.getElementById('modal-title').classList.toggle('text-accent-info', !isError);
+            modal.classList.remove('hidden');
+        }
+
+        function showView(view) {
+            loadingView.classList.add('hidden');
+            quizView.classList.add('hidden');
+            resultsView.classList.add('hidden');
+            if (view === 'loading') loadingView.classList.remove('hidden');
+            else if (view === 'quiz') quizView.classList.remove('hidden');
+            else if (view === 'results') resultsView.classList.remove('hidden');
+        }
+
+        // --- HYBRID SERVICE INITIALIZATION ---
+        async function initHybridServices() {
+            setLogLevel('Debug');
+            
+            // 1. Parse URL for topic slug
+            const params = new URLSearchParams(window.location.search);
+            topicSlug = params.get('topic');
+            
+            if (!topicSlug) {
+                loadingMessage.textContent = "Error: Topic is missing from the URL.";
+                return false;
+            }
+
+            // 2. Initialize Supabase (Question Data)
+            try {
+                const supabaseUrl = typeof __supabase_url !== 'undefined' ? __supabase_url : null;
+                const supabaseAnonKey = typeof __supabase_anon_key !== 'undefined' ? __supabase_anon_key : null;
+                
+                if (!supabaseUrl || !supabaseAnonKey) {
+                    throw new Error("Supabase URL or Key is missing. Check global variables.");
+                }
+                supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+                console.log("Supabase initialized.");
+            } catch (error) {
+                loadingMessage.textContent = `Supabase Error: ${error.message}`;
+                return false;
+            }
+
+            // 3. Initialize Firebase (Auth & Results)
+            try {
+                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+
+                if (!firebaseConfig || !Object.keys(firebaseConfig).length) {
+                    throw new Error("Firebase config is missing.");
+                }
+                
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Handle authentication 
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                    console.log("Firebase: Signed in with custom token.");
+                } else {
+                    await signInAnonymously(auth);
+                    console.log("Firebase: Signed in anonymously.");
+                }
+
+                userId = auth.currentUser?.uid || 'anonymous';
+                console.log("Firebase initialized. Current user ID:", userId);
+
+            } catch (error) {
+                loadingMessage.textContent = `Firebase Auth Error: ${error.message}`;
+                return false;
+            }
+            return true;
+        }
+
+        // --- DATA FETCHING (SUPABASE) ---
+
+        /**
+         * Fetches quiz data from the Supabase 'quizzes' table.
+         * Assumes table has columns: topic_slug, title, questions (JSON array)
+         */
+        async function loadQuizData() {
+            loadingMessage.textContent = `Fetching quiz for topic: ${topicSlug}...`;
+            try {
+                // NOTE: Using a generic 'quizzes' table name. Change this if your table is named differently.
+                const { data, error } = await supabase
+                    .from('quizzes')
+                    .select('title, questions') // Assuming 'questions' is a JSON/Array column
+                    .eq('topic_slug', topicSlug)
+                    .single();
+
+                if (error || !data) {
+                    throw new Error(`Data Fetch Error: ${error ? error.message : 'No data found.'}`);
+                }
+
+                quizTitle = data.title || topicSlug.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                quizData = data.questions;
+
+                if (!quizData || quizData.length === 0) {
+                     throw new Error("No questions found for this topic.");
+                }
+
+                // Initialize user answers array
+                userAnswers = new Array(quizData.length).fill(null);
+                
+                return true;
+
+            } catch (error) {
+                console.error("Quiz loading failed:", error);
+                loadingMessage.textContent = `Failed to load quiz: ${error.message}. Please check Supabase table name and data structure.`;
+                return false;
+            }
+        }
+
+        // --- QUIZ LOGIC ---
+
+        function updateProgress() {
+            quizProgressDisplay.textContent = `Question ${currentQuestionIndex + 1} of ${quizData.length}`;
+            quizTopicTitle.textContent = quizTitle;
+            pageTitle.textContent = `${quizTitle} Quiz`;
+            prevBtn.disabled = currentQuestionIndex === 0;
+            nextBtn.textContent = (currentQuestionIndex === quizData.length - 1) ? 'Submit Quiz' : 'Next';
             lucide.createIcons();
-            // The logic for quiz buttons (start-quiz-btn, submit-button) is handled 
-            // by the js/quiz-engine.js module once it loads.
+        }
+        
+        function renderQuestion() {
+            const q = quizData[currentQuestionIndex];
+            if (!q) return;
+
+            questionText.innerHTML = `${currentQuestionIndex + 1}. ${q.text}`;
+            optionsContainer.innerHTML = '';
+            
+            q.options.forEach((optionText, index) => {
+                const btn = document.createElement('button');
+                btn.className = `option-button w-full px-4 py-3 rounded-lg bg-white text-gray-800 border-2 border-gray-200 hover:bg-gray-50 transition`;
+                btn.innerHTML = `<span class="font-bold mr-2">${String.fromCharCode(65 + index)}.</span> ${optionText}`;
+                btn.dataset.index = index;
+                
+                // Highlight if already answered
+                if (userAnswers[currentQuestionIndex] === index) {
+                    btn.classList.add('selected');
+                }
+
+                // Attach click handler
+                btn.addEventListener('click', () => handleOptionClick(btn, index));
+                optionsContainer.appendChild(btn);
+            });
+            
+            updateProgress();
+        }
+
+        function handleOptionClick(selectedBtn, selectedIndex) {
+            // Remove selection from all buttons for the current question
+            optionsContainer.querySelectorAll('.option-button').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+
+            // Apply selection to the clicked button
+            selectedBtn.classList.add('selected');
+            
+            // Record the answer
+            userAnswers[currentQuestionIndex] = selectedIndex;
+        }
+
+        function navigate(direction) {
+            if (userAnswers[currentQuestionIndex] === null) {
+                showModal("Wait!", "Please select an answer before moving to the next question.", false);
+                return;
+            }
+
+            if (direction === 'next') {
+                if (currentQuestionIndex < quizData.length - 1) {
+                    currentQuestionIndex++;
+                    renderQuestion();
+                } else {
+                    submitQuiz();
+                }
+            } else if (direction === 'prev' && currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                renderQuestion();
+            }
+        }
+
+        function calculateScore() {
+            let score = 0;
+            quizData.forEach((q, index) => {
+                if (userAnswers[index] === q.correct_answer_index) {
+                    score++;
+                }
+            });
+            return score;
+        }
+
+        async function submitQuiz() {
+            showView('loading');
+            loadingMessage.textContent = "Calculating score and submitting results to Firestore...";
+
+            const score = calculateScore();
+            const total = quizData.length;
+            const percentage = (score / total) * 100;
+            
+            // 1. Submit results to Firestore (Private Collection)
+            try {
+                const resultsCollectionPath = `/artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'}/users/${userId}/quiz_results`;
+                
+                await addDoc(collection(db, resultsCollectionPath), {
+                    topic_slug: topicSlug,
+                    title: quizTitle,
+                    score: score,
+                    total_questions: total,
+                    timestamp: serverTimestamp(),
+                    user_id: userId,
+                });
+                console.log("Results successfully written to Firestore.");
+            } catch (error) {
+                console.error("Error writing results to Firestore:", error);
+                // Continue to display results even if saving fails
+            }
+
+            // 2. Display Results
+            finalScore.textContent = `${score} / ${total} (${percentage.toFixed(0)}%)`;
+
+            if (percentage >= 80) {
+                resultsMessage.textContent = "Excellent work! You've mastered this topic. Keep up the great studying!";
+                finalScore.classList.add('text-accent-success');
+                finalScore.classList.remove('text-accent-danger');
+            } else if (percentage >= 50) {
+                resultsMessage.textContent = "Good effort! Review the topics you struggled with for better results next time.";
+                finalScore.classList.remove('text-accent-success', 'text-accent-danger');
+                finalScore.classList.add('text-accent-info');
+            } else {
+                resultsMessage.textContent = "Time for a dedicated study session! Don't worry, you can re-take the quiz anytime.";
+                finalScore.classList.add('text-accent-danger');
+                finalScore.classList.remove('text-accent-success');
+            }
+
+            showView('results');
+        }
+
+        // --- EVENT LISTENERS ---
+        nextBtn.addEventListener('click', () => navigate('next'));
+        prevBtn.addEventListener('click', () => navigate('prev'));
+
+        // --- MAIN ENTRY POINT ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            lucide.createIcons();
+            
+            const servicesReady = await initHybridServices();
+            
+            if (servicesReady) {
+                const dataLoaded = await loadQuizData();
+                if (dataLoaded) {
+                    currentQuestionIndex = 0;
+                    renderQuestion();
+                    showView('quiz');
+                }
+            }
         });
+        
     </script>
 </body>
 </html>
