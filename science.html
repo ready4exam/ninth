@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CBSE Class 9 — Science Topics</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght=400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -159,11 +159,20 @@
 
         // Global variables provided by the environment
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        // Parse config carefully, ensuring it's not null/undefined/empty string before parsing
+        let firebaseConfig = {};
+        try {
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                firebaseConfig = JSON.parse(__firebase_config);
+            }
+        } catch (e) {
+            console.error("Error parsing __firebase_config:", e);
+        }
+        
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         // Expose Firebase services globally for use by non-module scripts
-        window.appId = appId; // Pass the appId for use in paths
+        window.appId = appId; 
         window.db = null;
         window.auth = null;
         window.userId = null;
@@ -173,8 +182,19 @@
         window.getDoc = getDoc;
         window.doc = doc;
         window.setDoc = setDoc;
+        
+        // Helper to check if the config object is meaningfully populated
+        const isConfigValid = Object.keys(firebaseConfig).length > 0 && firebaseConfig.projectId;
 
         async function initFirebaseAndAuth() {
+            if (!isConfigValid) {
+                console.warn("Firebase config is invalid or missing 'projectId'. Skipping Firebase initialization. Quiz persistence and multi-user features will not work.");
+                window.userId = 'guest-' + crypto.randomUUID().substring(0, 8); // Assign a local guest ID
+                window.isAuthReady = false; // Keep this false to prevent Firestore calls
+                document.getElementById('user-id-display').textContent = `Guest Session ID: ${window.userId}`;
+                return;
+            }
+
             try {
                 // 1. Initialize Firebase App and Services
                 const app = initializeApp(firebaseConfig);
@@ -188,7 +208,6 @@
                     onAuthStateChanged(window.auth, async (user) => {
                         if (user) {
                             window.userId = user.uid;
-                            console.log("User signed in with UID:", window.userId);
                         } else {
                             // Attempt sign-in if not signed in
                             try {
@@ -220,10 +239,11 @@
                     });
                 });
             } catch (error) {
+                // Catch generic initialization errors (like network/permissions)
                 console.error("Failed to initialize Firebase:", error);
-                // No need to alert, just ensure isAuthReady is false
-                window.isAuthReady = false;
-                return false;
+                window.isAuthReady = false; 
+                document.getElementById('user-id-display').textContent = `Initialization Failed: Check Console.`;
+                return;
             }
         };
 
@@ -336,8 +356,9 @@
             
             // CRITICAL CHECK: Wait for Firebase and Auth to be ready
             if (typeof window.db === 'undefined' || !window.isAuthReady) {
-                console.error("Data service not ready. Firestore DB or Auth is not initialized.");
-                showMessageBox("Failed to load quiz content. (Data service not ready. Please wait for 'Initializing data service...' to change to a User ID and try again.)", 'error');
+                console.warn("Data service not ready or intentionally skipped (no Firebase config). Skipping data fetch and immediately generating quiz content.");
+                showMessageBox("Database connection failed. Generating a new quiz now...", 'success');
+                await generateAndSaveQuiz(chapterId, false); // Pass false to skip Firestore save
                 return;
             }
             
@@ -346,7 +367,6 @@
             const appId = window.appId;
             const getDoc = window.getDoc;
             const doc = window.doc;
-            const setDoc = window.setDoc; // Needed for saving generated quiz
             
             try {
                 // Construct the Firestore path: /artifacts/{appId}/public/data/quizzes/{quizId}
@@ -357,7 +377,7 @@
                     const data = docSnap.data();
                     
                     if (data.questionsJson) {
-                         currentQuizData = JSON.parse(data.questionsJson); // Assuming questions are stored as a JSON string
+                         currentQuizData = JSON.parse(data.questionsJson); 
                     } else if (data.questions && Array.isArray(data.questions)) {
                          currentQuizData = data.questions; 
                     } else {
@@ -373,12 +393,12 @@
                         renderQuestion();
                     } else {
                         showMessageBox("The quiz is empty or improperly formatted. Generating content...", 'success');
-                        await generateAndSaveQuiz(chapterId);
+                        await generateAndSaveQuiz(chapterId, true);
                     }
                 } else {
                     // Quiz data not found, so we must generate it and save it first.
                     showMessageBox(`Quiz data for '${chapterId}' not found. Generating content...`, 'success');
-                    await generateAndSaveQuiz(chapterId);
+                    await generateAndSaveQuiz(chapterId, true);
                 }
             } catch (error) {
                 console.error("Error loading or generating quiz data:", error);
@@ -386,11 +406,12 @@
             }
         }
 
-        async function generateAndSaveQuiz(chapterId) {
+        async function generateAndSaveQuiz(chapterId, saveToFirestore) {
             document.getElementById('quiz-container').innerHTML = '<div class="text-center py-12"><i data-lucide="dices" class="animate-pulse text-accent-gold h-10 w-10 mx-auto mb-4"></i><p class="text-gray-600 font-semibold">Generating 5 practice questions for you...</p></div>';
             lucide.createIcons();
             
-            const userQuery = `Generate 5 multiple-choice questions for the CBSE Class 9 chapter titled: ${chapterId.replace('_', ' ').toUpperCase().split(' ').slice(1).join(' ')}. Each question must have 4 options and one correct answer, and must be formatted as a JSON array.`;
+            const chapterTitle = chapterId.replace('_', ' ').toUpperCase().split(' ').slice(1).join(' ');
+            const userQuery = `Generate 5 multiple-choice questions for the CBSE Class 9 chapter titled: ${chapterTitle}. Each question must have 4 options and one correct answer, and must be formatted as a JSON array.`;
             
             const systemPrompt = "You are an expert CBSE curriculum quiz generator. You must respond ONLY with a single JSON array object that adheres to the provided schema. Do not include any introductory or concluding text. The questions should be engaging and accurately reflect the learning material.";
             const apiKey = "";
@@ -435,18 +456,23 @@
                 const generatedQuiz = JSON.parse(generatedJsonText);
                 currentQuizData = generatedQuiz;
 
-                // 2. Save the generated quiz to Firestore
-                const db = window.db;
-                const appId = window.appId;
-                const setDoc = window.setDoc;
-                const doc = window.doc;
+                // 2. Save the generated quiz to Firestore (Conditional)
+                if (saveToFirestore && window.isAuthReady && window.db) {
+                    const db = window.db;
+                    const appId = window.appId;
+                    const setDoc = window.setDoc;
+                    const doc = window.doc;
 
-                const quizRef = doc(db, `artifacts/${appId}/public/data/quizzes`, chapterId);
-                await setDoc(quizRef, {
-                    quizId: chapterId,
-                    createdAt: new Date().toISOString(),
-                    questionsJson: JSON.stringify(generatedQuiz)
-                });
+                    const quizRef = doc(db, `artifacts/${appId}/public/data/quizzes`, chapterId);
+                    await setDoc(quizRef, {
+                        quizId: chapterId,
+                        createdAt: new Date().toISOString(),
+                        questionsJson: JSON.stringify(generatedQuiz)
+                    });
+                    console.log("Generated quiz saved to Firestore.");
+                } else if (saveToFirestore) {
+                    console.warn("Skipping Firestore save: Database connection not ready.");
+                }
                 
                 // 3. Start the quiz
                 const chapterInfo = Object.values(CHAPTER_DATA).flat().find(c => c.quizId === chapterId);
