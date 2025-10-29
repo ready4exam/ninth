@@ -26,6 +26,7 @@
                         'accent-success': '#059669', // Emerald
                         'accent-danger': '#ef4444',   // Red
                         'accent-info': '#3b82f6',     // Blue
+                        'accent-warning': '#f59e0b',  // Amber/Yellow for explanation
                     }
                 }
             }
@@ -42,15 +43,18 @@
             transform: translateY(-1px);
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
+        /* Styles below are now only for the *final* review, if implemented later, 
+           but are unused during the quiz flow. */
         .correct {
-            background-color: var(--accent-success); 
-            color: white;
-            border-color: var(--accent-success);
+            background-color: #d1fae5; 
+            color: #065f46; 
+            border-color: #059669;
+            font-weight: 700;
         }
         .incorrect {
-            background-color: var(--accent-danger); 
-            color: white;
-            border-color: var(--accent-danger);
+            background-color: #fee2e2; 
+            color: #991b1b; 
+            border-color: #ef4444;
         }
         .selected {
             border: 3px solid var(--accent-info);
@@ -97,6 +101,25 @@
             <i data-lucide="loader" class="h-10 w-10 text-cbse-blue mx-auto mb-4 animate-spin"></i>
             <p id="loading-message" class="text-lg font-semibold text-cbse-blue">Initializing Services and Fetching Questions...</p>
         </div>
+        
+        <!-- 1b. Authentication Required View (NEW: Now includes Google Sign-In) -->
+        <div id="auth-required-view" class="hidden bg-white p-10 rounded-xl shadow-2xl text-center border-t-8 border-cbse-blue max-w-sm mx-auto">
+            <i data-lucide="lock" class="h-12 w-12 text-cbse-blue mx-auto mb-4"></i>
+            <h3 class="text-3xl font-extrabold font-serif text-heading mb-3">Quiz Login</h3>
+            <p class="text-gray-700 mb-6">Please sign in to save your progress and access the quiz questions.</p>
+            
+            <button id="google-sign-in-btn" class="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow-lg flex items-center justify-center space-x-2">
+                <!-- Inline SVG for Google Icon -->
+                <svg viewBox="0 0 48 48" class="h-6 w-6">
+                    <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.158,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,18.046-8.955,18.046-20c0-1.34-0.138-2.658-0.384-3.937V20.083z"></path>
+                    <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.158,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.332,6.306,14.691z"></path>
+                    <path fill="#4CAF50" d="M24,44c5.166,0,9.914-1.838,13.43-4.822l-6.571-4.819C29.742,35.791,27.052,36,24,36c-5.267,0-9.674-3.957-11.319-9.157l-6.58,4.821C9.656,39.668,16.318,44,24,44z"></path>
+                    <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.08,5.55l6.572,4.819C42.346,36.921,44,32.227,44,24C44,22.658,43.862,21.34,43.611,20.083z"></path>
+                </svg>
+                <span>Sign in with Google</span>
+            </button>
+            <p class="text-sm text-gray-500 mt-4">Note: Your results will be saved under your Google account.</p>
+        </div>
 
         <!-- 2. Quiz View -->
         <div id="quiz-view" class="hidden">
@@ -107,6 +130,14 @@
                 <!-- Options -->
                 <div id="options-container" class="space-y-4">
                     <!-- Option buttons generated here -->
+                </div>
+
+                <!-- Explanation Container (Now hidden during the quiz) -->
+                <div id="explanation-container" class="mt-6 p-4 bg-yellow-50 border-l-4 border-accent-warning rounded-lg hidden">
+                    <p class="font-bold text-accent-warning mb-2 flex items-center">
+                        <i data-lucide="lightbulb" class="w-5 h-5 inline-block mr-2"></i> Explanation
+                    </p>
+                    <p id="explanation-text" class="text-gray-700"></p>
                 </div>
 
                 <!-- Navigation -->
@@ -154,16 +185,16 @@
     <script type="module">
         // --- GLOBAL VARIABLES & SDK IMPORTS ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, setLogLevel, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         let db;
         let auth;
         let supabase;
-        let userId = 'anonymous'; 
+        let userId = null; 
         
         let quizData = [];
-        let userAnswers = [];
+        let userAnswers = []; // Stores index of selected option (0-based)
         let currentQuestionIndex = 0;
         let topicSlug = '';
         let quizTitle = '';
@@ -174,6 +205,7 @@
         const loadingMessage = document.getElementById('loading-message');
         const quizView = document.getElementById('quiz-view');
         const resultsView = document.getElementById('results-view');
+        const authRequiredView = document.getElementById('auth-required-view');
         const quizTopicTitle = document.getElementById('quiz-topic-title');
         const quizProgressDisplay = document.getElementById('quiz-progress-display');
         const questionText = document.getElementById('question-text');
@@ -183,6 +215,8 @@
         const finalScore = document.getElementById('final-score');
         const resultsMessage = document.getElementById('results-message');
         const modal = document.getElementById('custom-modal');
+        const explanationContainer = document.getElementById('explanation-container');
+        const explanationText = document.getElementById('explanation-text');
 
         // --- UTILITY FUNCTIONS ---
         function showModal(title, content, isError = true) {
@@ -197,10 +231,41 @@
             loadingView.classList.add('hidden');
             quizView.classList.add('hidden');
             resultsView.classList.add('hidden');
+            authRequiredView.classList.add('hidden');
+
             if (view === 'loading') loadingView.classList.remove('hidden');
             else if (view === 'quiz') quizView.classList.remove('hidden');
             else if (view === 'results') resultsView.classList.remove('hidden');
+            else if (view === 'auth-required') authRequiredView.classList.remove('hidden');
         }
+        
+        /**
+         * Attempts to sign in using Google Auth.
+         * On success, restarts the quiz flow.
+         */
+        async function signInWithGoogle() {
+            showView('loading');
+            loadingMessage.textContent = "Connecting to Google...";
+            try {
+                const provider = new GoogleAuthProvider();
+                // Persist the session so the user doesn't have to re-login on refresh
+                await setPersistence(auth, browserSessionPersistence);
+                const result = await signInWithPopup(auth, provider);
+                
+                userId = result.user.uid;
+                console.log("Google Sign-In successful. User ID:", userId);
+                
+                // Restart the main flow now that we have a valid user
+                startQuizFlow(); 
+
+            } catch (error) {
+                console.error("Google Sign-In Failed:", error);
+                loadingMessage.textContent = "Authentication failed. Please try again.";
+                showModal("Authentication Failed", `Could not sign in with Google: ${error.message}`, true);
+                showView('auth-required');
+            }
+        }
+
 
         // --- HYBRID SERVICE INITIALIZATION ---
         async function initHybridServices() {
@@ -212,7 +277,7 @@
             
             if (!topicSlug) {
                 loadingMessage.textContent = "Error: Topic is missing from the URL.";
-                return false;
+                return { success: false, isAuthFailure: false };
             }
 
             // 2. Initialize Supabase (Question Data)
@@ -227,10 +292,10 @@
                 console.log("Supabase initialized.");
             } catch (error) {
                 loadingMessage.textContent = `Supabase Error: ${error.message}`;
-                return false;
+                return { success: false, isAuthFailure: false };
             }
 
-            // 3. Initialize Firebase (Auth & Results)
+            // 3. Initialize Firebase (Auth & Results) - ENFORCING LOGIN
             try {
                 const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
 
@@ -242,35 +307,42 @@
                 db = getFirestore(app);
                 auth = getAuth(app);
 
-                // Handle authentication 
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                    console.log("Firebase: Signed in with custom token.");
-                } else {
-                    await signInAnonymously(auth);
-                    console.log("Firebase: Signed in anonymously.");
+                // Try to use the system's custom token first
+                const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+                if (token) {
+                    await signInWithCustomToken(auth, token);
+                    userId = auth.currentUser?.uid;
+                    if (!userId) {
+                         // Should not happen if token is valid
+                         throw new Error("Authentication failed: User ID could not be determined after custom sign-in.");
+                    }
+                } else if (!auth.currentUser) {
+                    // If no custom token AND no existing session (e.g., from a previous Google sign-in)
+                    throw new Error("Login required. Authentication token is missing and no active session found.");
                 }
 
-                userId = auth.currentUser?.uid || 'anonymous';
-                console.log("Firebase initialized. Current user ID:", userId);
-
+                // If we reach here, either the custom token worked, OR a Google session already exists.
+                userId = auth.currentUser.uid;
+                console.log(`Firebase: User authenticated. User ID: ${userId}`);
+                
             } catch (error) {
-                loadingMessage.textContent = `Firebase Auth Error: ${error.message}`;
-                return false;
+                console.error(`Firebase Auth Error: ${error.message}`);
+                // Return a specific flag for Auth failure
+                return { success: false, isAuthFailure: true };
             }
-            return true;
+            return { success: true, isAuthFailure: false };
         }
 
         // --- DATA FETCHING (SUPABASE) ---
 
         /**
          * Fetches quiz data from the Supabase 'quizzes' table.
-         * Assumes table has columns: topic_slug, title, questions (JSON array)
          */
         async function loadQuizData() {
             loadingMessage.textContent = `Fetching quiz for topic: ${topicSlug}...`;
             try {
-                // NOTE: Using a generic 'quizzes' table name. Change this if your table is named differently.
+                // NOTE: Using a generic 'quizzes' table name. 
                 const { data, error } = await supabase
                     .from('quizzes')
                     .select('title, questions') // Assuming 'questions' is a JSON/Array column
@@ -282,9 +354,10 @@
                 }
 
                 quizTitle = data.title || topicSlug.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                quizData = data.questions;
-
-                if (!quizData || quizData.length === 0) {
+                
+                quizData = data.questions || [];
+                
+                if (quizData.length === 0) {
                      throw new Error("No questions found for this topic.");
                 }
 
@@ -300,14 +373,22 @@
             }
         }
 
-        // --- QUIZ LOGIC ---
+        // --- QUIZ LOGIC (Unchanged) ---
 
         function updateProgress() {
             quizProgressDisplay.textContent = `Question ${currentQuestionIndex + 1} of ${quizData.length}`;
             quizTopicTitle.textContent = quizTitle;
             pageTitle.textContent = `${quizTitle} Quiz`;
+        }
+
+        function updateButtonState() {
+            const isAnswered = userAnswers[currentQuestionIndex] !== null;
+            
             prevBtn.disabled = currentQuestionIndex === 0;
+
             nextBtn.textContent = (currentQuestionIndex === quizData.length - 1) ? 'Submit Quiz' : 'Next';
+            nextBtn.disabled = !isAnswered; 
+            
             lucide.createIcons();
         }
         
@@ -317,53 +398,58 @@
 
             questionText.innerHTML = `${currentQuestionIndex + 1}. ${q.text}`;
             optionsContainer.innerHTML = '';
+            explanationContainer.classList.add('hidden');
             
             q.options.forEach((optionText, index) => {
                 const btn = document.createElement('button');
-                btn.className = `option-button w-full px-4 py-3 rounded-lg bg-white text-gray-800 border-2 border-gray-200 hover:bg-gray-50 transition`;
+                btn.className = `option-button w-full px-4 py-3 rounded-lg bg-white text-gray-800 border-2 border-gray-200 transition`;
                 btn.innerHTML = `<span class="font-bold mr-2">${String.fromCharCode(65 + index)}.</span> ${optionText}`;
                 btn.dataset.index = index;
                 
-                // Highlight if already answered
-                if (userAnswers[currentQuestionIndex] === index) {
+                const isSelected = userAnswers[currentQuestionIndex] === index;
+
+                if (isSelected) {
                     btn.classList.add('selected');
                 }
-
-                // Attach click handler
+                
                 btn.addEventListener('click', () => handleOptionClick(btn, index));
+
                 optionsContainer.appendChild(btn);
             });
-            
+
             updateProgress();
+            updateButtonState();
         }
 
         function handleOptionClick(selectedBtn, selectedIndex) {
-            // Remove selection from all buttons for the current question
             optionsContainer.querySelectorAll('.option-button').forEach(btn => {
                 btn.classList.remove('selected');
             });
 
-            // Apply selection to the clicked button
             selectedBtn.classList.add('selected');
-            
-            // Record the answer
             userAnswers[currentQuestionIndex] = selectedIndex;
+            updateButtonState();
         }
-
-        function navigate(direction) {
-            if (userAnswers[currentQuestionIndex] === null) {
-                showModal("Wait!", "Please select an answer before moving to the next question.", false);
+        
+        function handleNextAction() {
+            const selectedIndex = userAnswers[currentQuestionIndex];
+        
+            if (selectedIndex === null) {
+                showModal("Wait!", "Please select an answer before proceeding.", false);
                 return;
             }
 
-            if (direction === 'next') {
-                if (currentQuestionIndex < quizData.length - 1) {
-                    currentQuestionIndex++;
-                    renderQuestion();
-                } else {
-                    submitQuiz();
-                }
-            } else if (direction === 'prev' && currentQuestionIndex > 0) {
+            if (currentQuestionIndex === quizData.length - 1) {
+                submitQuiz();
+                return;
+            } 
+            
+            currentQuestionIndex++;
+            renderQuestion();
+        }
+        
+        function navigatePrev() {
+            if (currentQuestionIndex > 0) {
                 currentQuestionIndex--;
                 renderQuestion();
             }
@@ -372,7 +458,7 @@
         function calculateScore() {
             let score = 0;
             quizData.forEach((q, index) => {
-                if (userAnswers[index] === q.correct_answer_index) {
+                if (userAnswers[index] !== null && userAnswers[index] === q.correct_answer_index) {
                     score++;
                 }
             });
@@ -389,7 +475,8 @@
             
             // 1. Submit results to Firestore (Private Collection)
             try {
-                const resultsCollectionPath = `/artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'}/users/${userId}/quiz_results`;
+                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                const resultsCollectionPath = `/artifacts/${appId}/users/${userId}/quiz_results`; 
                 
                 await addDoc(collection(db, resultsCollectionPath), {
                     topic_slug: topicSlug,
@@ -410,39 +497,49 @@
 
             if (percentage >= 80) {
                 resultsMessage.textContent = "Excellent work! You've mastered this topic. Keep up the great studying!";
+                finalScore.classList.remove('text-accent-info', 'text-accent-danger');
                 finalScore.classList.add('text-accent-success');
-                finalScore.classList.remove('text-accent-danger');
             } else if (percentage >= 50) {
                 resultsMessage.textContent = "Good effort! Review the topics you struggled with for better results next time.";
                 finalScore.classList.remove('text-accent-success', 'text-accent-danger');
                 finalScore.classList.add('text-accent-info');
             } else {
                 resultsMessage.textContent = "Time for a dedicated study session! Don't worry, you can re-take the quiz anytime.";
+                finalScore.classList.remove('text-accent-success', 'text-accent-info');
                 finalScore.classList.add('text-accent-danger');
-                finalScore.classList.remove('text-accent-success');
             }
 
             showView('results');
         }
 
-        // --- EVENT LISTENERS ---
-        nextBtn.addEventListener('click', () => navigate('next'));
-        prevBtn.addEventListener('click', () => navigate('prev'));
+        // --- MAIN CONTROL FLOW ---
+        
+        async function startQuizFlow() {
+            showView('loading');
+            const initResult = await initHybridServices();
 
-        // --- MAIN ENTRY POINT ---
-        document.addEventListener('DOMContentLoaded', async () => {
-            lucide.createIcons();
-            
-            const servicesReady = await initHybridServices();
-            
-            if (servicesReady) {
+            if (initResult.success) {
                 const dataLoaded = await loadQuizData();
                 if (dataLoaded) {
                     currentQuestionIndex = 0;
                     renderQuestion();
                     showView('quiz');
                 }
+            } else if (initResult.isAuthFailure) {
+                // Fallback to the Google Sign-In view
+                showView('auth-required');
+                document.getElementById('google-sign-in-btn').addEventListener('click', signInWithGoogle);
             }
+        }
+
+        // --- EVENT LISTENERS ---
+        nextBtn.addEventListener('click', handleNextAction);
+        prevBtn.addEventListener('click', navigatePrev);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            // Start the flow which handles authentication first.
+            startQuizFlow(); 
         });
         
     </script>
