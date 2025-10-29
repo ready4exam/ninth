@@ -193,15 +193,37 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         let firebaseConfig = {};
         
+        // --- FALLBACK CONFIGURATION (FROM USER'S config.js) ---
+        const FALLBACK_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyAXdKiYRxBKAj280YcNuNwlKKDp85xpOWQ", 
+            authDomain: "quiz-signon.firebaseapp.com",
+            projectId: "quiz-signon",
+            storageBucket: "quiz-signon.firebasestorage.app",
+            messagingSenderId: "863414222321",
+            appId: "G-4EFDM0CRYY" // Note: This is client-side appId, not the environment's __app_id
+        };
+
         // --- CRITICAL CONFIG PARSING AND VALIDATION ---
+        let isConfigValid = false;
+
         try {
+            // 1. Try to load config from the environment variable (preferred method)
             if (typeof __firebase_config !== 'undefined' && __firebase_config) {
                 firebaseConfig = JSON.parse(__firebase_config);
             }
         } catch (e) {
-            console.error("Error parsing __firebase_config:", e);
+            console.error("Error parsing __firebase_config. Falling back to hardcoded config.", e);
         }
         
+        // 2. Check if environment config is valid; if not, use the fallback
+        if (Object.keys(firebaseConfig).length === 0 || !firebaseConfig.projectId) {
+             console.warn("Environment config failed or was empty. Using hardcoded FALLBACK_FIREBASE_CONFIG.");
+             firebaseConfig = FALLBACK_FIREBASE_CONFIG;
+        }
+
+        // Final check on the selected configuration
+        isConfigValid = Object.keys(firebaseConfig).length > 0 && firebaseConfig.projectId;
+
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         // Expose Firebase services globally for use by non-module scripts
@@ -216,9 +238,6 @@
         window.doc = doc;
         window.setDoc = setDoc;
         
-        // Helper to check if the config object is meaningfully populated
-        const isConfigValid = Object.keys(firebaseConfig).length > 0 && firebaseConfig.projectId;
-
         async function initFirebaseAndAuth() {
             const userIdElement = document.getElementById('user-id-display');
             
@@ -234,6 +253,7 @@
                     userIdElement.textContent = `Guest ID: ${window.userId} (DB Disabled)`;
                 }
                 document.getElementById('db-error-alert').classList.remove('hidden');
+                document.getElementById('chapter-db-alert').classList.remove('hidden'); // Ensure chapter alert is also visible
                 
                 return;
             }
@@ -244,7 +264,7 @@
                 window.db = getFirestore(app);
                 window.auth = getAuth(app);
                 setLogLevel('Debug'); 
-                console.log("Firebase services initialized successfully.");
+                console.log("Firebase services initialized successfully using provided configuration.");
 
                 // 2. Set up Auth State Listener 
                 return new Promise((resolve) => {
@@ -270,6 +290,10 @@
                         // 3. Mark Auth as Ready, Display User ID, and Resolve
                         window.isAuthReady = true;
                         
+                        // Hide error alerts since initialization succeeded
+                        document.getElementById('db-error-alert').classList.add('hidden');
+                        document.getElementById('chapter-db-alert').classList.add('hidden');
+                        
                         if (userIdElement && window.userId) {
                             userIdElement.textContent = `User ID: ${window.userId}`;
                         }
@@ -281,6 +305,7 @@
                 console.error("Failed to initialize Firebase app:", error);
                 window.isAuthReady = false; 
                 document.getElementById('db-error-alert').classList.remove('hidden');
+                document.getElementById('chapter-db-alert').classList.remove('hidden');
                 if (userIdElement) {
                     userIdElement.textContent = `Initialization Failed: Check Console.`;
                 }
@@ -369,7 +394,7 @@
             const chapterListEl = document.getElementById('chapter-list');
             chapterListEl.innerHTML = '';
             
-            const chapters = CHAPTER_DATA[topicName] || [];
+            // Check the global flag
             const isDbReady = window.isAuthReady;
             
             // Show/Hide contextual warning message
@@ -379,15 +404,24 @@
                  document.getElementById('chapter-db-alert').classList.add('hidden');
             }
 
+            chapters = CHAPTER_DATA[topicName] || [];
+
             chapters.forEach(chapter => {
-                const disabledProps = !isDbReady ? 'disabled class="disabled-button bg-disabled-bg hover:bg-disabled-bg"' : '';
+                // Determine disabled state and styling based on isDbReady
+                const disabledProps = !isDbReady ? 'disabled' : '';
+                const disabledClass = !isDbReady ? 'disabled-button bg-disabled-bg hover:bg-disabled-bg' : '';
                 
-                // Always render the buttons with the correct classes, but disable them if DB is not ready
+                // Set dynamic colors based on difficulty (and override if disabled)
+                const simpleClasses = !isDbReady ? disabledClass : 'bg-simple hover:bg-green-700 focus:ring-green-500';
+                const mediumClasses = !isDbReady ? disabledClass : 'bg-medium hover:bg-blue-700 focus:ring-blue-500';
+                const advanceClasses = !isDbReady ? disabledClass : 'bg-advance hover:bg-red-700 focus:ring-red-500';
+
+                // Always render the buttons, disabling them if the DB is not ready
                 const buttonHtml = `
                     <div class="difficulty-buttons">
-                        <button ${disabledProps} class="chapter-button bg-simple hover:bg-green-700 focus:ring-green-500" onclick="loadQuizData('${chapter.quizId}', 'simple')">Simple</button>
-                        <button ${disabledProps} class="chapter-button bg-medium hover:bg-blue-700 focus:ring-blue-500" onclick="loadQuizData('${chapter.quizId}', 'medium')">Medium</button>
-                        <button ${disabledProps} class="chapter-button bg-advance hover:bg-red-700 focus:ring-red-500" onclick="loadQuizData('${chapter.quizId}', 'advance')">Advance</button>
+                        <button ${disabledProps} class="chapter-button ${simpleClasses}" onclick="loadQuizData('${chapter.quizId}', 'simple')">Simple</button>
+                        <button ${disabledProps} class="chapter-button ${mediumClasses}" onclick="loadQuizData('${chapter.quizId}', 'medium')">Medium</button>
+                        <button ${disabledProps} class="chapter-button ${advanceClasses}" onclick="loadQuizData('${chapter.quizId}', 'advance')">Advance</button>
                     </div>
                 `;
 
