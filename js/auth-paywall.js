@@ -1,9 +1,8 @@
 // js/auth-paywall.js
-// Handles Firebase Authentication, user state, and Paywall logic.
-// IMPORTANT: This file assumes Firebase is loaded via CDN in the HTML and exposed globally.
-import { getInitializedClients } from './config.js'; 
+// Handles Firebase Authentication and user state for access control (Payment removed).
+import { getInitializedClients } from './config.js'; // Import the safe client getter
 
-// Define a placeholder for the application ID for Firestore paths 
+// Define a placeholder for the application ID for Firestore paths (optional for now)
 const APP_ID = "ready4exam";
 
 // Global state tracking
@@ -23,17 +22,11 @@ export function initializeAuthListener(onAuthStateChangedCallback) {
         return;
     }
     
-    // Run the callback initially and on state change
+    // The listener is the key to managing state and running subsequent logic
     auth.onAuthStateChanged((user) => {
         currentAuthUser = user;
-        onAuthStateChangedCallback(user);
-        // Important: Re-run loadQuiz logic if auth state changes from null to user
-        if (user && !window.quizLoaded) {
-            // Trigger a silent reload of the quiz logic to check access
-            if(window.loadQuizAfterAuth) {
-                window.loadQuizAfterAuth();
-            }
-        }
+        // The callback function in quiz-engine.js will now proceed with loading or showing the paywall
+        onAuthStateChangedCallback(user); 
     });
 }
 
@@ -46,21 +39,21 @@ export async function signInWithGoogle() {
         throw new Error("Firebase Auth not available.");
     }
     
-    const provider = new firebase.auth.GoogleAuthProvider();
+    // NOTE: This assumes 'firebase' is available globally (via CDN in config.js)
+    const provider = new firebase.auth.GoogleAuthProvider(); 
     try {
-        // Use a redirect for better mobile support, but pop-up is common for web demos
         const result = await auth.signInWithPopup(provider);
         console.log("[AUTH] Google Sign-In successful:", result.user.email);
         return result.user;
     } catch (error) {
-        // Check for common errors like pop-up closed
-        console.error("[AUTH ERROR] Google Sign-In failed:", error);
-        throw error;
+        // Log authentication errors without using alert()
+        console.error("[AUTH ERROR] Google Sign-In failed.", error.message);
+        throw new Error("Authentication failed. Check console for details.");
     }
 }
 
 /**
- * Initiates the sign-out process.
+ * Logs the current user out using Firebase Auth.
  */
 export async function signOut() {
     const { auth } = getInitializedClients();
@@ -72,62 +65,26 @@ export async function signOut() {
     try {
         await auth.signOut();
         console.log("[AUTH] User signed out.");
-        // Redirect to home or force a refresh to clear state
-        window.location.href = 'index.html'; 
+        // Reload the page to reset the application state after logout
+        window.location.reload(); 
     } catch (error) {
-        console.error("[AUTH ERROR] Sign-out failed:", error);
+        console.error("[AUTH ERROR] Sign out failed:", error);
     }
 }
 
 /**
- * Checks if the current user has premium access for the given topic.
- * Access is granted if:
- * 1. The user is NOT logged in (we allow anonymous access to free content).
- * 2. The user is logged in AND has a 'premium' status flag in Firestore.
- * * NOTE: For simplicity, all topics are considered 'premium' for this demo.
- * @param {string} topic - The topic slug (e.g., 'gravitation')
- * @returns {Promise<boolean>} True if access is granted, False otherwise.
+ * Checks if the current user is authenticated (replacing the payment check).
+ * Access is granted if the user is logged in.
+ * @returns {boolean} - True if user is authenticated, false otherwise.
  */
-export async function checkAccess(topic) {
-    const user = getCurrentUser();
-    const { db } = getInitializedClients();
-
-    // 1. If not logged in, force login check (or anonymous access if you had free content)
-    // For this app, we assume ALL quiz content is gated, so they must be logged in/pay
-    if (!user) {
-        console.log(`[ACCESS] User is anonymous. Access denied for premium content.`);
-        return false;
-    }
-
-    // 2. If logged in, check Firestore for premium status
-    try {
-        const accessDocPath = `artifacts/${APP_ID}/users/${user.uid}/access_status/premium`;
-        const docRef = db.doc(accessDocPath);
-        const docSnap = await docRef.get();
-
-        if (docSnap.exists && docSnap.data()?.is_premium === true) {
-            console.log(`[ACCESS] User ${user.uid} has premium access.`);
-            return true;
-        } else {
-            console.log(`[ACCESS] User ${user.uid} does NOT have premium access (doc missing or is_premium is false).`);
-            return false;
-        }
-    } catch (e) {
-        console.error("[ACCESS ERROR] Failed to check Firestore access status. Denying access.", e);
-        // Fail-safe: deny access if we can't confirm it
-        return false;
-    }
+export function checkAccessStatus() {
+    // If currentAuthUser is not null, the user is authenticated, and access is granted.
+    return currentAuthUser !== null;
 }
 
-
-/**
- * Returns the currently authenticated user object.
- * @returns {Object|null}
- */
+// Expose the current user function
 export function getCurrentUser() {
     return currentAuthUser;
 }
 
-// NOTE: I've removed the detailed `initiateRazorpayPayment` and `grantAccess` 
-// functions as they were placeholder/non-functional and are not needed for the core UI structure.
-// The pay button now opens a simple demo link as a placeholder.
+// NOTE: All payment-related functions (initiateRazorpayPayment, grantAccess) have been removed.
