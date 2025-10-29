@@ -1,37 +1,34 @@
+// config.js
+// This file initializes all external services and makes the clients globally available
+// as required by the modular JavaScript architecture.
 
-// js/config.js
-// Global Configuration File for Firebase and Supabase Clients
+// NOTE: We assume the Supabase client library is loaded via <script> tag in the HTML.
 
-// --- 1. FIREBASE CONFIGURATION (Extracted from old science.html) ---
-// Note: This uses the legacy 'compat' API due to the loading method in the template.
+// --- 1. FIREBASE CONFIGURATION ---
+// IMPORTANT: Replace these placeholder values with your actual Firebase project configuration.
 const firebaseConfig = {
-    apiKey: "AIzaSyAXdKiYRxBKAj280YcNuNwlKKDp85xpOWQ",
-    authDomain: "quiz-signon.firebaseapp.com",
-    projectId: "quiz-signon",
-    storageBucket: "quiz-signon.firebasestorage.app",
-    messagingSenderId: "863414222321",
-    appId: "1:863414222321:web:819f5564825308bcd9d850",
-    measurementId: "G-4EFDM0CRYY" //
+    apiKey: "YOUR_FIREBASE_API_KEY",
+    // ... rest of Firebase config
 };
 
 // Initialize Firebase App
-// This relies on the Firebase SDKs being loaded via CDN in the HTML file.
 const app = firebase.initializeApp(firebaseConfig);
 
-// Initialize Firebase Services globally
-// These are available to all other modules through the global 'window' object.
+// Initialize Firebase Services globally (using the compat APIs loaded in quiz-engine.html)
+// These global instances are used by the js/auth-paywall.js and js/api.js modules.
 window.auth = app.auth();
 window.db = firebase.firestore();
-// window.analytics will be available if the CDN for it is loaded.
+window.analytics = firebase.analytics();
 
 // --- 2. SUPABASE CONFIGURATION ---
-// IMPORTANT: You must replace these placeholders with your actual Supabase details.
-// You will need to get these from your Supabase Project Settings -> API.
-const supabaseUrl = 'https://gkyvojcmqsgdynmitcuf.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdreXZvamNtcXNnZHlubWl0Y3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3NDQ0OTcsImV4cCI6MjA3NjMyMDQ5N30.5dn5HbXxQ5sYNECS9o3VxVeyL6I6Z2Yf-nmPwztx1hE';
+// IMPORTANT: Replace these placeholder values with your actual Supabase URL and Anon Key.
+const supabaseUrl = 'YOUR_SUPABASE_URL';
+const supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
 
-// Initialize Supabase Client globally
-// This relies on the Supabase CDN being loaded in the HTML file.
-window.supabase = supabase.createClient(supabaseUrl, supabaseAnonKey);
+// Initialize Supabase Client
+// We now define it as 'export const' so it can be correctly imported by api.js
+export const supabase = supabase.createClient(supabaseUrl, supabaseAnonKey);
 
-console.log("[CONFIG] Firebase and Supabase clients initialized globally.");
+// NOTE: We no longer need to set window.supabase if we are importing it in api.js.
+
+console.log("[CONFIG] Firebase clients initialized globally. Supabase client exported.");
