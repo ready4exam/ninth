@@ -166,7 +166,7 @@
             <p id="message-body" class="text-gray-700 mb-4"></p>
             <button id="close-message-btn" class="w-full bg-cbse-blue text-white font-semibold py-2 rounded-lg hover:bg-cbse-blue/90 transition">Close</button>
         </div>
-        
+        
     </div>
 
     <footer class="bg-cbse-blue mt-12 py-6">
@@ -178,8 +178,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
-
+    
 
     <script>
         // FIREBASE CONFIGURATION 
@@ -196,19 +195,7 @@
         const app = firebase.initializeApp(firebaseConfig);
         const auth = app.auth(); 
         const db = app.firestore(); 
-        // === ADDED ANALYTICS INITIALIZATION ===
-        const analytics = firebase.analytics();
-        
-        // === ADDED CODE VERSION AND TEST EVENTS ===
-        const codeVersion = 'perfect_2'; // Set the current version
-        analytics.logEvent('app_load', {
-            code_version: codeVersion,
-            environment: 'production'
-        });
-        analytics.logEvent('debug_connection_test', {
-            source: 'web_init'
-        });
-        // ==========================================
+        // Analytics initialization and test events removed to clean code.
 
         let isUserLoggedIn = false; 
 
@@ -274,13 +261,8 @@
                 await auth.signInWithPopup(provider);
                 hideAuthModal(); 
                 displayMessageModal("Login Successful!", "You can now access the quizzes.");
-                
-                // === ADDED ANALYTICS SIGN-IN EVENT ===
-                analytics.logEvent('login', {
-                    method: 'google',
-                    code_version: codeVersion
-                });
-                // =====================================
+                
+                // Analytics sign-in event logging removed to clean code.
 
             } catch (error) {
                 console.error("Error signing in with Google:", error);
@@ -324,6 +306,7 @@
     '10. Work and Energy': './science/physics/work_quiz.html',
     '11. Sound': './science/physics/sound_quiz.html',
     '2. Is Matter Around Us Pure': './quizzes/science/chemistry/pure/pure_quiz.html',
+    '5. The Fundamental Unit of Life': './quizzes/science/biology/cell/cell_quiz.html',
     '7. Motion': './science/physics/motion_quiz.html',
     '8. Force and Laws of Motion': './science/physics/force_quiz.html',
     '9. Gravitation': './science/physics/gravitation_quiz.html',
