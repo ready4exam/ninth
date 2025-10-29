@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CBSE Class 9 — Science Topics</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght=400;700&display=swap" rel="stylesheet">
     <!-- 
         WARNING NOTE: The use of cdn.tailwindcss.com in development is standard practice in these environments.
         We acknowledge that for production deployment outside of this canvas, a PostCSS setup is required. 
@@ -26,6 +26,7 @@
                         'simple': '#22c55e',   /* Green */
                         'medium': '#3b82f6',   /* Blue */
                         'advance': '#ef4444',  /* Red */
+                        'disabled-bg': '#9ca3af', /* Gray-400 */
                     }
                 }
             }
@@ -135,6 +136,12 @@
                 Step 2: <span id="current-topic-display" class="text-cbse-blue"></span>
             </h2>
             <p class="text-lg text-gray-700 mb-8 max-w-2xl" id="topic-description"></p>
+            
+            <!-- Contextual Database Disabled Message -->
+            <div id="chapter-db-alert" class="hidden mb-6 p-3 rounded-lg bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 font-semibold text-sm" role="alert">
+                <i data-lucide="info" class="inline h-4 w-4 mr-1 -mt-0.5"></i>
+                Quiz difficulty buttons are disabled because the Firebase database connection failed to initialize.
+            </div>
 
             <ul id="chapter-list" class="chapter-list">
                 <!-- Chapter items with difficulty buttons will be populated here -->
@@ -365,16 +372,22 @@
             const chapters = CHAPTER_DATA[topicName] || [];
             const isDbReady = window.isAuthReady;
             
+            // Show/Hide contextual warning message
+            if (!isDbReady) {
+                 document.getElementById('chapter-db-alert').classList.remove('hidden');
+            } else {
+                 document.getElementById('chapter-db-alert').classList.add('hidden');
+            }
+
             chapters.forEach(chapter => {
-                const buttonHtml = isDbReady ? `
+                const disabledProps = !isDbReady ? 'disabled class="disabled-button bg-disabled-bg hover:bg-disabled-bg"' : '';
+                
+                // Always render the buttons with the correct classes, but disable them if DB is not ready
+                const buttonHtml = `
                     <div class="difficulty-buttons">
-                        <button class="chapter-button bg-simple hover:bg-green-700 focus:ring-green-500" onclick="loadQuizData('${chapter.quizId}', 'simple')">Simple</button>
-                        <button class="chapter-button bg-medium hover:bg-blue-700 focus:ring-blue-500" onclick="loadQuizData('${chapter.quizId}', 'medium')">Medium</button>
-                        <button class="chapter-button bg-advance hover:bg-red-700 focus:ring-red-500" onclick="loadQuizData('${chapter.quizId}', 'advance')">Advance</button>
-                    </div>
-                ` : `
-                    <div class="difficulty-buttons">
-                         <button class="chapter-button bg-gray-400 disabled-button" disabled>DB Disabled</button>
+                        <button ${disabledProps} class="chapter-button bg-simple hover:bg-green-700 focus:ring-green-500" onclick="loadQuizData('${chapter.quizId}', 'simple')">Simple</button>
+                        <button ${disabledProps} class="chapter-button bg-medium hover:bg-blue-700 focus:ring-blue-500" onclick="loadQuizData('${chapter.quizId}', 'medium')">Medium</button>
+                        <button ${disabledProps} class="chapter-button bg-advance hover:bg-red-700 focus:ring-red-500" onclick="loadQuizData('${chapter.quizId}', 'advance')">Advance</button>
                     </div>
                 `;
 
