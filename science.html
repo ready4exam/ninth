@@ -19,6 +19,9 @@
                         'cbse-light': '#f5f7fa',
                         'accent-gold': '#ffb703',
                         'heading': '#0f172a',
+                        'simple': '#22c55e',   /* Green */
+                        'medium': '#3b82f6',   /* Blue */
+                        'advance': '#ef4444',  /* Red */
                     }
                 }
             }
@@ -32,13 +35,13 @@
             @apply p-6 bg-white rounded-xl shadow-lg border border-gray-200 transition-all duration-300 cursor-pointer hover:shadow-xl hover:ring-2 hover:ring-cbse-blue/50;
         }
         .chapter-list li {
-            @apply flex justify-between items-center py-4 px-6 mb-4 bg-gray-50 rounded-lg border border-gray-100 shadow-sm transition-colors duration-200;
+            @apply flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 px-6 mb-4 bg-gray-50 rounded-lg border border-gray-100 shadow-sm transition-colors duration-200;
         }
         .chapter-list li:hover {
             @apply bg-blue-50 border-blue-200;
         }
         .chapter-button {
-            @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500;
+            @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white focus:outline-none focus:ring-2 focus:ring-offset-2;
         }
         .quiz-option {
             @apply w-full p-4 mb-3 border border-gray-300 rounded-lg text-left transition-colors duration-200;
@@ -104,7 +107,7 @@
             </div>
         </div>
 
-        <!-- --- CHAPTER SELECTION VIEW --- -->
+        <!-- --- CHAPTER SELECTION VIEW (Now includes difficulty selection) --- -->
         <div id="chapter-selection-view" class="hidden mt-12">
             <h2 class="text-4xl font-extrabold font-serif text-heading mb-4">
                 Step 2: <span id="current-topic-display" class="text-cbse-blue"></span>
@@ -112,7 +115,7 @@
             <p class="text-lg text-gray-700 mb-8 max-w-2xl" id="topic-description"></p>
 
             <ul id="chapter-list" class="chapter-list">
-                <!-- Chapter items will be populated here -->
+                <!-- Chapter items with difficulty buttons will be populated here -->
             </ul>
 
             <button onclick="goBackToTopics()" class="mt-6 chapter-button bg-gray-500 hover:bg-gray-600">
@@ -159,7 +162,6 @@
 
         // Global variables provided by the environment
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        // Parse config carefully, ensuring it's not null/undefined/empty string before parsing
         let firebaseConfig = {};
         try {
             if (typeof __firebase_config !== 'undefined' && __firebase_config) {
@@ -176,7 +178,7 @@
         window.db = null;
         window.auth = null;
         window.userId = null;
-        window.isAuthReady = false; // CRITICAL: Readiness flag
+        window.isAuthReady = false; 
 
         // Expose Firestore methods globally for the quiz logic
         window.getDoc = getDoc;
@@ -189,9 +191,9 @@
         async function initFirebaseAndAuth() {
             if (!isConfigValid) {
                 console.warn("Firebase config is invalid or missing 'projectId'. Skipping Firebase initialization. Quiz persistence and multi-user features will not work.");
-                window.userId = 'guest-' + crypto.randomUUID().substring(0, 8); // Assign a local guest ID
-                window.isAuthReady = false; // Keep this false to prevent Firestore calls
-                document.getElementById('user-id-display').textContent = `Guest Session ID: ${window.userId}`;
+                window.userId = 'guest-' + crypto.randomUUID().substring(0, 8); 
+                window.isAuthReady = false; 
+                document.getElementById('user-id-display').textContent = `Guest Session ID: ${window.userId} (Database disabled)`;
                 return;
             }
 
@@ -203,22 +205,19 @@
                 setLogLevel('Debug'); 
                 console.log("Firebase services initialized.");
 
-                // 2. Set up Auth State Listener (onAuthStateChanged runs immediately)
+                // 2. Set up Auth State Listener 
                 return new Promise((resolve) => {
                     onAuthStateChanged(window.auth, async (user) => {
                         if (user) {
                             window.userId = user.uid;
                         } else {
-                            // Attempt sign-in if not signed in
                             try {
                                 if (initialAuthToken) {
                                     const userCredential = await signInWithCustomToken(window.auth, initialAuthToken);
                                     window.userId = userCredential.user.uid;
-                                    console.log("Signed in with custom token.");
                                 } else {
                                     const userCredential = await signInAnonymously(window.auth);
                                     window.userId = userCredential.user.uid;
-                                    console.log("Signed in anonymously. Using generated UID.");
                                 }
                             } catch (error) {
                                 console.error("Authentication failed:", error);
@@ -228,7 +227,6 @@
 
                         // 3. Mark Auth as Ready, Display User ID, and Resolve
                         window.isAuthReady = true;
-                        console.log("Authentication complete. userId:", window.userId);
                         
                         const userIdElement = document.getElementById('user-id-display');
                         if (userIdElement && window.userId) {
@@ -239,7 +237,6 @@
                     });
                 });
             } catch (error) {
-                // Catch generic initialization errors (like network/permissions)
                 console.error("Failed to initialize Firebase:", error);
                 window.isAuthReady = false; 
                 document.getElementById('user-id-display').textContent = `Initialization Failed: Check Console.`;
@@ -247,11 +244,10 @@
             }
         };
 
-        // Call the initialization function immediately, but it runs asynchronously
         initFirebaseAndAuth();
     </script>
 
-    <!-- 2. MAIN APPLICATION LOGIC (Must wait for Firebase globals) -->
+    <!-- 2. MAIN APPLICATION LOGIC -->
     <script>
         // Data structure for the chapters (simplified for this app)
         const CHAPTER_DATA = {
@@ -275,8 +271,9 @@
         let currentQuestionIndex = 0;
         let score = 0;
         let selectedTopic = '';
+        let selectedDifficulty = '';
 
-        // --- UI Navigation Handlers ---
+        // --- UI Navigation and Message Handlers ---
 
         function showView(viewId) {
             document.getElementById('topic-selection-view').classList.add('hidden');
@@ -290,9 +287,8 @@
         }
 
         function goBackToChapters() {
-            // Hide quiz, reset state, and show chapter view
             document.getElementById('quiz-results').classList.add('hidden');
-            document.getElementById('quiz-container').innerHTML = ''; // Clear quiz content
+            document.getElementById('quiz-container').innerHTML = '';
             currentQuizData = [];
             currentQuestionIndex = 0;
             score = 0;
@@ -303,12 +299,14 @@
         function showMessageBox(message, type = 'error') {
             const box = document.getElementById('message-box');
             box.textContent = message;
-            box.classList.remove('hidden', 'border-red-400', 'bg-red-100', 'text-red-800', 'border-green-400', 'bg-green-100', 'text-green-800');
+            box.classList.remove('hidden', 'border-red-400', 'bg-red-100', 'text-red-800', 'border-green-400', 'bg-green-100', 'text-green-800', 'border-yellow-400', 'bg-yellow-100', 'text-yellow-800');
 
             if (type === 'error') {
                 box.classList.add('border-red-400', 'bg-red-100', 'text-red-800');
             } else if (type === 'success') {
                 box.classList.add('border-green-400', 'bg-green-100', 'text-green-800');
+            } else if (type === 'warning') {
+                 box.classList.add('border-yellow-400', 'bg-yellow-100', 'text-yellow-800');
             }
         }
 
@@ -317,12 +315,12 @@
         }
 
 
-        // --- Chapter Selection Logic ---
+        // --- Chapter Selection Logic (Updated for Difficulty) ---
 
         function showChapterSelection(topicName, description) {
             selectedTopic = topicName;
             document.getElementById('current-topic-display').textContent = topicName;
-            document.getElementById('topic-description').textContent = 'Key concepts include: ' + description + '.';
+            document.getElementById('topic-description').textContent = 'Select a chapter, then choose a difficulty level to start the quiz.';
 
             const chapterListEl = document.getElementById('chapter-list');
             chapterListEl.innerHTML = '';
@@ -332,11 +330,12 @@
             chapters.forEach(chapter => {
                 const li = document.createElement('li');
                 li.innerHTML = `
-                    <span class="text-lg font-medium text-gray-800">${chapter.title}</span>
-                    <button class="chapter-button" onclick="loadQuizData('${chapter.quizId}')">
-                        Start Quiz 
-                        <i data-lucide="play-circle" class="h-4 w-4 ml-2"></i>
-                    </button>
+                    <span class="text-lg font-medium text-gray-800 mb-2 sm:mb-0">${chapter.title}</span>
+                    <div class="flex space-x-2 mt-2 sm:mt-0">
+                        <button class="chapter-button bg-simple hover:bg-green-700 focus:ring-green-500" onclick="loadQuizData('${chapter.quizId}', 'simple')">Simple</button>
+                        <button class="chapter-button bg-medium hover:bg-blue-700 focus:ring-blue-500" onclick="loadQuizData('${chapter.quizId}', 'medium')">Medium</button>
+                        <button class="chapter-button bg-advance hover:bg-red-700 focus:ring-red-500" onclick="loadQuizData('${chapter.quizId}', 'advance')">Advance</button>
+                    </div>
                 `;
                 chapterListEl.appendChild(li);
             });
@@ -346,145 +345,77 @@
             showView('chapter-selection-view');
         }
 
-        // --- QUIZ DATA and RENDER LOGIC ---
+        // --- QUIZ DATA LOAD LOGIC ---
 
-        async function loadQuizData(chapterId) {
+        async function loadQuizData(chapterId, difficulty) {
+            selectedDifficulty = difficulty;
             showView('quiz-view');
             hideMessageBox();
             document.getElementById('quiz-container').innerHTML = '<div class="text-center py-12"><i data-lucide="loader-circle" class="animate-spin text-blue-500 h-10 w-10 mx-auto mb-4"></i><p class="text-gray-600 font-semibold">Loading quiz data...</p></div>';
             lucide.createIcons();
-            
-            // CRITICAL CHECK: Wait for Firebase and Auth to be ready
+
+            // CRITICAL CHECK: Ensure Firebase is available for data fetching
             if (typeof window.db === 'undefined' || !window.isAuthReady) {
-                console.warn("Data service not ready or intentionally skipped (no Firebase config). Skipping data fetch and immediately generating quiz content.");
-                showMessageBox("Database connection failed. Generating a new quiz now...", 'success');
-                await generateAndSaveQuiz(chapterId, false); // Pass false to skip Firestore save
+                console.warn("Database connection is not ready. Cannot load quiz data.");
+                showMessageBox(`Database connection failed. Please ensure Firebase configuration is valid to load quizzes for ${difficulty.toUpperCase()}.`, 'error');
+                document.getElementById('quiz-container').innerHTML = '';
                 return;
             }
             
-            // Retrieve global variables set by the module script
+            // --- Attempt to load from Firestore ---
             const db = window.db;
             const appId = window.appId;
             const getDoc = window.getDoc;
             const doc = window.doc;
             
             try {
-                // Construct the Firestore path: /artifacts/{appId}/public/data/quizzes/{quizId}
+                // We use the chapterId as the document name. E.g., 'quiz_motion'
                 const quizRef = doc(db, `artifacts/${appId}/public/data/quizzes`, chapterId);
                 const docSnap = await getDoc(quizRef);
+                const chapterInfo = Object.values(CHAPTER_DATA).flat().find(c => c.quizId === chapterId);
+                
+                document.getElementById('quiz-chapter-title').textContent = `${chapterInfo ? chapterInfo.title : 'Quiz'} (${difficulty.toUpperCase()})`;
 
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    
-                    if (data.questionsJson) {
-                         currentQuizData = JSON.parse(data.questionsJson); 
-                    } else if (data.questions && Array.isArray(data.questions)) {
-                         currentQuizData = data.questions; 
-                    } else {
-                         throw new Error("Quiz document found but contains no valid questions.");
+                    let quizArray = [];
+
+                    // 1. Check if the difficulty key exists and is an array
+                    if (data[difficulty] && Array.isArray(data[difficulty])) {
+                        quizArray = data[difficulty];
+                    } 
+                    // 2. Fallback check for JSON string (if uploaded as string)
+                    else if (data.questionsJson) {
+                         // Assumes the JSON string contains the entire structure {simple: [...], medium: [...], ...}
+                         const fullQuizData = JSON.parse(data.questionsJson);
+                         if (fullQuizData[difficulty] && Array.isArray(fullQuizData[difficulty])) {
+                             quizArray = fullQuizData[difficulty];
+                         }
                     }
 
-                    
+                    currentQuizData = quizArray;
+
                     if (currentQuizData.length > 0) {
-                        const chapterInfo = Object.values(CHAPTER_DATA).flat().find(c => c.quizId === chapterId);
-                        document.getElementById('quiz-chapter-title').textContent = chapterInfo ? chapterInfo.title : 'Quiz';
                         currentQuestionIndex = 0;
                         score = 0;
+                        hideMessageBox();
                         renderQuestion();
                     } else {
-                        showMessageBox("The quiz is empty or improperly formatted. Generating content...", 'success');
-                        await generateAndSaveQuiz(chapterId, true);
+                        // Document exists but this specific difficulty level is empty
+                        showMessageBox(`Quiz data for ${difficulty.toUpperCase()} is empty. Please ensure the document '${chapterId}' contains an array for the field '${difficulty}'.`, 'warning');
+                        document.getElementById('quiz-container').innerHTML = '';
                     }
+
                 } else {
-                    // Quiz data not found, so we must generate it and save it first.
-                    showMessageBox(`Quiz data for '${chapterId}' not found. Generating content...`, 'success');
-                    await generateAndSaveQuiz(chapterId, true);
+                    // Quiz document not found (e.g., 'quiz_motion')
+                    showMessageBox(`Quiz document for '${chapterId}' not found. Please ensure the data from your external table (Supabase/quizzes) is uploaded to Firestore at path: /artifacts/${appId}/public/data/quizzes/${chapterId}`, 'error');
+                    document.getElementById('quiz-container').innerHTML = '';
                 }
-            } catch (error) {
-                console.error("Error loading or generating quiz data:", error);
-                showMessageBox("Failed to load quiz content. Please try refreshing or check your internet connection.", 'error');
-            }
-        }
-
-        async function generateAndSaveQuiz(chapterId, saveToFirestore) {
-            document.getElementById('quiz-container').innerHTML = '<div class="text-center py-12"><i data-lucide="dices" class="animate-pulse text-accent-gold h-10 w-10 mx-auto mb-4"></i><p class="text-gray-600 font-semibold">Generating 5 practice questions for you...</p></div>';
-            lucide.createIcons();
-            
-            const chapterTitle = chapterId.replace('_', ' ').toUpperCase().split(' ').slice(1).join(' ');
-            const userQuery = `Generate 5 multiple-choice questions for the CBSE Class 9 chapter titled: ${chapterTitle}. Each question must have 4 options and one correct answer, and must be formatted as a JSON array.`;
-            
-            const systemPrompt = "You are an expert CBSE curriculum quiz generator. You must respond ONLY with a single JSON array object that adheres to the provided schema. Do not include any introductory or concluding text. The questions should be engaging and accurately reflect the learning material.";
-            const apiKey = "";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-
-            const payload = {
-                contents: [{ parts: [{ text: userQuery }] }],
-                systemInstruction: { parts: [{ text: systemPrompt }] },
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: "ARRAY",
-                        items: {
-                            type: "OBJECT",
-                            properties: {
-                                "question": { "type": "STRING", "description": "The question text." },
-                                "options": { "type": "ARRAY", "items": { "type": "STRING" }, "description": "An array of four possible answers." },
-                                "correctAnswerIndex": { "type": "INTEGER", "description": "The 0-based index of the correct answer in the options array." }
-                            },
-                            "required": ["question", "options", "correctAnswerIndex"]
-                        }
-                    }
-                }
-            };
-            
-            let generatedJsonText;
-            try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const result = await response.json();
-                generatedJsonText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-                
-                if (!generatedJsonText) {
-                     throw new Error("API returned no content.");
-                }
-
-                // 1. Parse and validate
-                const generatedQuiz = JSON.parse(generatedJsonText);
-                currentQuizData = generatedQuiz;
-
-                // 2. Save the generated quiz to Firestore (Conditional)
-                if (saveToFirestore && window.isAuthReady && window.db) {
-                    const db = window.db;
-                    const appId = window.appId;
-                    const setDoc = window.setDoc;
-                    const doc = window.doc;
-
-                    const quizRef = doc(db, `artifacts/${appId}/public/data/quizzes`, chapterId);
-                    await setDoc(quizRef, {
-                        quizId: chapterId,
-                        createdAt: new Date().toISOString(),
-                        questionsJson: JSON.stringify(generatedQuiz)
-                    });
-                    console.log("Generated quiz saved to Firestore.");
-                } else if (saveToFirestore) {
-                    console.warn("Skipping Firestore save: Database connection not ready.");
-                }
-                
-                // 3. Start the quiz
-                const chapterInfo = Object.values(CHAPTER_DATA).flat().find(c => c.quizId === chapterId);
-                document.getElementById('quiz-chapter-title').textContent = chapterInfo ? chapterInfo.title : 'Quiz';
-                currentQuestionIndex = 0;
-                score = 0;
-                hideMessageBox();
-                renderQuestion();
 
             } catch (error) {
-                console.error("Error generating or saving quiz:", error, generatedJsonText);
-                showMessageBox(`Error processing content: ${error.message}. Please try a different chapter.`, 'error');
+                console.error("Error loading quiz data from Firestore:", error);
+                showMessageBox("An unexpected error occurred while processing the quiz data. Check the console for details.", 'error');
+                document.getElementById('quiz-container').innerHTML = '';
             }
         }
         
@@ -515,7 +446,7 @@
                     <div id="options-container" class="space-y-3">
                         ${optionsHtml}
                     </div>
-                    <button id="next-button" class="mt-6 chapter-button disabled-button" onclick="nextQuestion()">
+                    <button id="next-button" class="mt-6 chapter-button bg-cbse-blue hover:bg-blue-700 focus:ring-blue-500 disabled-button" onclick="nextQuestion()">
                         Next Question &rarr;
                     </button>
                 </div>
@@ -579,7 +510,6 @@
         // --- Initialization ---
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
-            // Start on the topic selection view
             showView('topic-selection-view'); 
         });
 
