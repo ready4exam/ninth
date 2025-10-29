@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CBSE Class 9 — Academic Study Portal</title>
+    <title>Ready4Exam — Academic Study Portal</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -15,9 +15,9 @@
                         serif: ['Merriweather', 'serif'],
                     },
                     colors: {
-                        'cbse-blue': '#1a3e6a', 
-                        'cbse-light': '#f5f7fa',
-                        'accent-gold': '#ffb703',
+                        'cbse-blue': '#1a3e6a', // Deep Blue
+                        'cbse-light': '#f5f7fa', // Light Background
+                        'accent-gold': '#ffb703', // Accent color
                         'heading': '#0f172a',
                     }
                 }
@@ -27,119 +27,99 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
-        .subject-card {
-            /* Card styling for the subjects */
-            @apply block p-6 rounded-xl bg-white border border-gray-200 shadow-lg transition-all duration-300 relative overflow-hidden;
+        body { background-color: #f5f7fa; }
+        .class-card {
+            /* Card styling for the classes - modern, modular design */
+            @apply flex flex-col items-center justify-center p-8 bg-white border border-gray-200 shadow-xl rounded-2xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl cursor-pointer;
         }
-        .subject-card:hover:not(.protected-link) {
-            @apply shadow-xl border-indigo-400;
-            transform: translateY(-3px);
-        }
-        .subject-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            height: 5px;
-            width: 100%;
-            background-color: var(--card-color, #1a3e6a); /* Default to CBSE Blue */
-        }
-        .card-header {
-            @apply flex items-center space-x-4;
-        }
-        .card-title {
-            @apply text-xl font-bold text-heading;
-        }
-        .card-description {
-            @apply text-gray-600 mt-3 text-sm;
+        .icon-bg {
+            @apply p-4 rounded-full bg-opacity-10 mb-4;
         }
     </style>
 </head>
-<body class="bg-cbse-light min-h-screen">
+<body>
     
-    <!-- HEADER -->
-    <header class="bg-cbse-blue p-4 shadow-xl">
-        <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <h1 class="text-4xl font-extrabold tracking-wider text-white">Ready4Exam</h1>
-            <nav>
-                <button class="px-4 py-1.5 bg-accent-gold text-cbse-blue font-semibold rounded-full shadow-md hover:bg-yellow-400 transition">
-                    Login / Sign-up
-                </button>
-            </nav>
+    <header class="header-bg bg-cbse-blue shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <h1 class="text-3xl font-extrabold text-white tracking-tight">
+                Ready4Exam
+            </h1>
+            <button id="logout-nav-btn" class="hidden text-sm py-2 px-4 rounded-full bg-red-500 text-white font-semibold transition hover:bg-red-600">
+                🚪 Logout
+            </button>
         </div>
     </header>
 
-    <!-- MAIN CONTENT -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-
-        <h2 class="text-5xl font-extrabold text-heading mb-4 font-serif">Class 9 Study Portal</h2>
-        <p class="text-xl text-gray-500 mb-10">Select a subject to begin your chapter-wise preparation.</p>
-
-        <!-- Subject Cards Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            
-            <!-- Science Card: Links to the single chapter selection page for topic choice -->
-            <a href="chapter-selection.html?subject=science" class="subject-card" style="--card-color: #10b981;">
-                <div class="card-header">
-                    <i data-lucide="microscope" class="text-emerald-500 h-6 w-6"></i>
-                    <h3 class="card-title">Science</h3>
-                </div>
-                <p class="card-description">Comprehensive coverage of Physics, Chemistry, and Biology chapters based on the latest curriculum.</p>
-                <div class="mt-4 text-center">
-                    <button class="w-full py-2 px-4 rounded-lg bg-emerald-500 text-white font-semibold hover:bg-emerald-600 transition">
-                        View Topics
-                    </button>
-                </div>
-            </a>
-            
-            <!-- Social Science Card (Protected) -->
-            <a href="#" class="subject-card protected-link opacity-50 cursor-not-allowed" style="--card-color: #ef4444;">
-                <div class="card-header">
-                    <i data-lucide="landmark" class="text-red-500 h-6 w-6"></i>
-                    <h3 class="card-title">Social Science</h3>
-                </div>
-                <p class="card-description">Detailed study of History, Geography, Political Science, and Economics.</p>
-                <div class="mt-4 text-center">
-                    <button disabled class="w-full py-2 px-4 rounded-lg bg-gray-200 text-gray-500 font-semibold cursor-not-allowed">
-                        Coming Soon
-                    </button>
-                </div>
-            </a>
-
-            <!-- Mathematics Card (Protected) -->
-            <a href="#" class="subject-card protected-link opacity-50 cursor-not-allowed" style="--card-color: #8b5cf6;">
-                <div class="card-header">
-                    <i data-lucide="square-root" class="text-purple-700 h-6 w-6"></i>
-                    <h3 class="card-title">Mathematics</h3>
-                </div>
-                <p class="card-description">Detailed study of Number Systems, Polynomials, Geometry, and Heron's Formula for foundational clarity.</p>
-                <div class="mt-4 text-center">
-                    <button disabled class="w-full py-2 px-4 rounded-lg bg-gray-200 text-gray-500 font-semibold cursor-not-allowed">
-                        Coming Soon
-                    </button>
-                </div>
-            </a>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 mb-16">
+        
+        <div class="text-center mb-12">
+            <h2 class="text-5xl font-extrabold text-heading mb-4">Select Your Class</h2>
+            <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                Access free, comprehensive quiz sets based on the latest NCERT curriculum. Login with Google to start practicing.
+            </p>
         </div>
+
+        <div id="class-cards-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            </div>
 
     </main>
 
-    <!-- FOOTER -->
     <footer class="bg-cbse-blue mt-16 py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
             <small class="text-sm opacity-70 block mt-2">© 2025 Ready4Exam Academic Portal. All Rights Reserved.</small>
         </div>
     </footer>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-            const cards = document.querySelectorAll('.subject-card');
-            cards.forEach(card => {
-                const color = card.style.getPropertyValue('--card-color');
-                if (color) {
-                    card.style.setProperty('--card-color', color);
-                }
+    <script type="module" src="./js/config.js"></script>
+    <script type="module" src="./js/auth-paywall.js"></script>
+    
+    <script type="module">
+        import { CURRICULUM } from './js/curriculum.js';
+        
+        // Map class key to an appropriate icon and color for the modern UI
+        const classDesignMap = {
+            '6': { icon: 'sigma', color: 'bg-indigo-500', iconColor: 'text-indigo-800' },
+            '7': { icon: 'triangle', color: 'bg-emerald-500', iconColor: 'text-emerald-800' },
+            '8': { icon: 'square-gantt', color: 'bg-rose-500', iconColor: 'text-rose-800' },
+            '9': { icon: 'graduation-cap', color: 'bg-blue-500', iconColor: 'text-blue-800' }, // Highlighted class
+            '10': { icon: 'rocket', color: 'bg-purple-500', iconColor: 'text-purple-800' },
+            '11': { icon: 'atom', color: 'bg-yellow-500', iconColor: 'text-yellow-800' },
+            '12': { icon: 'orbit', color: 'bg-red-500', iconColor: 'text-red-800' },
+            // Fallback for any other classes
+            'default': { icon: 'book-open', color: 'bg-gray-500', iconColor: 'text-gray-800' }
+        };
+
+        function renderClassCards() {
+            const container = document.getElementById('class-cards-container');
+            if (!container) return;
+
+            // Get all defined class keys from the CURRICULUM object
+            const classKeys = Object.keys(CURRICULUM).sort((a, b) => parseInt(a) - parseInt(b));
+
+            classKeys.forEach(classKey => {
+                const map = classDesignMap[classKey] || classDesignMap['default'];
+                const cardHtml = `
+                    <a href="chapter-selection.html?class=${classKey}" class="class-card group">
+                        <div class="icon-bg ${map.color} ${map.iconColor} group-hover:bg-opacity-20 transition-colors">
+                            <i data-lucide="${map.icon}" class="h-8 w-8"></i>
+                        </div>
+                        <h3 class="text-3xl font-bold text-heading group-hover:text-cbse-blue transition-colors">
+                            Class ${classKey}
+                        </h3>
+                        <p class="text-sm text-gray-500 mt-1 text-center">
+                            ${classKey === '9' ? 'Science, Math & Social Science' : 'Core Subjects'}
+                        </p>
+                    </a>
+                `;
+                container.innerHTML += cardHtml;
             });
+
+            // Re-run Lucide to render the icons after dynamic injection
+            lucide.createIcons(); 
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderClassCards();
         });
     </script>
 </body>
