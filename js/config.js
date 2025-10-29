@@ -1,5 +1,9 @@
 // js/config.js
-// Handles initialization for Firebase and Supabase clients
+// Handles initialization for Firebase and Supabase clients using the modern Modular SDK
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
 
 // --- Client Keys (REPLACE WITH YOUR ACTUAL KEYS) ---
 const firebaseConfig = {
@@ -21,21 +25,24 @@ let supabase = null;
 let isReady = false;
 
 /**
- * Initializes all client services (Firebase, Firestore, Supabase).
- * This function should only run once after all CDNs are guaranteed to be loaded.
+ * Initializes all client services (Firebase, Firestore, Supabase) using the modular SDK.
+ * This function runs immediately upon module load.
  */
 function initServices() {
     try {
-        // 1. Initialize Firebase App (assuming firebase, firebase.firestore are loaded via CDN)
-        const firebaseApp = firebase.initializeApp(firebaseConfig);
+        // 1. Initialize Firebase App
+        const firebaseApp = initializeApp(firebaseConfig);
         
         // 2. Set up Firebase Auth and Firestore references
-        auth = firebase.auth();
-        db = firebase.firestore();
+        auth = getAuth(firebaseApp);
+        db = getFirestore(firebaseApp);
         
-        // 3. Initialize Supabase Client (assuming supabase is loaded via CDN)
-        // We must call the createClient function provided by the CDN, which is exposed globally
-        supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        // 3. Initialize Supabase Client (assuming window.supabase is globally available via CDN)
+        if (window.supabase && window.supabase.createClient) {
+            supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        } else {
+            console.warn("[CONFIG WARNING] Supabase client library (CDN) not found.");
+        }
 
         isReady = true;
         console.log("[CONFIG] All services initialized successfully.");
@@ -45,17 +52,17 @@ function initServices() {
     }
 }
 
+// Execute initialization immediately
+initServices();
+
 /**
  * Public getter to safely retrieve initialized clients.
- * Consumers must call this function to get the clients.
  * @returns {{auth: Object, db: Object, supabase: Object}}
  */
 export function getInitializedClients() {
     if (!isReady) {
-        console.warn("[CONFIG WARNING] Clients requested before DOMContentLoaded. Results may be undefined.");
+        // This warning now mostly serves as a diagnostic tool, as clients should be ready quickly.
+        console.warn("[CONFIG WARNING] Clients requested before initialization complete. This should not happen with modular setup.");
     }
     return { auth, db, supabase };
 }
-
-// Ensure initialization only happens after the DOM (and all CDNs) are loaded
-document.addEventListener('DOMContentLoaded', initServices);
