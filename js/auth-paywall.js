@@ -1,8 +1,9 @@
 // js/auth-paywall.js
-// Handles Firebase Authentication, user state, and Razorpay Paywall logic.
-import { getInitializedClients } from './config.js'; // Import the safe client getter
+// Handles Firebase Authentication, user state, and Paywall logic.
+// IMPORTANT: This file assumes Firebase is loaded via CDN in the HTML and exposed globally.
+import { getInitializedClients } from './config.js'; 
 
-// Define a placeholder for the application ID for Firestore paths (optional for now)
+// Define a placeholder for the application ID for Firestore paths 
 const APP_ID = "ready4exam";
 
 // Global state tracking
@@ -22,9 +23,17 @@ export function initializeAuthListener(onAuthStateChangedCallback) {
         return;
     }
     
+    // Run the callback initially and on state change
     auth.onAuthStateChanged((user) => {
         currentAuthUser = user;
         onAuthStateChangedCallback(user);
+        // Important: Re-run loadQuiz logic if auth state changes from null to user
+        if (user && !window.quizLoaded) {
+            // Trigger a silent reload of the quiz logic to check access
+            if(window.loadQuizAfterAuth) {
+                window.loadQuizAfterAuth();
+            }
+        }
     });
 }
 
@@ -39,153 +48,86 @@ export async function signInWithGoogle() {
     
     const provider = new firebase.auth.GoogleAuthProvider();
     try {
+        // Use a redirect for better mobile support, but pop-up is common for web demos
         const result = await auth.signInWithPopup(provider);
         console.log("[AUTH] Google Sign-In successful:", result.user.email);
         return result.user;
     } catch (error) {
+        // Check for common errors like pop-up closed
         console.error("[AUTH ERROR] Google Sign-In failed:", error);
         throw error;
     }
 }
 
 /**
- * Logs out the current user.
+ * Initiates the sign-out process.
  */
 export async function signOut() {
     const { auth } = getInitializedClients();
-    if (!auth) return;
+    if (!auth) {
+        console.error("Firebase Auth not available.");
+        return;
+    }
+
     try {
         await auth.signOut();
         console.log("[AUTH] User signed out.");
+        // Redirect to home or force a refresh to clear state
+        window.location.href = 'index.html'; 
     } catch (error) {
-        console.error("[AUTH ERROR] Sign out failed:", error);
+        console.error("[AUTH ERROR] Sign-out failed:", error);
     }
 }
 
 /**
- * Checks if the current user has paid for the required topic/access.
- * This is a simulated check using Firestore data.
- * In a real app, this would check a dedicated 'payments' collection.
- * @param {string} topic - The topic the user is trying to access.
- * @returns {Promise<boolean>} - True if payment is confirmed, false otherwise.
+ * Checks if the current user has premium access for the given topic.
+ * Access is granted if:
+ * 1. The user is NOT logged in (we allow anonymous access to free content).
+ * 2. The user is logged in AND has a 'premium' status flag in Firestore.
+ * * NOTE: For simplicity, all topics are considered 'premium' for this demo.
+ * @param {string} topic - The topic slug (e.g., 'gravitation')
+ * @returns {Promise<boolean>} True if access is granted, False otherwise.
  */
-export async function checkPaymentStatus(topic) {
-    if (!currentAuthUser) {
-        console.log("[PAYWALL] User not logged in, paywall required.");
+export async function checkAccess(topic) {
+    const user = getCurrentUser();
+    const { db } = getInitializedClients();
+
+    // 1. If not logged in, force login check (or anonymous access if you had free content)
+    // For this app, we assume ALL quiz content is gated, so they must be logged in/pay
+    if (!user) {
+        console.log(`[ACCESS] User is anonymous. Access denied for premium content.`);
         return false;
     }
 
-    const { db } = getInitializedClients();
-    if (!db) {
-         console.error("[PAYWALL ERROR] Firestore DB not available.");
-         return false;
-    }
-
+    // 2. If logged in, check Firestore for premium status
     try {
-        // Check if user is a 'premium' user (placeholder logic)
-        // Check Firestore Path: /artifacts/{APP_ID}/users/{userId}/access_status/premium
-        const docPath = `artifacts/${APP_ID}/users/${currentAuthUser.uid}/access_status/premium`;
-        const docRef = db.doc(docPath);
+        const accessDocPath = `artifacts/${APP_ID}/users/${user.uid}/access_status/premium`;
+        const docRef = db.doc(accessDocPath);
         const docSnap = await docRef.get();
 
-        if (docSnap.exists && docSnap.data().is_premium === true) {
-            console.log("[PAYWALL] Premium access granted.");
+        if (docSnap.exists && docSnap.data()?.is_premium === true) {
+            console.log(`[ACCESS] User ${user.uid} has premium access.`);
             return true;
+        } else {
+            console.log(`[ACCESS] User ${user.uid} does NOT have premium access (doc missing or is_premium is false).`);
+            return false;
         }
-
-        console.log("[PAYWALL] User logged in but no premium status found. Paywall active.");
-        return false; // Paywall required
-        
     } catch (e) {
-        console.error("[PAYWALL ERROR] Error checking payment status:", e);
-        // Fail safe: assume payment is required if check fails
-        return false; 
+        console.error("[ACCESS ERROR] Failed to check Firestore access status. Denying access.", e);
+        // Fail-safe: deny access if we can't confirm it
+        return false;
     }
 }
+
 
 /**
- * Initiates the Razorpay payment process.
- * This is highly simplified and assumes Razorpay is loaded via CDN.
- * @param {string} topic - The item being purchased.
+ * Returns the currently authenticated user object.
+ * @returns {Object|null}
  */
-export function initiateRazorpayPayment(topic) {
-    if (typeof Razorpay === 'undefined') {
-        console.error("[PAYMENT ERROR] Razorpay script not loaded.");
-        return;
-    }
-    if (!currentAuthUser) {
-         console.error("[PAYMENT ERROR] Must be logged in to pay.");
-         return;
-    }
-
-    // --- RAZORPAY CONFIGURATION (MOCK/PLACEHOLDER) ---
-    const options = {
-        key: "rzp_test_YOUR_KEY", // Replace with your actual key in production
-        amount: 50000, // Amount in paise (e.g., 50000 paise = 500 INR)
-        currency: "INR",
-        name: "Ready4Exam",
-        description: `Access Pass for ${topic} Quizzes`,
-        image: "favicon.png", // Use the app favicon
-        order_id: "", // Dynamically generated order ID from your server (Omitted for this client-side demo)
-        handler: async function (response) {
-            // Success handler: Update Firestore access record
-            await grantAccess(currentAuthUser.uid, topic, response.razorpay_payment_id);
-            // Reload the page to confirm access
-            window.location.reload(); 
-        },
-        prefill: {
-            name: currentAuthUser.displayName || "Student",
-            email: currentAuthUser.email || "",
-            contact: "9999999999" // Placeholder contact number
-        },
-        theme: {
-            color: "#1a3e6a" // CBSE Blue
-        }
-    };
-
-    // For a real application, you must first create an order on your server
-    // and pass the order_id into the options object. This is a simplified demo.
-    const rzp1 = new Razorpay(options);
-    rzp1.open();
-}
-
-/**
- * Records successful payment and grants 'premium' access in Firestore.
- * @param {string} userId 
- * @param {string} topic 
- * @param {string} paymentId 
- */
-async function grantAccess(userId, topic, paymentId) {
-    const { db } = getInitializedClients();
-    if (!db || !userId) return;
-
-    try {
-        // 1. Log the payment event
-        const paymentCollectionPath = `artifacts/${APP_ID}/users/${userId}/payment_history`;
-        await db.collection(paymentCollectionPath).add({
-            topic: topic,
-            amount: 500,
-            currency: 'INR',
-            paymentId: paymentId,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        // 2. Grant the 'premium' access status for this topic (or globally)
-        const accessDocPath = `artifacts/${APP_ID}/users/${userId}/access_status/premium`;
-        await db.doc(accessDocPath).set({
-            is_premium: true,
-            granted_on: firebase.firestore.FieldValue.serverTimestamp(),
-            granted_by: paymentId
-        }, { merge: true });
-
-        console.log(`[PAYWALL] Access granted for user ${userId} via payment ${paymentId}.`);
-        
-    } catch (e) {
-        console.error("[PAYWALL ERROR] Failed to record access grant in Firestore:", e);
-    }
-}
-
-// Expose the current user function
 export function getCurrentUser() {
     return currentAuthUser;
 }
+
+// NOTE: I've removed the detailed `initiateRazorpayPayment` and `grantAccess` 
+// functions as they were placeholder/non-functional and are not needed for the core UI structure.
+// The pay button now opens a simple demo link as a placeholder.
