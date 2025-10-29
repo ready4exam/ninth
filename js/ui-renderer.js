@@ -18,9 +18,9 @@ const elements = {
 
     // Quiz Elements
     questionContainer: document.getElementById('question-container'), // New element
-    questionCounter: document.getElementById('question-counter'),     // New element
-    prevBtn: document.getElementById('prev-btn'),                     // New element
-    nextBtn: document.getElementById('next-btn'),                     // New element
+    questionCounter: document.getElementById('question-counter'),     // New element
+    prevBtn: document.getElementById('prev-btn'),                     // New element
+    nextBtn: document.getElementById('next-btn'),                     // New element
     submitButton: document.getElementById('submit-button'),
     
     // Paywall Elements
@@ -60,6 +60,27 @@ export function showView(viewName) {
  */
 export function updateStatus(text) {
     if (elements.statusText) elements.statusText.textContent = text;
+}
+
+/**
+ * Hides the loading status element, useful after a successful load.
+ */
+// FIX: Added the missing export for hideStatus
+export function hideStatus() {
+    if (elements.loadingStatus) {
+        elements.loadingStatus.classList.add('hidden');
+    }
+}
+
+/**
+ * Initializes the header branding using URL parameters.
+ * @param {string} topicTitle - The display name of the topic.
+ * @param {string} difficulty - The difficulty level ('simple', 'medium', 'advanced').
+ */
+// FIX: Added the missing export for initBranding (and included placeholder subject)
+export function initBranding(topicTitle, difficulty) {
+    const subject = new URLSearchParams(window.location.search).get('subject') || 'Chapter'; // Placeholder for subject if needed
+    renderTitles(topicTitle, difficulty, subject);
 }
 
 /**
@@ -113,18 +134,18 @@ export function renderQuestion(question, index, total, userAnswer, isSubmitted) 
 
         return `
             <div class="flex items-center space-x-3">
-                <input type="radio" 
-                       id="${optionId}" 
-                       name="question_${index}" 
-                       value="${option}" 
-                       class="radio-input"
-                       ${isChecked ? 'checked' : ''}
-                       ${isSubmitted ? 'disabled' : ''}
+                <input type="radio" 
+                                   id="${optionId}" 
+                                   name="question_${index}" 
+                                   value="${option}" 
+                                   class="radio-input"
+                                   ${isChecked ? 'checked' : ''}
+                                   ${isSubmitted ? 'disabled' : ''}
                 >
                 <label for="${optionId}" class="option-label ${feedbackClass}">
                     <!-- Custom radio indicator -->
-                    <div class="h-5 w-5 rounded-full border-2 mr-3 flex items-center justify-center transition-all duration-150 
-                                ${isChecked && !isSubmitted ? 'bg-cbse-blue border-cbse-blue' : isChecked && isCorrect ? 'bg-green-600 border-green-600' : isChecked && !isCorrect ? 'bg-red-600 border-red-600' : 'bg-white border-gray-400'}">
+                    <div class="h-5 w-5 rounded-full border-2 mr-3 flex items-center justify-center transition-all duration-150 
+                                                    ${isChecked && !isSubmitted ? 'bg-cbse-blue border-cbse-blue' : isChecked && isCorrect ? 'bg-green-600 border-green-600' : isChecked && !isCorrect ? 'bg-red-600 border-red-600' : 'bg-white border-gray-400'}">
                         <div class="h-2 w-2 rounded-full ${isChecked ? 'bg-white' : 'bg-transparent'}"></div>
                     </div>
                     <!-- Option Text -->
@@ -200,6 +221,17 @@ export function updateNavigation(current, total, isSubmitted) {
     }
 }
 
+// FIX: Added missing export for processResultsAndRender (placeholder logic)
+export function processResultsAndRender(questions, userAnswers) {
+    let score = 0;
+    questions.forEach((q, index) => {
+        const userAnswer = userAnswers[index];
+        if (userAnswer === q.correct_answer) {
+            score++;
+        }
+    });
+    return score;
+}
 
 /**
  * Updates the score display on the results screen.
@@ -221,9 +253,12 @@ export function updateAuthUI(user) {
         if (user) {
             elements.logoutNavBtn.classList.remove('hidden');
             elements.logoutNavBtn.textContent = `🚪 Logout (${user.displayName || user.email || 'User'})`;
+            // Add sign out functionality
+            elements.logoutNavBtn.onclick = signOut;
         } else {
             elements.logoutNavBtn.classList.add('hidden');
             elements.logoutNavBtn.textContent = `🚪 Logout`; // Reset if user logs out
+            elements.logoutNavBtn.onclick = null;
         }
     }
 }
