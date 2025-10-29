@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ready4Exam — Academic Study Portal</title>
+    <title>CBSE Class 9 — Academic Study Portal</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -15,9 +15,9 @@
                         serif: ['Merriweather', 'serif'],
                     },
                     colors: {
-                        'cbse-blue': '#1a3e6a', // Deep Blue
-                        'cbse-light': '#f5f7fa', // Light Background
-                        'accent-gold': '#ffb703', // Accent color
+                        'cbse-blue': '#1a3e6a', 
+                        'cbse-light': '#f5f7fa',
+                        'accent-gold': '#ffb703',
                         'heading': '#0f172a',
                     }
                 }
@@ -27,99 +27,132 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
-        body { background-color: #f5f7fa; }
-        .class-card {
-            /* Card styling for the classes - modern, modular design */
-            @apply flex flex-col items-center justify-center p-8 bg-white border border-gray-200 shadow-xl rounded-2xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl cursor-pointer;
+        .subject-card {
+            /* Card styling for the subjects */
+            @apply block p-6 rounded-xl bg-white border border-gray-200 shadow-lg transition-all duration-300 relative overflow-hidden;
         }
-        .icon-bg {
-            @apply p-4 rounded-full bg-opacity-10 mb-4;
+        .subject-card:hover:not(.protected-link) {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border-color: var(--card-color, #1a3e6a);
         }
+        .card-header {
+            @apply flex items-center space-x-3 mb-4;
+        }
+        .card-title {
+            @apply text-xl font-bold text-heading;
+        }
+        .card-description {
+            @apply text-gray-600 text-base;
+        }
+        .cta-btn {
+            @apply w-full py-2 px-4 rounded-lg font-semibold transition hover:opacity-90;
+        }
+        .cta-btn-science { @apply bg-teal-500 text-white; }
+        .cta-btn-social { @apply bg-red-500 text-white; }
+        .cta-btn-math { @apply bg-purple-500 text-white; }
     </style>
 </head>
-<body>
-    
+<body class="bg-cbse-light min-h-screen flex flex-col">
+
+    <!-- HEADER -->
     <header class="header-bg bg-cbse-blue shadow-lg">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-            <h1 class="text-3xl font-extrabold text-white tracking-tight">
+            <h1 class="text-2xl font-extrabold text-white tracking-tight">
                 Ready4Exam
             </h1>
-            <button id="logout-nav-btn" class="hidden text-sm py-2 px-4 rounded-full bg-red-500 text-white font-semibold transition hover:bg-red-600">
-                🚪 Logout
-            </button>
+            <!-- Placeholder for Auth/Logout Button -->
+            <a href="quiz-engine.html" class="hidden text-sm py-2 px-4 rounded-full bg-accent-gold text-cbse-blue font-semibold transition hover:bg-yellow-400">
+                Practice Now
+            </a>
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 mb-16">
-        
-        <div class="text-center mb-12">
-            <h2 class="text-5xl font-extrabold text-heading mb-4">Select Your Class</h2>
-            <p class="text-xl text-gray-600 max-w-2xl mx-auto">
-                Access free, comprehensive quiz sets based on the latest NCERT curriculum. Login with Google to start practicing.
+    <!-- MAIN CONTENT -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex-grow mt-10">
+
+        <!-- HERO SECTION -->
+        <div class="text-center py-10 md:py-16">
+            <span class="inline-block bg-accent-gold/20 text-accent-gold font-bold text-sm px-3 py-1 rounded-full mb-3">
+                CBSE Curriculum 2025
+            </span>
+            <h1 class="text-4xl md:text-5xl font-extrabold text-heading mb-4 leading-tight">
+                Mastery Hub for <span class="text-cbse-blue">Class 9</span>
+            </h1>
+            <p class="text-xl text-gray-600 mb-10 max-w-3xl mx-auto">
+                Access free, comprehensive quiz sets designed to solidify your **Ninth Grade foundation** in core subjects. Prepare for your exams with NCERT-aligned content.
             </p>
+            <!-- UPDATED BUTTON TEXT AND LINK -->
+            <a href="chapter-selection.html" class="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-bold rounded-xl shadow-lg text-white bg-cbse-blue hover:bg-blue-700 transition duration-150 ease-in-out">
+                Start Your Class 9 Preparation <i data-lucide="book-open" class="w-4 h-4 ml-2"></i>
+            </a>
         </div>
 
-        <div id="class-cards-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            </div>
+        <!-- SUBJECT CARDS GRID -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
+            
+            <!-- Science Card -->
+            <a href="chapter-selection.html?class=9&subject=Science" class="subject-card group" style="--card-color: #10b981;">
+                <div class="card-header">
+                    <i data-lucide="flask-round" class="text-teal-700 h-6 w-6"></i>
+                    <h3 class="card-title">Science</h3>
+                </div>
+                <p class="card-description">Comprehensive quizzes on **Motion, Force & Laws of Motion, Tissues,** and **Diversity in Living Organisms**. Build your scientific reasoning.</p>
+                <div class="mt-4 text-center">
+                    <button class="cta-btn cta-btn-science">
+                        Explore Chapters (Physics, Chem, Bio)
+                    </button>
+                </div>
+            </a>
+
+            <!-- Social Science Card -->
+            <a href="chapter-selection.html?class=9&subject=Social_Science" class="subject-card group" style="--card-color: #ef4444;">
+                <div class="card-header">
+                    <i data-lucide="map" class="text-red-700 h-6 w-6"></i>
+                    <h3 class="card-title">Social Science</h3>
+                </div>
+                <p class="card-description">Test your knowledge of **India and the Contemporary World (History), Democratic Politics,** and **Economics/Geography**. Critical thinking for civics and history.</p>
+                <div class="mt-4 text-center">
+                    <button class="cta-btn cta-btn-social">
+                        Explore Chapters (History, Civics, Geo)
+                    </button>
+                </div>
+            </a>
+
+            <!-- Mathematics Card - Now Active -->
+            <a href="chapter-selection.html?class=9&subject=Mathematics" class="subject-card group" style="--card-color: #8b5cf6;">
+                <div class="card-header">
+                    <i data-lucide="square-root" class="text-purple-700 h-6 w-6"></i>
+                    <h3 class="card-title">Mathematics</h3>
+                </div>
+                <p class="card-description">Detailed study of **Number Systems, Polynomials, Geometry,** and **Heron's Formula** for foundational clarity in crucial topics.</p>
+                <div class="mt-4 text-center">
+                    <button class="cta-btn cta-btn-math">
+                        Explore Chapters (Algebra & Geometry)
+                    </button>
+                </div>
+            </a>
+        </div>
 
     </main>
 
+    <!-- FOOTER -->
     <footer class="bg-cbse-blue mt-16 py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
             <small class="text-sm opacity-70 block mt-2">© 2025 Ready4Exam Academic Portal. All Rights Reserved.</small>
         </div>
     </footer>
 
-    <script type="module" src="./js/config.js"></script>
-    <script type="module" src="./js/auth-paywall.js"></script>
-    
-    <script type="module">
-        import { CURRICULUM } from './js/curriculum.js';
-        
-        // Map class key to an appropriate icon and color for the modern UI
-        const classDesignMap = {
-            '6': { icon: 'sigma', color: 'bg-indigo-500', iconColor: 'text-indigo-800' },
-            '7': { icon: 'triangle', color: 'bg-emerald-500', iconColor: 'text-emerald-800' },
-            '8': { icon: 'square-gantt', color: 'bg-rose-500', iconColor: 'text-rose-800' },
-            '9': { icon: 'graduation-cap', color: 'bg-blue-500', iconColor: 'text-blue-800' }, // Highlighted class
-            '10': { icon: 'rocket', color: 'bg-purple-500', iconColor: 'text-purple-800' },
-            '11': { icon: 'atom', color: 'bg-yellow-500', iconColor: 'text-yellow-800' },
-            '12': { icon: 'orbit', color: 'bg-red-500', iconColor: 'text-red-800' },
-            // Fallback for any other classes
-            'default': { icon: 'book-open', color: 'bg-gray-500', iconColor: 'text-gray-800' }
-        };
-
-        function renderClassCards() {
-            const container = document.getElementById('class-cards-container');
-            if (!container) return;
-
-            // Get all defined class keys from the CURRICULUM object
-            const classKeys = Object.keys(CURRICULUM).sort((a, b) => parseInt(a) - parseInt(b));
-
-            classKeys.forEach(classKey => {
-                const map = classDesignMap[classKey] || classDesignMap['default'];
-                const cardHtml = `
-                    <a href="chapter-selection.html?class=${classKey}" class="class-card group">
-                        <div class="icon-bg ${map.color} ${map.iconColor} group-hover:bg-opacity-20 transition-colors">
-                            <i data-lucide="${map.icon}" class="h-8 w-8"></i>
-                        </div>
-                        <h3 class="text-3xl font-bold text-heading group-hover:text-cbse-blue transition-colors">
-                            Class ${classKey}
-                        </h3>
-                        <p class="text-sm text-gray-500 mt-1 text-center">
-                            ${classKey === '9' ? 'Science, Math & Social Science' : 'Core Subjects'}
-                        </p>
-                    </a>
-                `;
-                container.innerHTML += cardHtml;
-            });
-
-            // Re-run Lucide to render the icons after dynamic injection
-            lucide.createIcons(); 
-        }
-
+    <script>
         document.addEventListener('DOMContentLoaded', () => {
-            renderClassCards();
+            lucide.createIcons();
+            const cards = document.querySelectorAll('.subject-card');
+            cards.forEach(card => {
+                const color = card.style.getPropertyValue('--card-color');
+                if (color) {
+                    // This is handled by CSS, but keeping the loop for future custom logic
+                }
+            });
         });
     </script>
 </body>
