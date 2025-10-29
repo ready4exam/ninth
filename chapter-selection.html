@@ -69,47 +69,51 @@
         </div>
 
         <div class="bg-white p-6 md:p-10 rounded-xl shadow-2xl">
-            <!-- 1. Chapter Selection -->
+            
+            <!-- 1. Chapter/Stream Selection -->
             <h2 class="text-2xl font-bold text-cbse-blue mb-4 flex items-center">
                 <i data-lucide="list-checks" class="w-6 h-6 mr-3"></i> 
-                1. Choose a Chapter
+                <span id="step-one-title">1. Choose a Chapter</span>
             </h2>
             <div id="chapter-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
-                <!-- Chapter cards will be rendered here by JavaScript -->
-                <p class="text-center text-gray-500 col-span-full">Loading chapters...</p>
+                <!-- Chapter/Stream cards will be rendered here by JavaScript -->
+                <p class="text-center text-gray-500 col-span-full">Loading content...</p>
             </div>
 
-            <!-- 2. Difficulty Selection -->
-            <h2 class="text-2xl font-bold text-cbse-blue mb-4 flex items-center">
-                <i data-lucide="bar-chart-3" class="w-6 h-6 mr-3"></i> 
-                2. Select Difficulty
-            </h2>
-            <div id="difficulty-selection" class="flex flex-col sm:flex-row gap-4 mb-8">
-                <!-- Easy -->
-                <button data-difficulty="easy" class="difficulty-btn card text-left flex-1 p-4 border-2 border-green-500 bg-green-50 hover:bg-green-100">
-                    <p class="font-bold flex items-center text-green-700"><i data-lucide="trending-down" class="w-5 h-5 mr-2"></i> Easy</p>
-                    <p class="text-sm text-gray-600 mt-1">Focus on definitions and basic concepts. Great for revision.</p>
-                </button>
-                <!-- Medium (Pre-selected) -->
-                <button data-difficulty="medium" class="difficulty-btn card text-left flex-1 p-4 border-2 border-yellow-500 bg-yellow-50 hover:bg-yellow-100">
-                    <p class="font-bold flex items-center text-yellow-700"><i data-lucide="trending-up" class="w-5 h-5 mr-2"></i> Medium</p>
-                    <p class="text-sm text-gray-600 mt-1">Standard questions covering moderate application and problem-solving.</p>
-                </button>
-                <!-- Advanced -->
-                <button data-difficulty="advanced" class="difficulty-btn card text-left flex-1 p-4 border-2 border-red-500 bg-red-50 hover:bg-red-100">
-                    <p class="font-bold flex items-center text-red-700"><i data-lucide="zap" class="w-5 h-5 mr-2"></i> Advanced</p>
-                    <p class="text-sm text-gray-600 mt-1">Challenging questions including Assertion-Reasoning and Case Studies.</p>
-                </button>
-            </div>
+            <!-- 2. & 3. Difficulty and Start Quiz (Hidden unless final chapters are displayed) -->
+            <div id="difficulty-step-container" class="hidden">
+                <!-- 2. Difficulty Selection -->
+                <h2 class="text-2xl font-bold text-cbse-blue mb-4 flex items-center">
+                    <i data-lucide="bar-chart-3" class="w-6 h-6 mr-3"></i> 
+                    2. Select Difficulty
+                </h2>
+                <div id="difficulty-selection" class="flex flex-col sm:flex-row gap-4 mb-8">
+                    <!-- Easy -->
+                    <button data-difficulty="easy" class="difficulty-btn card text-left flex-1 p-4 border-2 border-green-500 bg-green-50 hover:bg-green-100">
+                        <p class="font-bold flex items-center text-green-700"><i data-lucide="trending-down" class="w-5 h-5 mr-2"></i> Easy</p>
+                        <p class="text-sm text-gray-600 mt-1">Focus on definitions and basic concepts. Great for revision.</p>
+                    </button>
+                    <!-- Medium (Pre-selected) -->
+                    <button data-difficulty="medium" class="difficulty-btn card text-left flex-1 p-4 border-2 border-yellow-500 bg-yellow-50 hover:bg-yellow-100">
+                        <p class="font-bold flex items-center text-yellow-700"><i data-lucide="trending-up" class="w-5 h-5 mr-2"></i> Medium</p>
+                        <p class="text-sm text-gray-600 mt-1">Standard questions covering moderate application and problem-solving.</p>
+                    </button>
+                    <!-- Advanced -->
+                    <button data-difficulty="advanced" class="difficulty-btn card text-left flex-1 p-4 border-2 border-red-500 bg-red-50 hover:bg-red-100">
+                        <p class="font-bold flex items-center text-red-700"><i data-lucide="zap" class="w-5 h-5 mr-2"></i> Advanced</p>
+                        <p class="text-sm text-gray-600 mt-1">Challenging questions including Assertion-Reasoning and Case Studies.</p>
+                    </button>
+                </div>
 
-            <!-- 3. Start Quiz Button -->
-            <div class="text-center">
-                <p id="error-message" class="text-red-500 mb-4 font-semibold hidden">
-                    Please select both a **Chapter** and a **Difficulty** level to begin.
-                </p>
-                <button id="start-quiz-btn" class="px-10 py-4 bg-cbse-blue text-white text-xl font-bold rounded-xl shadow-lg hover:bg-blue-700 transition transform hover:scale-105">
-                    Start Quiz Session
-                </button>
+                <!-- 3. Start Quiz Button -->
+                <div class="text-center">
+                    <p id="error-message" class="text-red-500 mb-4 font-semibold hidden">
+                        Please select both a **Chapter** and a **Difficulty** level to begin.
+                    </p>
+                    <button id="start-quiz-btn" class="px-10 py-4 bg-cbse-blue text-white text-xl font-bold rounded-xl shadow-lg hover:bg-blue-700 transition transform hover:scale-105">
+                        Start Quiz Session
+                    </button>
+                </div>
             </div>
         </div>
     </main>
@@ -122,35 +126,62 @@
     </footer>
     
     <script>
-        // --- MOCK DATA ---
-        // This is the source of all the chapter content displayed on the page.
-        const MOCK_CHAPTERS = {
-            'Science': [
-                { name: '1. Matter in Our Surroundings', slug: 'matter_in_our_surroundings' },
-                { name: '2. Is Matter Around Us Pure', slug: 'is_matter_around_us_pure' },
-                { name: '5. The Fundamental Unit of Life', slug: 'fundamental_unit_of_life' },
-                { name: '6. Tissues', slug: 'tissues' },
-                { name: '8. Motion', slug: 'motion' },
-                { name: '9. Force and Laws of Motion', slug: 'force_and_laws_of_motion' },
-                { name: '10. Gravitation', slug: 'gravitation' },
-            ],
-            'Social_Science': [
-                { name: '1. The French Revolution (History)', slug: 'french_revolution' },
-                { name: '2. Socialism in Europe and the Russian Revolution (History)', slug: 'russian_revolution' },
-                { name: '1. Democracy in the Contemporary World (Civics)', slug: 'democracy_contemporary' },
-                { name: '2. Constitutional Design (Civics)', slug: 'constitutional_design' },
-                { name: '1. India - Size and Location (Geography)', slug: 'india_size_location' },
-                { name: '1. The Story of Village Palampur (Economics)', slug: 'village_palampur' },
-            ],
-            'Mathematics': [
-                { name: '1. Number Systems', slug: 'number_systems' },
-                { name: '2. Polynomials', slug: 'polynomials' },
-                { name: '3. Coordinate Geometry', slug: 'coordinate_geometry' },
-                { name: '6. Lines and Angles', slug: 'lines_and_angles' },
-                { name: '7. Triangles', slug: 'triangles' },
-                { name: '12. Heron\'s Formula', slug: 'herons_formula' },
-                { name: '13. Surface Areas and Volumes', slug: 'surface_areas_and_volumes' },
-            ]
+        // --- MOCK CURRICULUM DATA (Hierarchical Structure) ---
+        // Maps Subject -> Streams (Sub-Subjects) -> Chapters
+        const MOCK_CURRICULUM = {
+            'Science': {
+                sub_subjects: ['Physics', 'Chemistry', 'Biology'],
+                chapters: {
+                    'Physics': [
+                        { name: '8. Motion', slug: 'motion' },
+                        { name: '9. Force and Laws of Motion', slug: 'force_and_laws_of_motion' },
+                        { name: '10. Gravitation', slug: 'gravitation' },
+                    ],
+                    'Chemistry': [
+                        { name: '1. Matter in Our Surroundings', slug: 'matter_in_our_surroundings' },
+                        { name: '2. Is Matter Around Us Pure', slug: 'is_matter_around_us_pure' },
+                    ],
+                    'Biology': [
+                        { name: '5. The Fundamental Unit of Life', slug: 'fundamental_unit_of_life' },
+                        { name: '6. Tissues', slug: 'tissues' },
+                    ]
+                }
+            },
+            'Social_Science': {
+                sub_subjects: ['History', 'Civics', 'Geography', 'Economics'],
+                chapters: {
+                    'History': [
+                        { name: '1. The French Revolution', slug: 'french_revolution' },
+                        { name: '2. Socialism in Europe and the Russian Revolution', slug: 'russian_revolution' },
+                    ],
+                    'Civics': [
+                        { name: '1. Democracy in the Contemporary World', slug: 'democracy_contemporary' },
+                        { name: '2. Constitutional Design', slug: 'constitutional_design' },
+                    ],
+                    'Geography': [
+                        { name: '1. India - Size and Location', slug: 'india_size_location' },
+                        { name: '2. Physical Features of India', slug: 'physical_features' },
+                    ],
+                    'Economics': [
+                        { name: '1. The Story of Village Palampur', slug: 'village_palampur' },
+                        { name: '2. People as Resource', slug: 'people_as_resource' },
+                    ]
+                }
+            },
+            'Mathematics': {
+                sub_subjects: [], // No sub-subjects, goes straight to chapters
+                chapters: {
+                    'All': [
+                        { name: '1. Number Systems', slug: 'number_systems' },
+                        { name: '2. Polynomials', slug: 'polynomials' },
+                        { name: '3. Coordinate Geometry', slug: 'coordinate_geometry' },
+                        { name: '6. Lines and Angles', slug: 'lines_and_angles' },
+                        { name: '7. Triangles', slug: 'triangles' },
+                        { name: '12. Heron\'s Formula', slug: 'herons_formula' },
+                        { name: '13. Surface Areas and Volumes', slug: 'surface_areas_and_volumes' },
+                    ]
+                }
+            }
         };
 
         // --- STATE & ELEMENTS ---
@@ -160,12 +191,13 @@
         const startQuizBtn = document.getElementById('start-quiz-btn');
         const errorMessageEl = document.getElementById('error-message');
         const difficultySelectionEl = document.getElementById('difficulty-selection');
+        const difficultyStepContainerEl = document.getElementById('difficulty-step-container'); // New element to hide/show step 2 & 3
         const pageTitleEl = document.getElementById('page-title'); 
 
         // --- HANDLERS ---
         function handleChapterSelection(topicSlug, cardElement) {
             selectedTopic = topicSlug;
-            // Remove selection class from all cards
+            // Remove selection class from all chapter cards
             document.querySelectorAll('.chapter-card').forEach(card => {
                 card.classList.remove('selected-chapter');
                 card.classList.add('border-transparent');
@@ -190,54 +222,140 @@
 
         function renderChapters() {
             const params = new URLSearchParams(window.location.search);
-            const subject = params.get('subject') || 'Science'; // Default to Science if no param is set
-            const subjectTitle = subject.replace(/_/g, ' '); // Replace underscores for display
+            const subject = params.get('subject') || 'Science'; // e.g., 'Science'
+            const subSubjectSlug = params.get('sub_subject'); // e.g., 'Physics'
+            const subjectTitle = subject.replace(/_/g, ' ');
+            const curriculum = MOCK_CURRICULUM[subject];
+
+            // 1. Initially hide the difficulty/start steps
+            difficultyStepContainerEl.classList.add('hidden');
             
-            // Set the page title
-            pageTitleEl.textContent = `${subjectTitle} Chapters (Class 9)`;
-
-            const chapters = MOCK_CHAPTERS[subject] || [];
-
-            if (chapters.length === 0) {
-                chapterListEl.innerHTML = `<p class="text-xl text-red-500 col-span-full text-center">No chapters found for ${subjectTitle}.</p>`;
+            if (!curriculum) {
+                chapterListEl.innerHTML = `<p class="text-xl text-red-500 col-span-full text-center">Curriculum not found for ${subjectTitle}.</p>`;
+                pageTitleEl.textContent = "Error: Invalid Subject";
                 return;
+            }
+
+            let itemsToRender = [];
+            let titleText = `Select Chapter & Difficulty`;
+            let isRenderingFinalChapters = false;
+            let stepOneLabel = '1. Choose a Chapter';
+            let subSubjectName = subSubjectSlug ? subSubjectSlug.replace(/_/g, ' ') : '';
+
+
+            if (curriculum.sub_subjects.length > 0 && !subSubjectSlug) {
+                // Mode 1: Render Sub-Subjects (e.g., Physics, Chemistry)
+                titleText = `Select Stream for ${subjectTitle} (Class 9)`;
+                stepOneLabel = '1. Choose Stream';
+                itemsToRender = curriculum.sub_subjects.map(name => ({
+                    name: name,
+                    type: 'sub_subject',
+                    slug: name.replace(/ /g, '_')
+                }));
+            } else {
+                // Mode 2: Render Chapters (either flat subject or sub-subject selected)
+                isRenderingFinalChapters = true;
+                const chapterSourceKey = subSubjectName || 'All'; 
+                const chapterList = curriculum.chapters[chapterSourceKey] || [];
+                
+                if (subSubjectSlug) {
+                    titleText = `${subjectTitle} / ${chapterSourceKey} Chapters`;
+                    stepOneLabel = `1. Choose Chapter in ${chapterSourceKey}`;
+                } else {
+                    titleText = `${subjectTitle} Chapters (Class 9)`;
+                }
+
+                itemsToRender = chapterList.map(chapter => ({
+                    name: chapter.name,
+                    type: 'chapter',
+                    slug: chapter.slug
+                }));
+
+                // If chapters are being rendered, show the difficulty selection
+                difficultyStepContainerEl.classList.remove('hidden');
+            }
+            
+            // 2. Update titles
+            pageTitleEl.textContent = titleText;
+            document.getElementById('step-one-title').textContent = stepOneLabel;
+
+            // 3. Render the items
+            if (itemsToRender.length === 0) {
+                 chapterListEl.innerHTML = `<p class="text-xl text-gray-500 col-span-full text-center">No content found for this selection.</p>`;
+                 return;
             }
 
             chapterListEl.innerHTML = ''; // Clear previous content
 
-            chapters.forEach(chapter => {
-                const chapterName = chapter.name;
-                const chapterSlug = chapter.slug;
-                
-                // Create the chapter card element
+            itemsToRender.forEach(item => {
+                const itemType = item.type === 'sub_subject' ? 'Stream' : 'Chapter';
+                const itemLabel = item.type === 'sub_subject' ? 'Select Stream' : 'Select to start quiz';
+
                 const card = document.createElement('div');
-                // Updated classes for better visual feedback
                 card.className = 'chapter-card card cursor-pointer bg-white p-6 rounded-xl shadow-md transition-transform duration-200 hover:shadow-xl hover:translate-y-[-3px] border-2 border-transparent';
-                card.dataset.topic = chapterSlug;
+                card.dataset.slug = item.slug;
+                card.dataset.type = item.type;
+                
                 card.innerHTML = `
-                    <p class="text-sm font-semibold text-gray-500 mb-1">Chapter</p>
-                    <h4 class="text-lg font-bold text-gray-800">${chapterName}</h4>
+                    <p class="text-sm font-semibold text-gray-500 mb-1">${itemType}</p>
+                    <h4 class="text-lg font-bold text-gray-800">${item.name}</h4>
                     <p class="text-sm text-blue-600 mt-2 flex items-center">
-                        Select to start quiz <i data-lucide="arrow-right" class="w-4 h-4 ml-2"></i>
+                        ${itemLabel} <i data-lucide="arrow-right" class="w-4 h-4 ml-2"></i>
                     </p>
                 `;
 
                 // Set up the click handler
-                card.addEventListener('click', () => handleChapterSelection(chapterSlug, card));
+                card.addEventListener('click', (e) => {
+                    if (item.type === 'sub_subject') {
+                        // Navigate to the next level
+                        window.location.href = `chapter-selection.html?subject=${subject}&sub_subject=${item.slug}`;
+                    } else {
+                        // Final chapter selection
+                        handleChapterSelection(item.slug, card);
+                    }
+                });
 
                 chapterListEl.appendChild(card);
             });
             
-            // Re-create lucide icons after injecting HTML
-            lucide.createIcons(); 
+            // 4. Add Back Button if navigating sub-subjects
+            if (isRenderingFinalChapters && subSubjectSlug) {
+                const backUrl = `chapter-selection.html?subject=${subject}`;
+                const backCard = document.createElement('div');
+                backCard.className = 'card cursor-pointer bg-gray-100 p-6 rounded-xl shadow-md transition-transform duration-200 hover:shadow-lg hover:translate-y-[-3px] border-2 border-gray-300 flex items-center justify-center';
+                backCard.style.order = -1; // Place at the start
+                backCard.innerHTML = `
+                    <a href="${backUrl}" class="flex flex-col items-center text-center text-gray-700 font-bold">
+                        <i data-lucide="arrow-left" class="w-6 h-6 mb-2"></i>
+                        Back to Stream Selection
+                    </a>
+                `;
+                chapterListEl.prepend(backCard);
+            }
+
+            lucide.createIcons();
+            
+            // 5. Pre-select 'medium' only if we are rendering chapters
+            if (isRenderingFinalChapters) {
+                 document.querySelector('.difficulty-btn[data-difficulty="medium"]').click();
+            } else {
+                 // Clear selection if we are back at stream selection
+                 selectedTopic = null; 
+            }
         }
 
         function handleStartQuiz() {
             if (selectedTopic && selectedDifficulty) {
-                // Ensure we get the subject again for the URL, defaulting to 'Science'
-                const subject = new URLSearchParams(window.location.search).get('subject') || 'Science';
+                const params = new URLSearchParams(window.location.search);
+                const subject = params.get('subject') || 'Science';
+                const subSubject = params.get('sub_subject') || ''; // Get sub_subject if present
+
                 // Pass the necessary parameters to the quiz engine
-                const url = `quiz-engine.html?class=9&subject=${subject}&topic=${selectedTopic}&difficulty=${selectedDifficulty}`;
+                let url = `quiz-engine.html?class=9&subject=${subject}&topic=${selectedTopic}&difficulty=${selectedDifficulty}`;
+                if (subSubject) {
+                    url += `&sub_subject=${subSubject}`;
+                }
+                
                 window.location.href = url;
             } else {
                 errorMessageEl.classList.remove('hidden');
@@ -258,10 +376,6 @@
             });
 
             startQuizBtn.addEventListener('click', handleStartQuiz);
-
-            // Pre-select the 'medium' difficulty button on load
-            // This ensures a default difficulty is always set.
-            document.querySelector('.difficulty-btn[data-difficulty="medium"]').click();
         });
     </script>
 </body>
