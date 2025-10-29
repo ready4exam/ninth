@@ -8,68 +8,153 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Inter Font -->
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f5f7fa;
+        }
+        .cbse-blue { background-color: #1a3e6a; }
+        .cbse-light { background-color: #f5f7fa; }
+        .card { @apply bg-white p-6 rounded-xl shadow-lg transition-transform duration-300; }
+        .option-label {
+            @apply flex items-center p-4 border border-gray-300 rounded-lg transition-all duration-200 cursor-pointer;
+        }
+        .option-input:checked + .option-label {
+            @apply border-2 border-blue-500 bg-blue-50 text-blue-900;
+        }
+        .option-label:hover {
+            @apply border-blue-400;
+        }
+        .correct { 
+            @apply !bg-green-100 !border-2 !border-green-600; 
+        }
+        .incorrect { 
+            @apply !bg-red-100 !border-2 !border-red-600; 
+        }
+        /* Custom styles for MathJax rendering to ensure proper alignment */
+        .question-text .MathJax, .question-text .MathJax_Display {
+            display: inline !important;
+        }
     </style>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- MathJax for rendering math equations -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body class="min-h-screen">
     
-    <!-- BRANDING HEADER (Updated Structure) -->
-    <header class="p-4 bg-gray-900 text-white shadow-lg sticky top-0 z-10">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center max-w-6xl mx-auto">
-            
-            <!-- Brand Name and Tagline Container -->
-            <div class="mb-2 md:mb-0">
-                <!-- Brand Name (set by JS, using the BRAND_NAME constant) -->
-                <h1 class="brand-display text-2xl font-extrabold tracking-wider text-red-500" id="brand-name-display">
-                    <!-- Populated by JS -->
-                </h1>
-                <!-- Tagline (set by JS, using the BRAND_TAGLINE constant) -->
-                <p class="text-sm text-gray-400 font-light italic" id="brand-tagline-display">
-                    <!-- Populated by JS -->
-                </p>
+    <!-- BRANDING HEADER -->
+    <header class="p-4 bg-cbse-blue text-white shadow-lg sticky top-0 z-10">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center max-w-7xl mx-auto">
+            <a href="index.html" class="flex items-center space-x-2">
+                <i data-lucide="book-open-check" class="h-8 w-8 text-accent-gold"></i>
+                <h1 class="text-3xl font-extrabold tracking-wider" id="brand-name-display">Ready4Exam</h1>
+            </a>
+            <div class="flex items-center space-x-4 mt-2 md:mt-0">
+                <button id="logout-nav-btn" class="hidden text-sm px-3 py-1 bg-red-600 rounded-full hover:bg-red-700 transition font-medium">
+                    🚪 Logout
+                </button>
             </div>
-            
-            <!-- Quiz Title (Dynamic) -->
-            <span id="quiz-title" class="text-xl font-medium text-gray-300"></span>
+        </div>
+        <div class="max-w-7xl mx-auto pt-2">
+            <h2 class="text-xl font-bold" id="quiz-page-title">Loading Quiz...</h2>
+            <p class="text-sm text-gray-300" id="difficulty-display"></p>
         </div>
     </header>
+    
+    <!-- MAIN CONTENT AREA -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-    <main class="max-w-6xl mx-auto p-4 md:p-8">
-
-        <!-- Loading/Status Area -->
-        <div id="loading-status" class="text-center text-lg font-semibold text-blue-600 p-4 rounded-lg bg-white shadow-md">
-            Initializing Quiz Engine...
+        <!-- 0. Loading/Status View (Initial State) -->
+        <div id="loading-status" class="py-12 text-center text-gray-600">
+            <i data-lucide="loader" class="h-10 w-10 mx-auto animate-spin text-cbse-blue mb-4"></i>
+            <p id="status-text" class="text-lg font-semibold">Initializing Quiz Engine...</p>
         </div>
 
-        <!-- Quiz View (Initially hidden) -->
-        <div id="quiz-view" class="hidden">
-            <div id="question-container" class="bg-white p-6 rounded-xl shadow-lg mb-6">
-                <!-- Question content, options, scenario/reasoning will be rendered here -->
-                <p class="text-gray-500">Quiz content will appear here after loading.</p>
+        <!-- 1. Paywall/Access Denied View (Initially hidden) -->
+        <div id="paywall-screen" class="hidden card mt-8 p-10 text-center">
+            <i data-lucide="lock" class="h-16 w-16 mx-auto text-red-500 mb-6"></i>
+            <h2 class="text-2xl font-bold text-heading mb-4">Access Required</h2>
+            <p class="text-gray-600 mb-6">
+                The content for **<span id="access-required-item" class="font-semibold text-blue-600">This Chapter</span>** requires a premium subscription.
+                Please log in or subscribe to unlock the full quiz experience.
+            </p>
+            <div class="flex flex-col md:flex-row justify-center space-y-4 md:space-y-0 md:space-x-6">
+                <button id="login-button" class="w-full md:w-auto px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition shadow-md">
+                    <i data-lucide="user" class="h-5 w-5 inline mr-2"></i> Login with Google
+                </button>
+                <button id="pay-button" class="w-full md:w-auto px-6 py-3 bg-accent-gold text-cbse-blue rounded-lg font-semibold hover:bg-yellow-500 transition shadow-md">
+                    <i data-lucide="credit-card" class="h-5 w-5 inline mr-2"></i> Unlock Access (₹500)
+                </button>
+            </div>
+        </div>
+        
+        <!-- 2. Start Screen / Difficulty Selection (For future use, currently unused as difficulty is chosen before) -->
+        <div id="start-screen" class="hidden card mt-8 p-10 text-center">
+            <h2 class="text-2xl font-bold text-heading mb-4" id="quiz-title">Quiz Title</h2>
+            <p class="text-gray-600 mb-6" id="quiz-subtitle">Ready to test your knowledge?</p>
+            <!-- Content for total questions will be rendered here -->
+            <div class="flex justify-center space-x-4">
+                <div class="text-center p-4 bg-blue-100 rounded-lg">
+                    <p class="text-2xl font-bold text-blue-600" id="simple-available-q">10</p>
+                    <p class="text-sm text-blue-600">Simple Qs</p>
+                </div>
+                <div class="text-center p-4 bg-yellow-100 rounded-lg">
+                    <p class="text-2xl font-bold text-yellow-600" id="medium-available-q">10</p>
+                    <p class="text-sm text-yellow-600">Medium Qs</p>
+                </div>
+                <div class="text-center p-4 bg-red-100 rounded-lg">
+                    <p class="text-2xl font-bold text-red-600" id="advanced-available-q">10</p>
+                    <p class="text-sm text-red-600">Advanced Qs</p>
+                </div>
+            </div>
+            <button id="start-quiz-btn" class="mt-8 px-8 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition shadow-md">
+                Start Quiz
+            </button>
+        </div>
+
+        <!-- 3. Quiz View (Initially hidden) -->
+        <div id="quiz-content" class="hidden">
+            <!-- Question list will be populated here -->
+            <div id="question-list">
+                <!-- Question component (Question 1, Question 2, etc.) -->
             </div>
             
-            <!-- Navigation/Action Buttons -->
-            <div class="flex justify-between">
-                <button id="prev-btn" class="px-6 py-2 bg-gray-300 text-gray-800 rounded-lg font-semibold hover:bg-gray-400 transition">
-                    Previous
-                </button>
-                <button id="next-btn" class="px-6 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition">
-                    Next
+            <!-- Submit Button -->
+            <div class="text-center mt-10">
+                <button id="submit-button" class="px-10 py-3 bg-red-600 text-white rounded-xl font-bold text-lg hover:bg-red-700 transition shadow-xl">
+                    Submit Quiz
                 </button>
             </div>
         </div>
-
+        
+        <!-- 4. Results View (Initially hidden) -->
+        <div id="results-screen" class="hidden card mt-8 p-10 text-center">
+            <i data-lucide="award" class="h-16 w-16 mx-auto text-yellow-500 mb-6"></i>
+            <h2 class="text-3xl font-bold text-heading mb-4">Quiz Complete!</h2>
+            <p class="text-lg text-gray-600 mb-4">Your Score:</p>
+            <p id="score-display" class="text-6xl font-extrabold text-green-600 mb-6">-- / --</p>
+            <p class="text-sm text-gray-500 italic">Review your answers above.</p>
+            <a href="index.html" class="inline-block mt-8 px-8 py-3 bg-cbse-blue text-white rounded-lg font-semibold hover:bg-indigo-700 transition shadow-md">
+                <i data-lucide="home" class="h-5 w-5 inline mr-2"></i> Go to Home
+            </a>
+        </div>
     </main>
     
     <!-- Script Imports (Must be type="module") -->
+    <!-- The config file must be imported first to ensure clients are initialized -->
+    <script type="module" src="./js/config.js"></script>
+    <script type="module" src="./js/auth-paywall.js"></script>
     <script type="module" src="./js/api.js"></script>
+    <script type="module" src="./js/ui-renderer.js"></script>
     <script type="module" src="./js/quiz-engine.js"></script>
-
-    <!-- Placeholder for global config variables usually provided by the environment -->
+    
     <script>
-        // NOTE: These variables are usually provided by the environment. If not, set your values here.
-        const __supabase_url = "YOUR_SUPABASE_URL_HERE"; 
-        const __supabase_anon_key = "YOUR_SUPABASE_ANON_KEY_HERE"; 
+        document.addEventListener('DOMContentLoaded', () => {
+            // Re-create icons on load
+            lucide.createIcons();
+        });
     </script>
 </body>
 </html>
