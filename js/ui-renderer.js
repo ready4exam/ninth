@@ -4,7 +4,7 @@
 // --- DOM Elements Cache ---
 const elements = {
     // Views
-    statusMessage: document.getElementById('status-message'),
+    loadingStatus: document.getElementById('loading-status'), // Renamed for clarity
     statusText: document.getElementById('status-text'),
     paywallScreen: document.getElementById('paywall-screen'),
     startScreen: document.getElementById('start-screen'),
@@ -13,15 +13,14 @@ const elements = {
     
     // Header/Branding
     quizPageTitle: document.getElementById('quiz-page-title'),
-    quizTitle: document.getElementById('quiz-title'),
-    quizSubtitle: document.getElementById('quiz-subtitle'),
     difficultyDisplay: document.getElementById('difficulty-display'),
     logoutNavBtn: document.getElementById('logout-nav-btn'),
 
-    // Difficulty/Start Screen
-    simpleCount: document.getElementById('simple-available-q'),
-    mediumCount: document.getElementById('medium-available-q'),
-    advancedCount: document.getElementById('advanced-available-q'),
+    // Difficulty/Start Screen (Simplified)
+    // simpleCount: document.getElementById('simple-available-q'),
+    // mediumCount: document.getElementById('medium-available-q'),
+    // advancedCount: document.getElementById('advanced-available-q'),
+    // startQuizBtn: document.getElementById('start-quiz-btn'),
 
     // Quiz Elements
     questionList: document.getElementById('question-list'),
@@ -36,186 +35,216 @@ const elements = {
     scoreDisplay: document.getElementById('score-display'),
 };
 
-// --- VIEW MANAGEMENT ---
-
 /**
- * Hides all main application views.
+ * Hides all main views and shows only the one specified by ID.
+ * @param {string} id - The ID of the view element to show ('paywall-screen', 'quiz-content', 'results-screen', 'start-screen').
  */
-function hideAllViews() {
-    elements.paywallScreen.classList.add('hidden');
-    elements.startScreen.classList.add('hidden');
-    elements.quizContent.classList.add('hidden');
-    elements.resultsScreen.classList.add('hidden');
-}
+export function showView(id) {
+    const views = [elements.paywallScreen, elements.startScreen, elements.quizContent, elements.resultsScreen];
+    views.forEach(view => {
+        if (view) view.classList.add('hidden');
+    });
 
-/**
- * Displays a specific view.
- * @param {string} viewName - 'paywall', 'start', 'quiz', 'results'
- */
-export function showView(viewName) {
-    hideAllViews();
-    switch (viewName) {
-        case 'paywall':
-            elements.paywallScreen.classList.remove('hidden');
-            break;
-        case 'start':
-            elements.startScreen.classList.remove('hidden');
-            break;
-        case 'quiz':
-            elements.quizContent.classList.remove('hidden');
-            break;
-        case 'results':
-            elements.resultsScreen.classList.remove('hidden');
-            break;
+    const targetView = document.getElementById(id);
+    if (targetView) {
+        targetView.classList.remove('hidden');
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Always hide loading status when switching to a main view
+    elements.loadingStatus?.classList.add('hidden');
 }
 
-// --- STATUS MESSAGE ---
-
 /**
- * Updates and optionally shows the global status message.
- * @param {string} text 
- * @param {boolean} showLoader 
+ * Displays a loading/status message.
+ * @param {string} msg 
  */
-export function updateStatus(text, showLoader = false) {
-    elements.statusText.textContent = text;
-    elements.statusMessage.classList.remove('hidden');
-    
-    const loaderIcon = elements.statusMessage.querySelector('i[data-lucide="loader-circle"]');
-    if (loaderIcon) {
-        if (showLoader) {
-            loaderIcon.classList.remove('hidden');
-        } else {
-            loaderIcon.classList.add('hidden');
-        }
+export function updateStatus(msg) { 
+    if (elements.loadingStatus) {
+        elements.loadingStatus.classList.remove('hidden');
+        elements.statusText.textContent = msg;
     }
 }
 
 /**
- * Hides the global status message.
- */
-export function hideStatus() {
-    elements.statusMessage.classList.add('hidden');
-}
-
-
-// --- RENDERING FUNCTIONS ---
-
-/**
- * Renders the page titles based on URL parameters.
- * @param {string} className 
- * @param {string} subject 
+ * Updates the header UI with quiz context.
+ * @param {string} title 
  * @param {string} topic 
+ * @param {string} difficulty 
  */
-export function renderTitles(className, subject, topic) {
-    const formattedTopic = topic.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-    const formattedSubject = subject.charAt(0).toUpperCase() + subject.slice(1);
-    
-    elements.quizPageTitle.textContent = `Ready4Exam | Class ${className} ${formattedTopic}`;
-    elements.quizTitle.textContent = `${formattedTopic} Quiz`;
-    elements.quizSubtitle.textContent = `CBSE Class ${className} | ${formattedSubject} Chapter`;
-    elements.accessRequiredItem.textContent = `${formattedTopic} Chapter Quiz`; // For paywall
+export function updateHeader(title, topic, difficulty) { 
+    if (elements.quizPageTitle) {
+        elements.quizPageTitle.textContent = title; 
+    }
+    if (elements.difficultyDisplay) {
+        // Capitalize difficulty
+        const diff = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+        elements.difficultyDisplay.innerHTML = `Topic: <span class="font-semibold">${topic}</span> | Difficulty: <span class="font-semibold text-accent-gold">${diff}</span>`;
+    }
 }
 
 /**
- * Displays question counts on the Start Screen.
- * @param {Object} counts - { Simple: 10, Medium: 15, Advanced: 5 }
+ * Creates the HTML structure for a single question.
+ * @param {Object} question - The question object from the API.
+ * @param {number} index - The 0-based index of the question.
+ * @returns {string} The HTML string for the question card.
  */
-export function renderQuestionCounts(counts) {
-    elements.simpleCount.textContent = `${counts.Simple}`;
-    elements.mediumCount.textContent = `${counts.Medium}`;
-    elements.advancedCount.textContent = `${counts.Advanced}`;
-}
+function createQuestionCard(question, index) {
+    // Determine the icon and type label
+    let iconName, typeLabel, color;
+    switch (question.type) {
+        case 'assertion_reasoning':
+            iconName = 'message-circle-question';
+            typeLabel = 'Assertion-Reasoning';
+            color = 'text-orange-500';
+            break;
+        case 'case_study':
+            iconName = 'book-open';
+            typeLabel = 'Case Study';
+            color = 'text-purple-500';
+            break;
+        case 'mcq':
+        default:
+            iconName = 'circle-check';
+            typeLabel = 'Multiple Choice';
+            color = 'text-blue-500';
+    }
 
-/**
- * Renders the full list of questions for the quiz.
- * @param {Array<Object>} questions - Array of question objects.
- */
-export function renderQuestions(questions) {
-    elements.questionList.innerHTML = ''; // Clear previous questions
-    
-    const html = questions.map((q, qIndex) => {
-        // Combine all options (assuming they are named option1, option2, etc.)
-        const options = [q.option1, q.option2, q.option3, q.option4].filter(o => o);
+    // Render Case Study scenario if it exists
+    const scenarioHtml = question.scenario 
+        ? `<div class="p-4 mb-4 bg-gray-100 border-l-4 border-purple-400 rounded-md">
+            <p class="font-semibold text-purple-700 mb-2 flex items-center"><i data-lucide="notebook-text" class="h-4 w-4 mr-2"></i>Case Scenario:</p>
+            <p class="text-sm text-gray-700">${question.scenario}</p>
+        </div>`
+        : '';
 
-        const optionsHtml = options.map((optionText, optIndex) => `
-            <div class="mb-2">
-                <input type="radio" id="q${qIndex}opt${optIndex}" name="question${qIndex}" value="${optionText}" class="hidden peer">
-                <label for="q${qIndex}opt${optIndex}" class="option-label block w-full p-4 rounded-xl bg-white text-gray-800 font-medium peer-checked:border-cbse-blue peer-checked:bg-cbse-light">
-                    ${optionText}
-                </label>
-            </div>
-        `).join('');
 
+    // Render Options
+    const optionsHtml = question.options.map((option, optionIndex) => {
+        const optionId = `q${index}-opt${optionIndex}`;
         return `
-            <div id="q${qIndex}" class="question-item p-6 bg-white rounded-xl shadow-lg border-l-4 border-cbse-blue">
-                <p class="text-sm font-semibold text-cbse-blue mb-2">Question ${qIndex + 1} / Difficulty: ${q.difficulty}</p>
-                <h3 class="text-xl font-bold text-cbse-dark mb-4">${q.question_text}</h3>
-                <div class="options-container space-y-2">
-                    ${optionsHtml}
-                </div>
-                <div id="q${qIndex}feedback" class="feedback-box mt-3 text-sm font-semibold hidden p-3 rounded-lg"></div>
+            <div class="relative mb-3">
+                <input type="radio" id="${optionId}" name="question-${index}" value="${option}" class="option-input hidden peer" data-question-index="${index}">
+                <label for="${optionId}" class="option-label peer-checked:border-blue-500 peer-checked:bg-blue-50">
+                    <span class="font-bold text-gray-700 mr-3">${String.fromCharCode(65 + optionIndex)}.</span>
+                    <span class="flex-1 question-text">${option}</span>
+                </label>
             </div>
         `;
     }).join('');
 
-    elements.questionList.innerHTML = html;
+    return `
+        <div id="question-${index}-card" class="card mb-10 border-t-8 border-t-blue-600">
+            <!-- Question Header -->
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-gray-200">
+                <h3 class="text-xl font-bold text-gray-800">Question ${index + 1}</h3>
+                <span class="flex items-center text-sm font-medium ${color}">
+                    <i data-lucide="${iconName}" class="h-4 w-4 mr-1"></i> ${typeLabel}
+                </span>
+            </div>
+            
+            ${scenarioHtml}
+
+            <!-- Question Text -->
+            <p class="text-lg font-medium text-heading mb-6 question-text" data-question-index="${index}">
+                ${question.question}
+            </p>
+
+            <!-- Options -->
+            <form id="form-q-${index}" class="options-container">
+                ${optionsHtml}
+            </form>
+
+            <!-- Feedback Box (Initially hidden) -->
+            <div id="feedback-q-${index}" class="hidden mt-4 p-4 rounded-lg text-sm font-medium border border-gray-300 bg-gray-50">
+                <!-- Feedback will be inserted here after submission -->
+            </div>
+        </div>
+    `;
 }
 
 /**
- * Applies immediate feedback to the quiz interface after submission.
- * @param {Array<Object>} questions - The original question data.
- * @param {Array<string>} userAnswers - Array of user-selected answers.
- * @returns {number} - The final score.
+ * Renders the full list of questions to the quiz content area.
+ * @param {Array<Object>} questions - The array of question objects.
+ * @param {Function} onOptionSelect - Callback for when an option is selected.
  */
-export function showFeedback(questions, userAnswers) {
+export function renderQuestionList(questions, onOptionSelect) {
+    if (!elements.questionList) return;
+
+    // Generate HTML for all questions
+    const questionsHtml = questions.map(createQuestionCard).join('');
+    elements.questionList.innerHTML = questionsHtml;
+
+    // After rendering, update icons and process math
+    lucide.createIcons();
+    if (window.MathJax) {
+        window.MathJax.typesetPromise();
+    }
+    
+    // Attach event listeners for options
+    elements.questionList.querySelectorAll('input[type="radio"]').forEach(input => {
+        input.addEventListener('change', (e) => {
+            const questionIndex = parseInt(e.target.dataset.questionIndex, 10);
+            const selectedAnswer = e.target.value;
+            onOptionSelect(questionIndex, selectedAnswer);
+        });
+    });
+}
+
+
+/**
+ * Processes the quiz results on the UI, showing correct/incorrect answers and feedback.
+ * @param {Array<Object>} questions - The full array of question objects.
+ * @param {Array<string|null>} userAnswers - The user's answers.
+ * @returns {number} The final calculated score.
+ */
+export function showResults(questions, userAnswers) {
     let score = 0;
 
-    questions.forEach((q, qIndex) => {
-        const userAnswer = userAnswers[qIndex];
-        const correctAnswer = q.correct_option;
-        const questionItem = document.getElementById(`q${qIndex}`);
-        const feedbackBox = document.getElementById(`q${qIndex}feedback`);
-
-        if (!questionItem || !feedbackBox) return;
-
-        feedbackBox.classList.remove('hidden');
+    questions.forEach((question, index) => {
+        const userAnswer = userAnswers[index];
+        const correctAnswer = question.options[question.correctAnswerIndex];
+        const questionCard = document.getElementById(`question-${index}-card`);
+        const feedbackBox = document.getElementById(`feedback-q-${index}`);
+        const optionLabels = questionCard.querySelectorAll('.option-label');
         
-        // Find all option labels for this question
-        const optionLabels = questionItem.querySelectorAll('.option-label');
+        feedbackBox.classList.remove('hidden');
 
         if (userAnswer === correctAnswer) {
             score++;
-            questionItem.classList.add('border-accent-chemistry'); // Green border
-            feedbackBox.classList.add('correct');
-            feedbackBox.textContent = '✅ Correct! Well done.';
+            feedbackBox.classList.add('bg-green-50', 'text-green-800', '!border-green-600');
+            feedbackBox.textContent = "✅ Correct! Well done.";
         } else {
-            questionItem.classList.add('border-accent-biology'); // Red border
-            feedbackBox.classList.add('incorrect');
+            feedbackBox.classList.add('bg-red-50', 'text-red-800', '!border-red-600');
+            let feedbackText = "❌ Incorrect.";
             
-            let feedbackText = '❌ Incorrect.';
-            if (userAnswer) {
-                feedbackText += ` You chose: "${userAnswer}".`;
+            // Add reasoning if available
+            if (question.reasoning) {
+                 feedbackText += ` Reasoning: ${question.reasoning}`;
+            } else if (userAnswer === null) {
+                feedbackText = `🚫 Unattempted.`;
             } else {
-                feedbackText += ` You did not attempt this question.`;
+                feedbackText += ` You chose: "${userAnswer}".`;
             }
             feedbackText += ` The correct answer was: "${correctAnswer}".`;
             feedbackBox.textContent = feedbackText;
         }
         
-        // Highlight the correct answer
+        // Highlight the correct answer and user choice
         optionLabels.forEach(label => {
-            if (label.textContent.trim() === correctAnswer) {
+            const radioInput = label.parentElement.querySelector('input');
+            const optionValue = radioInput.value;
+
+            // Remove peer-checked styling
+            label.classList.remove('peer-checked:border-blue-500', 'peer-checked:bg-blue-50'); 
+
+            if (optionValue === correctAnswer) {
                 label.classList.add('correct');
-                label.classList.remove('peer-checked:border-cbse-blue'); // Remove checked styling
             }
             // Highlight the user's incorrect choice if they made one
-            if (userAnswer && label.textContent.trim() === userAnswer && userAnswer !== correctAnswer) {
+            if (userAnswer && optionValue === userAnswer && userAnswer !== correctAnswer) {
                 label.classList.add('incorrect');
             }
             // Disable all options after submission
-            label.parentElement.querySelector('input').disabled = true;
+            radioInput.disabled = true;
         });
     });
 
@@ -238,9 +267,27 @@ export function updateResultDisplay(score, total) {
 export function updateAuthUI(user) {
     if (user) {
         elements.logoutNavBtn.classList.remove('hidden');
-        elements.logoutNavBtn.textContent = `🚪 Logout (${user.displayName || user.email})`;
+        elements.logoutNavBtn.textContent = `🚪 Logout (${user.displayName || user.email || 'User'})`;
     } else {
         elements.logoutNavBtn.classList.add('hidden');
+        elements.logoutNavBtn.textContent = `🚪 Logout`; // Reset if user logs out
     }
 }
 
+/**
+ * Updates the paywall screen content with the topic name.
+ * @param {string} topic - The name of the chapter/topic.
+ */
+export function updatePaywallContent(topic) {
+    if (elements.accessRequiredItem) {
+        elements.accessRequiredItem.textContent = topic;
+    }
+}
+
+/**
+ * Exposes elements cache for event listeners in quiz-engine.js.
+ * @returns {Object} The cached DOM elements.
+ */
+export function getElements() {
+    return elements;
+}
