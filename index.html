@@ -10,16 +10,15 @@
         tailwind.config = {
             theme: {
                 extend: {
-                    // Using a serif font (Merriweather) for headings to look more academic
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
                         serif: ['Merriweather', 'serif'],
                     },
                     colors: {
-                        'cbse-blue': '#1a3e6a', // Deep Academic Blue
-                        'cbse-light': '#f5f7fa', // Very light off-white background
-                        'accent-gold': '#ffb703', // Professional accent color
-                        'heading': '#0f172a', // Slate-900 for primary text
+                        'cbse-blue': '#1a3e6a', 
+                        'cbse-light': '#f5f7fa',
+                        'accent-gold': '#ffb703',
+                        'heading': '#0f172a',
                     }
                 }
             }
@@ -29,50 +28,32 @@
 
     <style>
         .subject-card {
-            /* Group for hover effects */
-            @apply block p-6 rounded-lg bg-white border border-gray-200 shadow-md transition-all duration-300;
+            @apply block p-6 rounded-xl bg-white border border-gray-200 shadow-lg transition-all duration-300 relative overflow-hidden;
         }
-        .subject-card:hover {
-            /* Subtle academic lift on hover */
-            background-color: theme('colors.cbse-blue');
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            transform: translateY(-4px);
+        .subject-card:hover:not(.protected-link) {
+            transform: translateY(-4px); 
+            box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.15);
         }
-        .card-title {
-            @apply text-xl font-bold font-serif text-heading group-hover:text-white transition-colors;
+        .subject-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background-color: var(--card-color, #1a3e6a);
+            border-radius: 0.5rem 0.5rem 0 0;
         }
-        .card-description {
-            @apply text-sm text-gray-600 mt-2 mb-4 group-hover:text-gray-200 transition-colors;
-        }
-        .card-link {
-            /* More formal link presentation */
-            @apply inline-block text-sm font-semibold text-accent-gold group-hover:text-white transition-colors;
-        }
-        .nav-link {
-             @apply px-4 py-2 rounded-lg text-gray-700 font-medium hover:bg-cbse-light hover:text-cbse-blue transition;
-        }
-
-        /* Class to visually and functionally disable links */
-        .protected-link {
-            pointer-events: none;
-            cursor: not-allowed;
-            opacity: 0.6; /* Reduced opacity for a 'locked' look */
-        }
-        .protected-link:hover {
-             /* Preserve neutral look on hover when protected */
-            transform: none;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-            background-color: white;
-        }
-        .protected-link .card-title,
-        .protected-link .card-description,
-        .protected-link .card-link {
-            color: theme('colors.gray.600') !important;
-        }
+        .card-title { @apply text-xl font-bold font-serif text-heading transition-colors; }
+        .card-description { @apply text-sm text-gray-600 mt-2 mb-4 transition-colors; }
+        .nav-link { @apply px-4 py-2 rounded-lg text-gray-700 font-medium hover:bg-cbse-light hover:text-cbse-blue transition; }
+        .protected-link { pointer-events: none; cursor: not-allowed; opacity: 0.5; }
+        .protected-link:hover { transform: none; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); }
     </style>
 </head>
 <body class="bg-cbse-light min-h-screen antialiased font-sans">
 
+    <!-- HEADER -->
     <header class="bg-white shadow-lg sticky top-0 z-10 border-t-8 border-cbse-blue">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row justify-between items-center">
             <div class="flex items-center space-x-3 mb-4 md:mb-0">
@@ -81,108 +62,86 @@
                     <path d="m9 10 2 2 4-4"/>
                 </svg>
                 <h1 class="text-3xl font-extrabold font-serif text-cbse-blue tracking-tight">
-                    CBSE Class 9 Academic Portal
+                    Ready4Exam Academic Portal
                 </h1>
             </div>
 
             <nav id="main-nav" class="flex flex-wrap justify-center md:justify-end space-x-1 sm:space-x-4 text-sm font-medium">
-                <a href="english.html" class="nav-link">English</a>
-                <a href="maths.html" class="nav-link">Mathematics</a>
-                <a href="science.html" class="nav-link">Science</a>
-                <a href="socialscience.html" class="nav-link">Social Science</a>
-                <a href="hindi.html" class="nav-link">Hindi</a>
-                <a href="it.html" class="nav-link">IT</a>
+                <!-- Navigation links here (if any) -->
             </nav>
         </div>
     </header>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        <section class="text-center mb-16">
-            <h2 class="text-5xl font-extrabold font-serif text-heading mb-4">
-                Structured Learning for Foundational Success
-            </h2>
-            <p class="text-xl text-gray-700 max-w-4xl mx-auto leading-relaxed">
-                Access professional, chapter-wise resources, practice questions, and timed assessments designed specifically for the foundational CBSE Class 9 curriculum.
-            </p>
-            <p class="text-lg font-semibold text-gray-500 mt-6">
-                 Note: All modules require user authentication for content access.
-            </p>
-        </section>
+        
+        <!-- --- MAIN SUBJECT SELECTION VIEW --- -->
+        <div id="subject-selection-view">
+            <section class="text-center mb-16">
+                <h2 class="text-5xl font-extrabold font-serif text-heading mb-4">
+                    Structured Learning for Foundational Success
+                </h2>
+                <p class="text-xl text-gray-700 max-w-4xl mx-auto leading-relaxed">
+                    Access professional, chapter-wise resources and timed assessments designed specifically for the CBSE Class 9 curriculum.
+                </p>
+                <p class="text-lg font-semibold text-gray-500 mt-6">
+                    Note: All quiz modules require user authentication and payment for content access.
+                </p>
+            </section>
+            
+            <h3 class="text-3xl font-bold font-serif text-cbse-blue mb-8 border-b-2 border-cbse-blue pb-2">Select a Subject</h3>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                
+                <!-- SCIENCE: Links to the dedicated subject page -->
+                <a href="science.html" class="subject-card group" data-module="science" style="--card-color: #2563eb;">
+                    <div class="flex items-center space-x-3 mb-2">
+                        <i data-lucide="flask-round" class="text-blue-700 h-6 w-6"></i>
+                        <h3 class="card-title">Science (Physics, Chem, Bio)</h3>
+                    </div>
+                    <p class="card-description">In-depth modules on Motion, Force and Laws of Motion, Atoms and Molecules, and The Fundamental Unit of Life.</p>
+                    <div class="mt-4 text-center">
+                        <span class="w-full inline-block py-2 px-4 rounded-lg bg-blue-600 text-white font-semibold shadow-md">
+                            View Chapters &rarr;
+                        </span>
+                    </div>
+                </a>
 
-            <a class="subject-card group" href="maths.html">
-                <div class="flex items-center space-x-3 mb-2">
-                    <i data-lucide="square-root" class="text-purple-700 group-hover:text-white transition-colors h-6 w-6"></i>
-                    <h3 class="card-title">Mathematics</h3>
-                </div>
-                <p class="card-description">Detailed study of Number Systems, Polynomials, Geometry, and Heron's Formula for foundational clarity.</p>
-                <span class="card-link">Access Module &rarr;</span>
-            </a>
-
-            <a class="subject-card group" href="science.html">
-                <div class="flex items-center space-x-3 mb-2">
-                    <i data-lucide="flask-round" class="text-emerald-700 group-hover:text-white transition-colors h-6 w-6"></i>
-                    <h3 class="card-title">Science (Physics, Chem, Bio)</h3>
-                </div>
-                <p class="card-description">In-depth modules on Motion, Force and Laws of Motion, Atoms and Molecules, and The Fundamental Unit of Life.</p>
-                <span class="card-link">Access Module &rarr;</span>
-            </a>
-
-            <a class="subject-card group" href="socialscience.html">
-                <div class="flex items-center space-x-3 mb-2">
-                    <i data-lucide="globe" class="text-yellow-700 group-hover:text-white transition-colors h-6 w-6"></i>
-                    <h3 class="card-title">Social Science (SST)</h3>
-                </div>
-                <p class="card-description">Understanding contemporary India, Democracy, the French Revolution, and foundational economics concepts.</p>
-                <span class="card-link">Access Module &rarr;</span>
-            </a>
-
-            <a class="subject-card group protected-link" href="english.html">
-                <div class="flex items-center space-x-3 mb-2">
-                    <i data-lucide="book-open-text" class="text-orange-700 group-hover:text-white transition-colors h-6 w-6"></i>
-                    <h3 class="card-title">English Language & Literature</h3>
-                </div>
-                <p class="card-description">Grammar, writing skills, and comprehension, focusing on the core prescribed literature texts and poetry.</p>
-                <span class="card-link">Access Module &rarr;</span>
-            </a>
-
-            <a class="subject-card group protected-link" href="hindi.html">
-                <div class="flex items-center space-x-3 mb-2">
-                    <i data-lucide="scroll-text" class="text-red-700 group-hover:text-white transition-colors h-6 w-6"></i>
-                    <h3 class="card-title">Hindi</h3>
-                </div>
-                <p class="card-description">Chapter-wise notes, vocabulary building, and structured practice for literature and grammar.</p>
-                <span class="card-link">Access Module &rarr;</span>
-            </a>
-
-            <a class="subject-card group protected-link" href="it.html">
-                <div class="flex items-center space-x-3 mb-2">
-                    <i data-lucide="laptop" class="text-cyan-700 group-hover:text-white transition-colors h-6 w-6"></i>
-                    <h3 class="card-title">Information Technology (IT)</h3>
-                </div>
-                <p class="card-description">Introduction to IT, basic digital documentation, spreadsheet applications, and presentation software.</p>
-                <span class="card-link">Access Module &rarr;</span>
-            </a>
-
+                <!-- MATHEMATICS: Protected/Coming Soon -->
+                <a href="maths.html" class="subject-card protected-link" data-module="maths" style="--card-color: #6d28d9;">
+                    <div class="flex items-center space-x-3 mb-2">
+                        <i data-lucide="square-root" class="text-purple-700 h-6 w-6"></i>
+                        <h3 class="card-title">Mathematics</h3>
+                    </div>
+                    <p class="card-description">Detailed study of Number Systems, Polynomials, Geometry, and Heron's Formula for foundational clarity.</p>
+                    <div class="mt-4 text-center">
+                        <button disabled class="w-full py-2 px-4 rounded-lg bg-gray-200 text-gray-500 font-semibold cursor-not-allowed">
+                            Coming Soon
+                        </button>
+                    </div>
+                </a>
+            </div>
         </div>
+
     </main>
 
+    <!-- FOOTER -->
     <footer class="bg-cbse-blue mt-16 py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
-            <div class="flex justify-center space-x-6 mb-3">
-                 <a href="#" class="text-sm opacity-90 hover:opacity-100 transition border-b border-cbse-blue hover:border-white">Terms of Use</a>
-                <a href="#" class="text-sm opacity-90 hover:opacity-100 transition border-b border-cbse-blue hover:border-white">Privacy Policy</a>
-                <a href="#" class="text-sm opacity-90 hover:opacity-100 transition border-b border-cbse-blue hover:border-white">Contact Administration</a>
-            </div>
-            <small class="text-sm opacity-70 block mt-2">© 2025 CBSE Class 9 Academic Portal. All Rights Reserved. Dedicated to Student Success.</small>
+            <small class="text-sm opacity-70 block mt-2">© 2025 Ready4Exam Academic Portal. All Rights Reserved.</small>
         </div>
     </footer>
 
     <script>
-        // Initialize Lucide icons
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
+            const cards = document.querySelectorAll('.subject-card');
+            cards.forEach(card => {
+                const color = card.style.getPropertyValue('--card-color');
+                if (color) {
+                    // Apply border only for visual consistency, but the top border is handled in CSS
+                    card.style.setProperty('--card-color', color);
+                }
+            });
         });
     </script>
 </body>
