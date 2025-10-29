@@ -1,611 +1,215 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CBSE Class 9 — Science Topics</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght=400;700&display=swap" rel="stylesheet">
-    <!-- 
-        WARNING NOTE: The use of cdn.tailwindcss.com in development is standard practice in these environments.
-        We acknowledge that for production deployment outside of this canvas, a PostCSS setup is required. 
-    -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Class 9 Science Portal</title>
+    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        serif: ['Merriweather', 'serif'],
-                    },
-                    colors: {
-                        'cbse-blue': '#1a3e6a', 
-                        'cbse-light': '#f5f7fa',
-                        'accent-gold': '#ffb703',
-                        'heading': '#0f172a',
-                        'simple': '#22c55e',   /* Green */
-                        'medium': '#3b82f6',   /* Blue */
-                        'advance': '#ef4444',  /* Red */
-                        'disabled-bg': '#9ca3af', /* Gray-400 */
-                    }
-                }
-            }
-        }
-    </script>
-    <!-- Load Lucide icons library -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f9;
+        }
+        .container {
+            max-width: 1000px;
+        }
         .card {
-            @apply p-6 bg-white rounded-xl shadow-lg border border-gray-200 transition-all duration-300 cursor-pointer hover:shadow-xl hover:ring-2 hover:ring-cbse-blue/50;
+            background: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
         }
-        .chapter-list li {
-            @apply flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 px-6 mb-4 bg-gray-50 rounded-lg border border-gray-100 shadow-sm transition-colors duration-200;
+        .header {
+            background-color: #0d47a1;
+            color: white;
         }
-        .chapter-list li:hover {
-            @apply bg-blue-50 border-blue-200;
+        .subject-button {
+            transition: all 0.3s ease;
         }
-        .chapter-button {
-            @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white focus:outline-none focus:ring-2 focus:ring-offset-2;
-        }
-        .quiz-option {
-            @apply w-full p-4 mb-3 border border-gray-300 rounded-lg text-left transition-colors duration-200;
-        }
-        .quiz-option:hover {
-            @apply bg-blue-50 border-blue-500;
-        }
-        .correct-answer {
-            @apply bg-green-100 border-green-600;
-        }
-        .incorrect-answer {
-            @apply bg-red-100 border-red-600;
-        }
-        .disabled-button {
-            pointer-events: none;
-            opacity: 0.6;
-        }
-        /* Mobile Layout for Difficulty Buttons */
-        .difficulty-buttons {
-             @apply flex space-x-2 mt-2 sm:mt-0;
-        }
-        @media (max-width: 640px) {
-            .difficulty-buttons {
-                @apply flex-col space-x-0 space-y-2 w-full; /* Stack buttons vertically on small screens */
-            }
-            .difficulty-buttons button {
-                @apply w-full;
-            }
+        .subject-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>
-<body class="bg-cbse-light min-h-screen antialiased font-sans">
+<body class="bg-gray-50 min-h-screen pt-10">
 
-    <!-- HEADER -->
-    <header class="bg-white shadow-lg sticky top-0 z-10 border-t-8 border-cbse-blue">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-            <div class="flex items-center space-x-3">
-                <a href="index.html" class="text-xl font-extrabold font-serif text-cbse-blue tracking-tight hover:text-accent-gold transition-colors">
-                    &larr; Back to Subjects
+    <div id="app" class="container mx-auto p-4">
+
+        <!-- Header -->
+        <header class="header p-6 mb-8 rounded-xl shadow-lg">
+            <h1 class="text-3xl font-extrabold text-center">Class 9 Science Portal</h1>
+            <p class="text-center text-blue-200 mt-2">Choose a subject to begin your revision.</p>
+        </header>
+
+        <!-- Main Content Area -->
+        <div id="content-area" class="card p-6">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">Subjects</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Physics -->
+                <a href="science/physics/gravitation_quiz.html" class="subject-button flex flex-col items-center justify-center p-6 bg-blue-100 text-blue-800 rounded-xl hover:bg-blue-200">
+                    <svg class="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l-3 3-3-3m9 16V6l3 3 3-3"></path></svg>
+                    <span class="text-xl font-semibold">Physics</span>
+                </a>
+                
+                <!-- Chemistry (Placeholder Link) -->
+                <a href="#" class="subject-button flex flex-col items-center justify-center p-6 bg-green-100 text-green-800 rounded-xl hover:bg-green-200 opacity-50 cursor-not-allowed" onclick="return false;">
+                    <svg class="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343h7a2 2 0 012 2v4a2 2 0 01-2 2h-2.343"></path></svg>
+                    <span class="text-xl font-semibold">Chemistry (Coming Soon)</span>
+                </a>
+
+                <!-- Biology (Placeholder Link) -->
+                <a href="#" class="subject-button flex flex-col items-center justify-center p-6 bg-pink-100 text-pink-800 rounded-xl hover:bg-pink-200 opacity-50 cursor-not-allowed" onclick="return false;">
+                    <svg class="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m0-15l6.5 6.5M12 4.5L5.5 11M3 15h18"></path></svg>
+                    <span class="text-xl font-semibold">Biology (Coming Soon)</span>
                 </a>
             </div>
-            <h1 class="text-2xl font-bold text-heading">
-                Class 9 Science Portal
-            </h1>
-        </div>
-    </header>
-
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        
-        <!-- --- TOPIC SELECTION VIEW (Physics, Chemistry, Biology) --- -->
-        <div id="topic-selection-view">
-            <h2 class="text-4xl font-extrabold font-serif text-heading mb-8 border-b-2 border-accent-gold pb-2">
-                Step 1: Select a Science Topic
-            </h2>
-            <div id="db-error-alert" class="hidden mb-6 p-4 rounded-lg bg-red-100 border-l-4 border-red-500 text-red-700 font-semibold" role="alert">
-                <p>
-                    <i data-lucide="alert-triangle" class="inline h-5 w-5 mr-2 -mt-0.5"></i>
-                    <strong>Database Disabled:</strong> Quiz features require a valid Firebase configuration (projectId, etc.) to load questions from Firestore. Please ensure the environment provides the configuration.
-                </p>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                
-                <div class="card cursor-pointer" onclick="showChapterSelection('Physics', 'Motion, Force, & Gravitation')">
-                    <i data-lucide="zap" class="text-yellow-500 h-8 w-8 mb-3"></i>
-                    <h3 class="text-xl font-bold text-heading">Physics</h3>
-                    <p class="text-sm text-gray-600 mt-2">Motion, Force & Laws of Motion, Gravitation, Work & Energy, Sound.</p>
-                </div>
-
-                <div class="card cursor-pointer" onclick="showChapterSelection('Chemistry', 'Atoms, Molecules, & Structure')">
-                    <i data-lucide="beaker" class="text-green-500 h-8 w-8 mb-3"></i>
-                    <h3 class="text-xl font-bold text-heading">Chemistry</h3>
-                    <p class="text-sm text-gray-600 mt-2">Matter, Atoms and Molecules, Structure of the Atom.</p>
-                </div>
-
-                <div class="card cursor-pointer" onclick="showChapterSelection('Biology', 'Cell, Tissues, & Diversity')">
-                    <i data-lucide="dna" class="text-red-500 h-8 w-8 mb-3"></i>
-                    <h3 class="text-xl font-bold text-heading">Biology</h3>
-                    <p class="text-sm text-gray-600 mt-2">Fundamental Unit of Life (Cell), Tissues, Diversity in Living Organisms.</p>
-                </div>
-
-            </div>
         </div>
 
-        <!-- --- CHAPTER SELECTION VIEW (Now includes difficulty selection) --- -->
-        <div id="chapter-selection-view" class="hidden mt-12">
-            <h2 class="text-4xl font-extrabold font-serif text-heading mb-4">
-                Step 2: <span id="current-topic-display" class="text-cbse-blue"></span>
-            </h2>
-            <p class="text-lg text-gray-700 mb-8 max-w-2xl" id="topic-description"></p>
-            
-            <!-- Contextual Database Disabled Message -->
-            <div id="chapter-db-alert" class="hidden mb-6 p-3 rounded-lg bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 font-semibold text-sm" role="alert">
-                <i data-lucide="info" class="inline h-4 w-4 mr-1 -mt-0.5"></i>
-                Quiz difficulty buttons are disabled because the Firebase database connection failed to initialize.
-            </div>
-
-            <ul id="chapter-list" class="chapter-list">
-                <!-- Chapter items with difficulty buttons will be populated here -->
-            </ul>
-
-            <button onclick="goBackToTopics()" class="mt-6 chapter-button bg-gray-500 hover:bg-gray-600">
-                &larr; Change Topic
+        <!-- Admin Utilities for Data Setup -->
+        <div class="mt-8 p-4 bg-yellow-100 rounded-xl border border-yellow-300">
+            <p class="text-sm font-semibold text-yellow-800 mb-2">Admin Utilities (For Initial Setup)</p>
+            <button id="adminSetupBtn" 
+                    class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-150"
+                    onclick="addGravitationQuizData()">
+                <span id="setupBtnText">1-Click Setup: Add Gravitation Quiz Data</span>
             </button>
+            <p id="authStatus" class="text-xs mt-2 text-yellow-700">Auth Status: Loading...</p>
         </div>
+    </div>
 
-        <!-- --- QUIZ VIEW --- -->
-        <div id="quiz-view" class="hidden mt-12 max-w-3xl mx-auto">
-            <h2 class="text-3xl font-extrabold font-serif text-cbse-blue mb-6 border-b pb-2">
-                Quiz: <span id="quiz-chapter-title"></span>
-            </h2>
-            <div id="quiz-container">
-                <!-- Quiz content will be loaded here -->
-            </div>
-            <div id="quiz-results" class="hidden mt-8 p-6 rounded-lg bg-green-50 border-2 border-green-300">
-                <h3 class="text-2xl font-bold text-green-800 mb-2">Quiz Complete!</h3>
-                <p class="text-lg text-green-700">You scored <span id="score-display" class="font-extrabold"></span> out of <span id="total-questions-display" class="font-extrabold"></span>.</p>
-            </div>
-            
-            <button onclick="goBackToChapters()" class="mt-8 chapter-button bg-gray-500 hover:bg-gray-600">
-                &larr; Back to Chapters
-            </button>
+    <!-- Firebase Initialization and Global Exposure -->
+    <script>
+        // CRITICAL: Expose global variables if they are available in the Canvas environment
+        window.firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        window.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        window.initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-            <!-- Error/Loading Message Box -->
-            <div id="message-box" class="hidden mt-4 p-4 rounded-lg text-center font-semibold border-l-4" role="alert"></div>
-        </div>
-
-    </main>
-
-    <!-- FOOTER WITH USER ID -->
-    <footer class="bg-cbse-blue mt-16 py-4">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
-            <small id="user-id-display" class="text-sm opacity-70 block">Initializing data service...</small>
-            <small class="text-sm opacity-70 block mt-1">© 2025 Ready4Exam Academic Portal.</small>
-        </div>
-    </footer>
-
-    <!-- 1. FIREBASE INITIALIZATION & EXPORTS (Self-contained module) -->
+        // Set a global flag for authentication readiness
+        window.isAuthReady = false;
+        window.db = null; // Firestore instance
+        window.auth = null; // Auth instance
+        window.userId = null;
+    </script>
+    
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, query, collection, onSnapshot, getDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global variables provided by the environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        let firebaseConfig = {};
-        
-        // --- FALLBACK CONFIGURATION (FROM USER'S config.js) ---
-        const FALLBACK_FIREBASE_CONFIG = {
-            apiKey: "AIzaSyAXdKiYRxBKAj280YcNuNwlKKDp85xpOWQ", 
-            authDomain: "quiz-signon.firebaseapp.com",
-            projectId: "quiz-signon",
-            storageBucket: "quiz-signon.firebasestorage.app",
-            messagingSenderId: "863414222321",
-            appId: "G-4EFDM0CRYY" // Note: This is client-side appId, not the environment's __app_id
-        };
-
-        // --- CRITICAL CONFIG PARSING AND VALIDATION ---
-        let isConfigValid = false;
-
-        try {
-            // 1. Try to load config from the environment variable (preferred method)
-            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-                firebaseConfig = JSON.parse(__firebase_config);
-            }
-        } catch (e) {
-            console.error("Error parsing __firebase_config. Falling back to hardcoded config.", e);
-        }
-        
-        // 2. Check if environment config is valid; if not, use the fallback
-        if (Object.keys(firebaseConfig).length === 0 || !firebaseConfig.projectId) {
-             console.warn("Environment config failed or was empty. Using hardcoded FALLBACK_FIREBASE_CONFIG.");
-             firebaseConfig = FALLBACK_FIREBASE_CONFIG;
-        }
-
-        // Final check on the selected configuration
-        isConfigValid = Object.keys(firebaseConfig).length > 0 && firebaseConfig.projectId;
-
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        // Expose Firebase services globally for use by non-module scripts
-        window.appId = appId; 
-        window.db = null;
-        window.auth = null;
-        window.userId = null;
-        window.isAuthReady = false; 
-
-        // Expose Firestore methods globally for the quiz logic
-        window.getDoc = getDoc;
+        // --- 1. Global Exposure of Key Functions ---
+        // CRITICAL FIX: Attach required Firestore functions to the global window object for console access
         window.doc = doc;
         window.setDoc = setDoc;
-        
-        async function initFirebaseAndAuth() {
-            const userIdElement = document.getElementById('user-id-display');
-            
-            if (!isConfigValid) {
-                console.error("Firebase config is invalid or missing 'projectId'. Skipping Firebase initialization.");
-                
-                // Set a temporary guest ID and mark auth as NOT ready
-                window.userId = 'guest-' + crypto.randomUUID().substring(0, 8); 
-                window.isAuthReady = false; 
+        window.query = query;
+        window.collection = collection;
+        window.onSnapshot = onSnapshot;
+        window.getDoc = getDoc;
 
-                // Update UI to reflect failure
-                if (userIdElement) {
-                    userIdElement.textContent = `Guest ID: ${window.userId} (DB Disabled)`;
-                }
-                document.getElementById('db-error-alert').classList.remove('hidden');
-                document.getElementById('chapter-db-alert').classList.remove('hidden'); // Ensure chapter alert is also visible
-                
-                return;
-            }
 
+        // --- 2. Initialization and Authentication ---
+        if (window.firebaseConfig) {
+            setLogLevel('debug');
             try {
-                // 1. Initialize Firebase App and Services
-                const app = initializeApp(firebaseConfig);
+                const app = initializeApp(window.firebaseConfig);
                 window.db = getFirestore(app);
                 window.auth = getAuth(app);
-                setLogLevel('Debug'); 
-                console.log("Firebase services initialized successfully using provided configuration.");
 
-                // 2. Set up Auth State Listener 
-                return new Promise((resolve) => {
-                    onAuthStateChanged(window.auth, async (user) => {
-                        if (user) {
-                            window.userId = user.uid;
+                // Wait for auth state to be resolved
+                onAuthStateChanged(window.auth, async (user) => {
+                    if (user) {
+                        window.userId = user.uid;
+                        document.getElementById('authStatus').textContent = `Auth Status: Logged in (User ID: ${user.uid})`;
+                    } else {
+                        // Attempt to sign in using the custom token provided by the environment
+                        if (window.initialAuthToken) {
+                            await signInWithCustomToken(window.auth, window.initialAuthToken);
                         } else {
-                            // Attempt sign-in if not signed in
-                            try {
-                                if (initialAuthToken) {
-                                    const userCredential = await signInWithCustomToken(window.auth, initialAuthToken);
-                                    window.userId = userCredential.user.uid;
-                                } else {
-                                    const userCredential = await signInAnonymously(window.auth);
-                                    window.userId = userCredential.user.uid;
-                                }
-                            } catch (error) {
-                                console.error("Authentication failed during sign-in attempt:", error);
-                                window.userId = crypto.randomUUID(); 
-                            }
+                            // If no custom token, sign in anonymously
+                            await signInAnonymously(window.auth);
                         }
+                    }
+                    window.isAuthReady = true;
+                    console.log('Firebase Auth Ready. User ID:', window.userId);
 
-                        // 3. Mark Auth as Ready, Display User ID, and Resolve
-                        window.isAuthReady = true;
-                        
-                        // Hide error alerts since initialization succeeded
-                        document.getElementById('db-error-alert').classList.add('hidden');
-                        document.getElementById('chapter-db-alert').classList.add('hidden');
-                        
-                        if (userIdElement && window.userId) {
-                            userIdElement.textContent = `User ID: ${window.userId}`;
-                        }
-                        
-                        resolve(true);
-                    });
+                    // Re-enable admin button if auth is ready
+                    document.getElementById('adminSetupBtn').disabled = false;
+                    document.getElementById('setupBtnText').textContent = '1-Click Setup: Add Gravitation Quiz Data';
+
                 });
-            } catch (error) {
-                console.error("Failed to initialize Firebase app:", error);
-                window.isAuthReady = false; 
-                document.getElementById('db-error-alert').classList.remove('hidden');
-                document.getElementById('chapter-db-alert').classList.remove('hidden');
-                if (userIdElement) {
-                    userIdElement.textContent = `Initialization Failed: Check Console.`;
-                }
-                return;
-            }
-        };
 
-        initFirebaseAndAuth();
+            } catch (error) {
+                console.error("Firebase Initialization Error:", error);
+                document.getElementById('authStatus').textContent = `Auth Status: ERROR (${error.message})`;
+            }
+        } else {
+            document.getElementById('authStatus').textContent = "Auth Status: ERROR (__firebase_config not found).";
+        }
     </script>
 
-    <!-- 2. MAIN APPLICATION LOGIC -->
+    <!-- Data Setup Script (Now uses globally exposed functions) -->
     <script>
-        // Data structure for the chapters (simplified for this app)
-        const CHAPTER_DATA = {
-            'Physics': [
-                { id: 'physics_motion', title: 'Chapter 1: Motion', quizId: 'quiz_motion' },
-                { id: 'physics_force', title: 'Chapter 2: Force & Laws of Motion', quizId: 'quiz_force' },
-                { id: 'physics_gravitation', title: 'Chapter 3: Gravitation', quizId: 'quiz_gravitation' }
-            ],
-            'Chemistry': [
-                { id: 'chemistry_matter', title: 'Chapter 4: Matter in Our Surroundings', quizId: 'quiz_matter' },
-                { id: 'chemistry_atoms', title: 'Chapter 5: Atoms and Molecules', quizId: 'quiz_atoms' }
-            ],
-            'Biology': [
-                { id: 'biology_cell', title: 'Chapter 6: The Fundamental Unit of Life (Cell)', quizId: 'quiz_cell' },
-                { id: 'biology_tissues', title: 'Chapter 7: Tissues', quizId: 'quiz_tissues' }
-            ]
-        };
+        /**
+         * Adds a placeholder quiz document for 'quiz_gravitation' to Firestore.
+         * This function relies on window.db, window.setDoc, window.doc, and window.appId 
+         * being exposed by the Firebase initialization module above.
+         */
+        async function addGravitationQuizData() {
+            document.getElementById('setupBtnText').textContent = 'Writing to Firestore...';
+            document.getElementById('adminSetupBtn').disabled = true;
 
-        // Current state
-        let currentQuizData = [];
-        let currentQuestionIndex = 0;
-        let score = 0;
-        let selectedTopic = '';
-        let selectedDifficulty = '';
-
-        // --- UI Navigation and Message Handlers ---
-
-        function showView(viewId) {
-            document.getElementById('topic-selection-view').classList.add('hidden');
-            document.getElementById('chapter-selection-view').classList.add('hidden');
-            document.getElementById('quiz-view').classList.add('hidden');
-            document.getElementById(viewId).classList.remove('hidden');
-        }
-
-        function goBackToTopics() {
-            showView('topic-selection-view');
-        }
-
-        function goBackToChapters() {
-            document.getElementById('quiz-results').classList.add('hidden');
-            document.getElementById('quiz-container').innerHTML = '';
-            currentQuizData = [];
-            currentQuestionIndex = 0;
-            score = 0;
-            showView('chapter-selection-view');
-            hideMessageBox();
-        }
-        
-        function showMessageBox(message, type = 'error') {
-            const box = document.getElementById('message-box');
-            box.textContent = message;
-            box.classList.remove('hidden', 'border-red-400', 'bg-red-100', 'text-red-800', 'border-green-400', 'bg-green-100', 'text-green-800', 'border-yellow-400', 'bg-yellow-100', 'text-yellow-800');
-
-            if (type === 'error') {
-                box.classList.add('border-red-400', 'bg-red-100', 'text-red-800');
-            } else if (type === 'success') {
-                box.classList.add('border-green-400', 'bg-green-100', 'text-green-800');
-            } else if (type === 'warning') {
-                 box.classList.add('border-yellow-400', 'bg-yellow-100', 'text-yellow-800');
-            }
-        }
-
-        function hideMessageBox() {
-            document.getElementById('message-box').classList.add('hidden');
-        }
-
-
-        // --- Chapter Selection Logic (Updated for Difficulty) ---
-
-        function showChapterSelection(topicName, description) {
-            selectedTopic = topicName;
-            document.getElementById('current-topic-display').textContent = topicName;
-            document.getElementById('topic-description').textContent = 'Select a chapter, then choose a difficulty level to start the quiz.';
-
-            const chapterListEl = document.getElementById('chapter-list');
-            chapterListEl.innerHTML = '';
-            
-            // Check the global flag
-            const isDbReady = window.isAuthReady;
-            
-            // Show/Hide contextual warning message
-            if (!isDbReady) {
-                 document.getElementById('chapter-db-alert').classList.remove('hidden');
-            } else {
-                 document.getElementById('chapter-db-alert').classList.add('hidden');
-            }
-
-            chapters = CHAPTER_DATA[topicName] || [];
-
-            chapters.forEach(chapter => {
-                // Determine disabled state and styling based on isDbReady
-                const disabledProps = !isDbReady ? 'disabled' : '';
-                const disabledClass = !isDbReady ? 'disabled-button bg-disabled-bg hover:bg-disabled-bg' : '';
-                
-                // Set dynamic colors based on difficulty (and override if disabled)
-                const simpleClasses = !isDbReady ? disabledClass : 'bg-simple hover:bg-green-700 focus:ring-green-500';
-                const mediumClasses = !isDbReady ? disabledClass : 'bg-medium hover:bg-blue-700 focus:ring-blue-500';
-                const advanceClasses = !isDbReady ? disabledClass : 'bg-advance hover:bg-red-700 focus:ring-red-500';
-
-                // Always render the buttons, disabling them if the DB is not ready
-                const buttonHtml = `
-                    <div class="difficulty-buttons">
-                        <button ${disabledProps} class="chapter-button ${simpleClasses}" onclick="loadQuizData('${chapter.quizId}', 'simple')">Simple</button>
-                        <button ${disabledProps} class="chapter-button ${mediumClasses}" onclick="loadQuizData('${chapter.quizId}', 'medium')">Medium</button>
-                        <button ${disabledProps} class="chapter-button ${advanceClasses}" onclick="loadQuizData('${chapter.quizId}', 'advance')">Advance</button>
-                    </div>
-                `;
-
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    <span class="text-lg font-medium text-gray-800 mb-2 sm:mb-0">${chapter.title}</span>
-                    ${buttonHtml}
-                `;
-                chapterListEl.appendChild(li);
-            });
-
-            // Re-render icons for new elements
-            lucide.createIcons();
-            showView('chapter-selection-view');
-        }
-
-        // --- QUIZ DATA LOAD LOGIC ---
-
-        async function loadQuizData(chapterId, difficulty) {
-            selectedDifficulty = difficulty;
-            showView('quiz-view');
-            hideMessageBox();
-            document.getElementById('quiz-container').innerHTML = '<div class="text-center py-12"><i data-lucide="loader-circle" class="animate-spin text-blue-500 h-10 w-10 mx-auto mb-4"></i><p class="text-gray-600 font-semibold">Loading quiz data...</p></div>';
-            lucide.createIcons();
-
-            // CRITICAL CHECK: Ensure Firebase is available for data fetching
-            if (typeof window.db === 'undefined' || !window.isAuthReady) {
-                console.error("Database connection is not ready. Cannot load quiz data. (Firebase config failure)");
-                showMessageBox(`Database connection failed. Please ensure Firebase configuration is valid to load quizzes for ${difficulty.toUpperCase()}.`, 'error');
-                document.getElementById('quiz-container').innerHTML = '';
+            // CRITICAL: Ensure the global Firebase objects are available
+            if (!window.db || !window.isAuthReady) {
+                console.error("FATAL: Firebase is not initialized or authenticated. Cannot proceed.");
+                alert("Setup Failed: Firebase service not ready. Check console.");
+                document.getElementById('setupBtnText').textContent = 'Service Not Ready';
+                document.getElementById('adminSetupBtn').disabled = false;
                 return;
             }
-            
-            // --- Attempt to load from Firestore ---
+
             const db = window.db;
             const appId = window.appId;
-            const getDoc = window.getDoc;
+            const setDoc = window.setDoc;
             const doc = window.doc;
             
+            const chapterId = 'quiz_gravitation';
+            // Path: /artifacts/{appId}/public/data/quizzes/quiz_gravitation
+            const quizPath = `artifacts/${appId}/public/data/quizzes`;
+            
+            const quizData = {
+                simple: [
+                    { question: "What is the force of attraction between any two objects in the universe?", options: ["Friction", "Tension", "Gravitation", "Magnetism"], correctAnswerIndex: 2 },
+                    { question: "What is the unit of force in the SI system?", options: ["Joule", "Watt", "Newton", "Pascal"], correctAnswerIndex: 2 }
+                ],
+                medium: [
+                    { question: "The value of acceleration due to gravity (g) is maximum at the:", options: ["Equator", "Center of the Earth", "Poles", "All points are equal"], correctAnswerIndex: 2 },
+                    { question: "What happens to the weight of an object when it is taken to the Moon?", options: ["Increases", "Decreases", "Stays the same", "Becomes zero"], correctAnswerIndex: 1 }
+                ],
+                advance: [
+                    { question: "The weight of an object is 60 N on the Earth. What would be its mass on the Moon? (Take g = 10 m/s² on Earth)", options: ["6 kg", "10 kg", "60 kg", "360 N"], correctAnswerIndex: 0 },
+                    { question: "According to Kepler's law of areas, the line joining the planet and the Sun sweeps equal areas in equal intervals of time. This law is a consequence of the conservation of:", options: ["Linear Momentum", "Energy", "Angular Momentum", "Kinetic Energy"], correctAnswerIndex: 2 }
+                ]
+            };
+
             try {
-                // We use the chapterId as the document name. E.g., 'quiz_motion'
-                const quizRef = doc(db, `artifacts/${appId}/public/data/quizzes`, chapterId);
-                const docSnap = await getDoc(quizRef);
-                const chapterInfo = Object.values(CHAPTER_DATA).flat().find(c => c.quizId === chapterId);
+                const quizRef = doc(db, quizPath, chapterId);
+                await setDoc(quizRef, quizData);
                 
-                document.getElementById('quiz-chapter-title').textContent = `${chapterInfo ? chapterInfo.title : 'Quiz'} (${difficulty.toUpperCase()})`;
-
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    let quizArray = [];
-                    
-                    // 1. Check if the difficulty key exists and is an array (Preferred structure)
-                    if (data[difficulty] && Array.isArray(data[difficulty])) {
-                        quizArray = data[difficulty];
-                    } 
-                    // 2. Fallback check for questions stored as a JSON string
-                    else if (data.questionsJson) {
-                         // Assumes the JSON string contains the entire structure {simple: [...], medium: [...], ...}
-                         const fullQuizData = JSON.parse(data.questionsJson);
-                         if (fullQuizData[difficulty] && Array.isArray(fullQuizData[difficulty])) {
-                             quizArray = fullQuizData[difficulty];
-                         }
-                    }
-
-                    currentQuizData = quizArray;
-
-                    if (currentQuizData.length > 0) {
-                        currentQuestionIndex = 0;
-                        score = 0;
-                        hideMessageBox();
-                        renderQuestion();
-                    } else {
-                        // Document exists but this specific difficulty level is empty
-                        showMessageBox(`Quiz data for ${difficulty.toUpperCase()} is empty. Please ensure the document '${chapterId}' contains an array for the field '${difficulty}'.`, 'warning');
-                        document.getElementById('quiz-container').innerHTML = '';
-                    }
-
-                } else {
-                    // Quiz document not found (e.g., 'quiz_motion')
-                    showMessageBox(`Quiz document for '${chapterId}' not found. Please ensure the quiz data is uploaded to Firestore at path: /artifacts/${appId}/public/data/quizzes/${chapterId}`, 'error');
-                    document.getElementById('quiz-container').innerHTML = '';
-                }
-
+                console.log(`SUCCESS: Document '${chapterId}' created successfully at path: ${quizPath}.`);
+                document.getElementById('setupBtnText').textContent = 'SUCCESS! Data Uploaded.';
+                document.getElementById('adminSetupBtn').disabled = false;
+                
+                alert(`SUCCESS: Quiz data for Gravitation has been created in Firestore. Please reload the quiz page (e.g., gravitation_quiz.html) to test!`);
+                
             } catch (error) {
-                console.error("Error loading quiz data from Firestore:", error);
-                showMessageBox("An unexpected error occurred while processing the quiz data. Check the console for details.", 'error');
-                document.getElementById('quiz-container').innerHTML = '';
+                console.error("ERROR: Failed to add quiz data.", error);
+                document.getElementById('setupBtnText').textContent = 'ERROR (Check Console)';
+                document.getElementById('adminSetupBtn').disabled = false;
+                alert("ERROR: Failed to add quiz data. The original error is logged to the console.");
             }
         }
-        
-        // --- QUIZ RENDERING AND INTERACTION ---
-
-        function renderQuestion() {
-            document.getElementById('quiz-results').classList.add('hidden');
-            const container = document.getElementById('quiz-container');
-            container.innerHTML = '';
-            
-            if (currentQuestionIndex >= currentQuizData.length) {
-                showResults();
-                return;
-            }
-
-            const questionData = currentQuizData[currentQuestionIndex];
-            
-            let optionsHtml = questionData.options.map((option, index) => `
-                <button class="quiz-option text-lg" data-index="${index}" onclick="checkAnswer(this, ${index}, ${questionData.correctAnswerIndex})">
-                    ${String.fromCharCode(65 + index)}. ${option}
-                </button>
-            `).join('');
-
-            container.innerHTML = `
-                <div class="p-6 bg-white rounded-xl shadow-lg">
-                    <p class="text-xl font-semibold text-heading mb-4">Question ${currentQuestionIndex + 1} of ${currentQuizData.length}</p>
-                    <p class="text-2xl font-serif text-gray-800 mb-8">${questionData.question}</p>
-                    <div id="options-container" class="space-y-3">
-                        ${optionsHtml}
-                    </div>
-                    <button id="next-button" class="mt-6 chapter-button bg-cbse-blue hover:bg-blue-700 focus:ring-blue-500 disabled-button" onclick="nextQuestion()">
-                        Next Question &rarr;
-                    </button>
-                </div>
-            `;
-        }
-        
-        function checkAnswer(selectedButton, selectedIndex, correctIndex) {
-            const optionsContainer = document.getElementById('options-container');
-            const options = optionsContainer.querySelectorAll('.quiz-option');
-            
-            // Disable all options after selection
-            options.forEach(button => {
-                button.disabled = true;
-                button.classList.remove('hover:bg-blue-50', 'hover:border-blue-500');
-                
-                // Highlight correct and incorrect
-                const index = parseInt(button.dataset.index);
-                if (index === correctIndex) {
-                    button.classList.add('correct-answer');
-                } else if (index === selectedIndex) {
-                    button.classList.add('incorrect-answer');
-                }
-            });
-
-            // Update score
-            if (selectedIndex === correctIndex) {
-                score++;
-            }
-            
-            // Enable next button
-            document.getElementById('next-button').classList.remove('disabled-button');
-        }
-
-        function nextQuestion() {
-            document.getElementById('next-button').classList.add('disabled-button');
-            currentQuestionIndex++;
-            renderQuestion();
-        }
-
-        function showResults() {
-            document.getElementById('quiz-container').innerHTML = '';
-            document.getElementById('score-display').textContent = score;
-            document.getElementById('total-questions-display').textContent = currentQuizData.length;
-            document.getElementById('quiz-results').classList.remove('hidden');
-            
-            // Determine if user passed (e.g., 60%)
-            const passThreshold = currentQuizData.length * 0.6;
-            const resultsBox = document.getElementById('quiz-results');
-
-            if (score >= passThreshold) {
-                resultsBox.classList.remove('bg-red-50', 'border-red-300');
-                resultsBox.classList.add('bg-green-50', 'border-green-300');
-                resultsBox.querySelector('h3').textContent = "Excellent Work!";
-            } else {
-                resultsBox.classList.remove('bg-green-50', 'border-green-300');
-                resultsBox.classList.add('bg-red-50', 'border-red-300');
-                resultsBox.querySelector('h3').textContent = "Good Attempt! Review Needed.";
-            }
-        }
-        
-        // --- Initialization ---
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-            showView('topic-selection-view'); 
-        });
-
     </script>
 </body>
 </html>
