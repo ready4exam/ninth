@@ -4,7 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CBSE Class 9 — Science Topics</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght=400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+    <!-- 
+        WARNING NOTE: The use of cdn.tailwindcss.com in development is standard practice in these environments.
+        We acknowledge that for production deployment outside of this canvas, a PostCSS setup is required. 
+    -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -59,6 +63,18 @@
             pointer-events: none;
             opacity: 0.6;
         }
+        /* Mobile Layout for Difficulty Buttons */
+        .difficulty-buttons {
+             @apply flex space-x-2 mt-2 sm:mt-0;
+        }
+        @media (max-width: 640px) {
+            .difficulty-buttons {
+                @apply flex-col space-x-0 space-y-2 w-full; /* Stack buttons vertically on small screens */
+            }
+            .difficulty-buttons button {
+                @apply w-full;
+            }
+        }
     </style>
 </head>
 <body class="bg-cbse-light min-h-screen antialiased font-sans">
@@ -84,6 +100,12 @@
             <h2 class="text-4xl font-extrabold font-serif text-heading mb-8 border-b-2 border-accent-gold pb-2">
                 Step 1: Select a Science Topic
             </h2>
+            <div id="db-error-alert" class="hidden mb-6 p-4 rounded-lg bg-red-100 border-l-4 border-red-500 text-red-700 font-semibold" role="alert">
+                <p>
+                    <i data-lucide="alert-triangle" class="inline h-5 w-5 mr-2 -mt-0.5"></i>
+                    <strong>Database Disabled:</strong> Quiz features require a valid Firebase configuration (projectId, etc.) to load questions from Firestore. Please ensure the environment provides the configuration.
+                </p>
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 
                 <div class="card cursor-pointer" onclick="showChapterSelection('Physics', 'Motion, Force, & Gravitation')">
@@ -163,6 +185,8 @@
         // Global variables provided by the environment
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         let firebaseConfig = {};
+        
+        // --- CRITICAL CONFIG PARSING AND VALIDATION ---
         try {
             if (typeof __firebase_config !== 'undefined' && __firebase_config) {
                 firebaseConfig = JSON.parse(__firebase_config);
@@ -189,11 +213,21 @@
         const isConfigValid = Object.keys(firebaseConfig).length > 0 && firebaseConfig.projectId;
 
         async function initFirebaseAndAuth() {
+            const userIdElement = document.getElementById('user-id-display');
+            
             if (!isConfigValid) {
-                console.warn("Firebase config is invalid or missing 'projectId'. Skipping Firebase initialization. Quiz persistence and multi-user features will not work.");
+                console.error("Firebase config is invalid or missing 'projectId'. Skipping Firebase initialization.");
+                
+                // Set a temporary guest ID and mark auth as NOT ready
                 window.userId = 'guest-' + crypto.randomUUID().substring(0, 8); 
                 window.isAuthReady = false; 
-                document.getElementById('user-id-display').textContent = `Guest Session ID: ${window.userId} (Database disabled)`;
+
+                // Update UI to reflect failure
+                if (userIdElement) {
+                    userIdElement.textContent = `Guest ID: ${window.userId} (DB Disabled)`;
+                }
+                document.getElementById('db-error-alert').classList.remove('hidden');
+                
                 return;
             }
 
@@ -203,7 +237,7 @@
                 window.db = getFirestore(app);
                 window.auth = getAuth(app);
                 setLogLevel('Debug'); 
-                console.log("Firebase services initialized.");
+                console.log("Firebase services initialized successfully.");
 
                 // 2. Set up Auth State Listener 
                 return new Promise((resolve) => {
@@ -211,6 +245,7 @@
                         if (user) {
                             window.userId = user.uid;
                         } else {
+                            // Attempt sign-in if not signed in
                             try {
                                 if (initialAuthToken) {
                                     const userCredential = await signInWithCustomToken(window.auth, initialAuthToken);
@@ -220,7 +255,7 @@
                                     window.userId = userCredential.user.uid;
                                 }
                             } catch (error) {
-                                console.error("Authentication failed:", error);
+                                console.error("Authentication failed during sign-in attempt:", error);
                                 window.userId = crypto.randomUUID(); 
                             }
                         }
@@ -228,7 +263,6 @@
                         // 3. Mark Auth as Ready, Display User ID, and Resolve
                         window.isAuthReady = true;
                         
-                        const userIdElement = document.getElementById('user-id-display');
                         if (userIdElement && window.userId) {
                             userIdElement.textContent = `User ID: ${window.userId}`;
                         }
@@ -237,9 +271,12 @@
                     });
                 });
             } catch (error) {
-                console.error("Failed to initialize Firebase:", error);
+                console.error("Failed to initialize Firebase app:", error);
                 window.isAuthReady = false; 
-                document.getElementById('user-id-display').textContent = `Initialization Failed: Check Console.`;
+                document.getElementById('db-error-alert').classList.remove('hidden');
+                if (userIdElement) {
+                    userIdElement.textContent = `Initialization Failed: Check Console.`;
+                }
                 return;
             }
         };
@@ -326,16 +363,25 @@
             chapterListEl.innerHTML = '';
             
             const chapters = CHAPTER_DATA[topicName] || [];
+            const isDbReady = window.isAuthReady;
             
             chapters.forEach(chapter => {
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    <span class="text-lg font-medium text-gray-800 mb-2 sm:mb-0">${chapter.title}</span>
-                    <div class="flex space-x-2 mt-2 sm:mt-0">
+                const buttonHtml = isDbReady ? `
+                    <div class="difficulty-buttons">
                         <button class="chapter-button bg-simple hover:bg-green-700 focus:ring-green-500" onclick="loadQuizData('${chapter.quizId}', 'simple')">Simple</button>
                         <button class="chapter-button bg-medium hover:bg-blue-700 focus:ring-blue-500" onclick="loadQuizData('${chapter.quizId}', 'medium')">Medium</button>
                         <button class="chapter-button bg-advance hover:bg-red-700 focus:ring-red-500" onclick="loadQuizData('${chapter.quizId}', 'advance')">Advance</button>
                     </div>
+                ` : `
+                    <div class="difficulty-buttons">
+                         <button class="chapter-button bg-gray-400 disabled-button" disabled>DB Disabled</button>
+                    </div>
+                `;
+
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span class="text-lg font-medium text-gray-800 mb-2 sm:mb-0">${chapter.title}</span>
+                    ${buttonHtml}
                 `;
                 chapterListEl.appendChild(li);
             });
@@ -356,7 +402,7 @@
 
             // CRITICAL CHECK: Ensure Firebase is available for data fetching
             if (typeof window.db === 'undefined' || !window.isAuthReady) {
-                console.warn("Database connection is not ready. Cannot load quiz data.");
+                console.error("Database connection is not ready. Cannot load quiz data. (Firebase config failure)");
                 showMessageBox(`Database connection failed. Please ensure Firebase configuration is valid to load quizzes for ${difficulty.toUpperCase()}.`, 'error');
                 document.getElementById('quiz-container').innerHTML = '';
                 return;
@@ -379,12 +425,12 @@
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     let quizArray = [];
-
-                    // 1. Check if the difficulty key exists and is an array
+                    
+                    // 1. Check if the difficulty key exists and is an array (Preferred structure)
                     if (data[difficulty] && Array.isArray(data[difficulty])) {
                         quizArray = data[difficulty];
                     } 
-                    // 2. Fallback check for JSON string (if uploaded as string)
+                    // 2. Fallback check for questions stored as a JSON string
                     else if (data.questionsJson) {
                          // Assumes the JSON string contains the entire structure {simple: [...], medium: [...], ...}
                          const fullQuizData = JSON.parse(data.questionsJson);
@@ -408,7 +454,7 @@
 
                 } else {
                     // Quiz document not found (e.g., 'quiz_motion')
-                    showMessageBox(`Quiz document for '${chapterId}' not found. Please ensure the data from your external table (Supabase/quizzes) is uploaded to Firestore at path: /artifacts/${appId}/public/data/quizzes/${chapterId}`, 'error');
+                    showMessageBox(`Quiz document for '${chapterId}' not found. Please ensure the quiz data is uploaded to Firestore at path: /artifacts/${appId}/public/data/quizzes/${chapterId}`, 'error');
                     document.getElementById('quiz-container').innerHTML = '';
                 }
 
