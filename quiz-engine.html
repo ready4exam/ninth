@@ -1,547 +1,75 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title id="page-title">Loading Quiz...</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ready4Exam Quiz Engine</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <script>
-        // Tailwind Configuration (Matching the science.html design)
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        serif: ['Merriweather', 'serif'],
-                    },
-                    colors: {
-                        'cbse-blue': '#1a3e6a', 
-                        'cbse-light': '#f0f4f8', 
-                        'heading': '#0f172a',
-                        'accent-success': '#059669', // Emerald
-                        'accent-danger': '#ef4444',   // Red
-                        'accent-info': '#3b82f6',     // Blue
-                        'accent-warning': '#f59e0b',  // Amber/Yellow for explanation
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- Inter Font -->
     <style>
-        .option-button {
-            transition: all 0.2s ease;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            text-align: left;
-            white-space: normal;
-        }
-        .option-button:hover:not(:disabled) {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-        /* Styles below are now only for the *final* review, if implemented later, 
-           but are unused during the quiz flow. */
-        .correct {
-            background-color: #d1fae5; 
-            color: #065f46; 
-            border-color: #059669;
-            font-weight: 700;
-        }
-        .incorrect {
-            background-color: #fee2e2; 
-            color: #991b1b; 
-            border-color: #ef4444;
-        }
-        .selected {
-            border: 3px solid var(--accent-info);
-            transform: scale(1.01);
-        }
-        .pulse-loader {
-            display: inline-block;
-            animation: pulse 1s infinite;
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
+        body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
-<body class="bg-cbse-light min-h-screen antialiased font-sans">
-
-    <!-- Header -->
-    <header class="bg-white shadow-lg sticky top-0 z-10 border-t-8 border-cbse-blue">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-            <a href="science.html" class="flex items-center space-x-3 cursor-pointer">
-                <i data-lucide="flask-round" class="text-cbse-blue h-7 w-7"></i>
-                <h1 class="text-2xl font-extrabold font-serif text-cbse-blue tracking-tight">
-                    Quiz Engine
+<body class="bg-gray-100 min-h-screen">
+    
+    <!-- BRANDING HEADER (Updated Structure) -->
+    <header class="p-4 bg-gray-900 text-white shadow-lg sticky top-0 z-10">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center max-w-6xl mx-auto">
+            
+            <!-- Brand Name and Tagline Container -->
+            <div class="mb-2 md:mb-0">
+                <!-- Brand Name (set by JS, using the BRAND_NAME constant) -->
+                <h1 class="brand-display text-2xl font-extrabold tracking-wider text-red-500" id="brand-name-display">
+                    <!-- Populated by JS -->
                 </h1>
-            </a>
-            <nav>
-                <a href="science.html" class="px-3 py-1 rounded-lg text-gray-700 hover:bg-cbse-light hover:text-cbse-blue transition">Back to Chapters</a>
-            </nav>
+                <!-- Tagline (set by JS, using the BRAND_TAGLINE constant) -->
+                <p class="text-sm text-gray-400 font-light italic" id="brand-tagline-display">
+                    <!-- Populated by JS -->
+                </p>
+            </div>
+            
+            <!-- Quiz Title (Dynamic) -->
+            <span id="quiz-title" class="text-xl font-medium text-gray-300"></span>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        <h2 class="text-3xl font-extrabold font-serif text-heading mb-4 text-center">
-            <span id="quiz-topic-title"></span> Quiz
-        </h2>
-        <div class="text-center text-gray-600 mb-8">
-            <span id="quiz-progress-display"></span>
+    <main class="max-w-6xl mx-auto p-4 md:p-8">
+
+        <!-- Loading/Status Area -->
+        <div id="loading-status" class="text-center text-lg font-semibold text-blue-600 p-4 rounded-lg bg-white shadow-md">
+            Initializing Quiz Engine...
         </div>
 
-        <!-- 1. Loading/Error View -->
-        <div id="loading-view" class="bg-white p-8 rounded-xl shadow-lg text-center">
-            <i data-lucide="loader" class="h-10 w-10 text-cbse-blue mx-auto mb-4 animate-spin"></i>
-            <p id="loading-message" class="text-lg font-semibold text-cbse-blue">Initializing Services and Fetching Questions...</p>
-        </div>
-        
-        <!-- 1b. Authentication Required View (NEW: Now includes Google Sign-In) -->
-        <div id="auth-required-view" class="hidden bg-white p-10 rounded-xl shadow-2xl text-center border-t-8 border-cbse-blue max-w-sm mx-auto">
-            <i data-lucide="lock" class="h-12 w-12 text-cbse-blue mx-auto mb-4"></i>
-            <h3 class="text-3xl font-extrabold font-serif text-heading mb-3">Quiz Login</h3>
-            <p class="text-gray-700 mb-6">Please sign in to save your progress and access the quiz questions.</p>
-            
-            <button id="google-sign-in-btn" class="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow-lg flex items-center justify-center space-x-2">
-                <!-- Inline SVG for Google Icon -->
-                <svg viewBox="0 0 48 48" class="h-6 w-6">
-                    <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.158,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,18.046-8.955,18.046-20c0-1.34-0.138-2.658-0.384-3.937V20.083z"></path>
-                    <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.158,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.332,6.306,14.691z"></path>
-                    <path fill="#4CAF50" d="M24,44c5.166,0,9.914-1.838,13.43-4.822l-6.571-4.819C29.742,35.791,27.052,36,24,36c-5.267,0-9.674-3.957-11.319-9.157l-6.58,4.821C9.656,39.668,16.318,44,24,44z"></path>
-                    <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.08,5.55l6.572,4.819C42.346,36.921,44,32.227,44,24C44,22.658,43.862,21.34,43.611,20.083z"></path>
-                </svg>
-                <span>Sign in with Google</span>
-            </button>
-            <p class="text-sm text-gray-500 mt-4">Note: Your results will be saved under your Google account.</p>
-        </div>
-
-        <!-- 2. Quiz View -->
+        <!-- Quiz View (Initially hidden) -->
         <div id="quiz-view" class="hidden">
-            <div class="bg-white p-6 sm:p-8 rounded-xl shadow-lg border-t-4 border-accent-info">
-                <!-- Question Text -->
-                <p id="question-text" class="text-xl font-serif text-heading mb-6 min-h-[50px]"></p>
-                
-                <!-- Options -->
-                <div id="options-container" class="space-y-4">
-                    <!-- Option buttons generated here -->
-                </div>
-
-                <!-- Explanation Container (Now hidden during the quiz) -->
-                <div id="explanation-container" class="mt-6 p-4 bg-yellow-50 border-l-4 border-accent-warning rounded-lg hidden">
-                    <p class="font-bold text-accent-warning mb-2 flex items-center">
-                        <i data-lucide="lightbulb" class="w-5 h-5 inline-block mr-2"></i> Explanation
-                    </p>
-                    <p id="explanation-text" class="text-gray-700"></p>
-                </div>
-
-                <!-- Navigation -->
-                <div class="mt-8 flex justify-between">
-                    <button id="prev-btn" class="px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition" disabled>
-                        <i data-lucide="arrow-left" class="w-5 h-5 inline-block mr-1"></i> Previous
-                    </button>
-                    <button id="next-btn" class="px-6 py-3 bg-cbse-blue text-white font-semibold rounded-lg hover:bg-accent-info transition disabled:opacity-50 disabled:cursor-not-allowed">
-                        Next <i data-lucide="arrow-right" class="w-5 h-5 inline-block ml-1"></i>
-                    </button>
-                </div>
+            <div id="question-container" class="bg-white p-6 rounded-xl shadow-lg mb-6">
+                <!-- Question content, options, scenario/reasoning will be rendered here -->
+                <p class="text-gray-500">Quiz content will appear here after loading.</p>
             </div>
-        </div>
-
-        <!-- 3. Results View -->
-        <div id="results-view" class="hidden bg-white p-8 rounded-xl shadow-lg text-center">
-            <i data-lucide="award" class="h-12 w-12 text-accent-success mx-auto mb-4"></i>
-            <h3 class="text-3xl font-extrabold font-serif text-heading mb-4">Quiz Complete!</h3>
-            <p class="text-2xl mb-6">Your Score: <span id="final-score" class="font-bold text-accent-success"></span></p>
             
-            <p id="results-message" class="text-gray-700 mb-6"></p>
-
-            <button onclick="window.location.href='science.html'" class="px-8 py-3 bg-cbse-blue text-white font-semibold rounded-lg hover:bg-accent-info transition shadow-lg">
-                <i data-lucide="redo" class="w-5 h-5 inline-block mr-2"></i> Go Back to Chapters
-            </button>
-        </div>
-
-        <!-- Custom Modal for Errors/Messages -->
-        <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden flex items-center justify-center p-4 z-50">
-            <div class="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl">
-                <h4 id="modal-title" class="text-xl font-bold text-accent-danger mb-3">Error</h4>
-                <p id="modal-content" class="text-gray-700 mb-4">An unexpected error occurred.</p>
-                <button onclick="document.getElementById('custom-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 rounded-lg text-gray-800 hover:bg-gray-300 transition">Close</button>
+            <!-- Navigation/Action Buttons -->
+            <div class="flex justify-between">
+                <button id="prev-btn" class="px-6 py-2 bg-gray-300 text-gray-800 rounded-lg font-semibold hover:bg-gray-400 transition">
+                    Previous
+                </button>
+                <button id="next-btn" class="px-6 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition">
+                    Next
+                </button>
             </div>
         </div>
+
     </main>
+    
+    <!-- Script Imports (Must be type="module") -->
+    <script type="module" src="./js/api.js"></script>
+    <script type="module" src="./js/quiz-engine.js"></script>
 
-    <!-- Footer (Matching the science.html design) -->
-    <footer class="bg-cbse-blue mt-16 py-8">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
-            <small class="text-sm opacity-70 block">© 2025 CBSE Class 9 Academic Portal. Dedicated to Student Success.</small>
-        </div>
-    </footer>
-
-    <script type="module">
-        // --- GLOBAL VARIABLES & SDK IMPORTS ---
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, setLogLevel, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        
-        let db;
-        let auth;
-        let supabase;
-        let userId = null; 
-        
-        let quizData = [];
-        let userAnswers = []; // Stores index of selected option (0-based)
-        let currentQuestionIndex = 0;
-        let topicSlug = '';
-        let quizTitle = '';
-
-        // --- DOM Elements ---
-        const pageTitle = document.getElementById('page-title');
-        const loadingView = document.getElementById('loading-view');
-        const loadingMessage = document.getElementById('loading-message');
-        const quizView = document.getElementById('quiz-view');
-        const resultsView = document.getElementById('results-view');
-        const authRequiredView = document.getElementById('auth-required-view');
-        const quizTopicTitle = document.getElementById('quiz-topic-title');
-        const quizProgressDisplay = document.getElementById('quiz-progress-display');
-        const questionText = document.getElementById('question-text');
-        const optionsContainer = document.getElementById('options-container');
-        const prevBtn = document.getElementById('prev-btn');
-        const nextBtn = document.getElementById('next-btn');
-        const finalScore = document.getElementById('final-score');
-        const resultsMessage = document.getElementById('results-message');
-        const modal = document.getElementById('custom-modal');
-        const explanationContainer = document.getElementById('explanation-container');
-        const explanationText = document.getElementById('explanation-text');
-
-        // --- UTILITY FUNCTIONS ---
-        function showModal(title, content, isError = true) {
-            document.getElementById('modal-title').textContent = title;
-            document.getElementById('modal-content').textContent = content;
-            document.getElementById('modal-title').classList.toggle('text-accent-danger', isError);
-            document.getElementById('modal-title').classList.toggle('text-accent-info', !isError);
-            modal.classList.remove('hidden');
-        }
-
-        function showView(view) {
-            loadingView.classList.add('hidden');
-            quizView.classList.add('hidden');
-            resultsView.classList.add('hidden');
-            authRequiredView.classList.add('hidden');
-
-            if (view === 'loading') loadingView.classList.remove('hidden');
-            else if (view === 'quiz') quizView.classList.remove('hidden');
-            else if (view === 'results') resultsView.classList.remove('hidden');
-            else if (view === 'auth-required') authRequiredView.classList.remove('hidden');
-        }
-        
-        /**
-         * Attempts to sign in using Google Auth.
-         * On success, restarts the quiz flow.
-         */
-        async function signInWithGoogle() {
-            showView('loading');
-            loadingMessage.textContent = "Connecting to Google...";
-            try {
-                const provider = new GoogleAuthProvider();
-                // Persist the session so the user doesn't have to re-login on refresh
-                await setPersistence(auth, browserSessionPersistence);
-                const result = await signInWithPopup(auth, provider);
-                
-                userId = result.user.uid;
-                console.log("Google Sign-In successful. User ID:", userId);
-                
-                // Restart the main flow now that we have a valid user
-                startQuizFlow(); 
-
-            } catch (error) {
-                console.error("Google Sign-In Failed:", error);
-                loadingMessage.textContent = "Authentication failed. Please try again.";
-                showModal("Authentication Failed", `Could not sign in with Google: ${error.message}`, true);
-                showView('auth-required');
-            }
-        }
-
-
-        // --- HYBRID SERVICE INITIALIZATION ---
-        async function initHybridServices() {
-            setLogLevel('Debug');
-            
-            // 1. Parse URL for topic slug
-            const params = new URLSearchParams(window.location.search);
-            topicSlug = params.get('topic');
-            
-            if (!topicSlug) {
-                loadingMessage.textContent = "Error: Topic is missing from the URL.";
-                return { success: false, isAuthFailure: false };
-            }
-
-            // 2. Initialize Supabase (Question Data)
-            try {
-                const supabaseUrl = typeof __supabase_url !== 'undefined' ? __supabase_url : null;
-                const supabaseAnonKey = typeof __supabase_anon_key !== 'undefined' ? __supabase_anon_key : null;
-                
-                if (!supabaseUrl || !supabaseAnonKey) {
-                    throw new Error("Supabase URL or Key is missing. Check global variables.");
-                }
-                supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
-                console.log("Supabase initialized.");
-            } catch (error) {
-                loadingMessage.textContent = `Supabase Error: ${error.message}`;
-                return { success: false, isAuthFailure: false };
-            }
-
-            // 3. Initialize Firebase (Auth & Results) - ENFORCING LOGIN
-            try {
-                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-
-                if (!firebaseConfig || !Object.keys(firebaseConfig).length) {
-                    throw new Error("Firebase config is missing.");
-                }
-                
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-
-                // Try to use the system's custom token first
-                const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-                if (token) {
-                    await signInWithCustomToken(auth, token);
-                    userId = auth.currentUser?.uid;
-                    if (!userId) {
-                         // Should not happen if token is valid
-                         throw new Error("Authentication failed: User ID could not be determined after custom sign-in.");
-                    }
-                } else if (!auth.currentUser) {
-                    // If no custom token AND no existing session (e.g., from a previous Google sign-in)
-                    throw new Error("Login required. Authentication token is missing and no active session found.");
-                }
-
-                // If we reach here, either the custom token worked, OR a Google session already exists.
-                userId = auth.currentUser.uid;
-                console.log(`Firebase: User authenticated. User ID: ${userId}`);
-                
-            } catch (error) {
-                console.error(`Firebase Auth Error: ${error.message}`);
-                // Return a specific flag for Auth failure
-                return { success: false, isAuthFailure: true };
-            }
-            return { success: true, isAuthFailure: false };
-        }
-
-        // --- DATA FETCHING (SUPABASE) ---
-
-        /**
-         * Fetches quiz data from the Supabase 'quizzes' table.
-         */
-        async function loadQuizData() {
-            loadingMessage.textContent = `Fetching quiz for topic: ${topicSlug}...`;
-            try {
-                // NOTE: Using a generic 'quizzes' table name. 
-                const { data, error } = await supabase
-                    .from('quizzes')
-                    .select('title, questions') // Assuming 'questions' is a JSON/Array column
-                    .eq('topic_slug', topicSlug)
-                    .single();
-
-                if (error || !data) {
-                    throw new Error(`Data Fetch Error: ${error ? error.message : 'No data found.'}`);
-                }
-
-                quizTitle = data.title || topicSlug.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                
-                quizData = data.questions || [];
-                
-                if (quizData.length === 0) {
-                     throw new Error("No questions found for this topic.");
-                }
-
-                // Initialize user answers array
-                userAnswers = new Array(quizData.length).fill(null);
-                
-                return true;
-
-            } catch (error) {
-                console.error("Quiz loading failed:", error);
-                loadingMessage.textContent = `Failed to load quiz: ${error.message}. Please check Supabase table name and data structure.`;
-                return false;
-            }
-        }
-
-        // --- QUIZ LOGIC (Unchanged) ---
-
-        function updateProgress() {
-            quizProgressDisplay.textContent = `Question ${currentQuestionIndex + 1} of ${quizData.length}`;
-            quizTopicTitle.textContent = quizTitle;
-            pageTitle.textContent = `${quizTitle} Quiz`;
-        }
-
-        function updateButtonState() {
-            const isAnswered = userAnswers[currentQuestionIndex] !== null;
-            
-            prevBtn.disabled = currentQuestionIndex === 0;
-
-            nextBtn.textContent = (currentQuestionIndex === quizData.length - 1) ? 'Submit Quiz' : 'Next';
-            nextBtn.disabled = !isAnswered; 
-            
-            lucide.createIcons();
-        }
-        
-        function renderQuestion() {
-            const q = quizData[currentQuestionIndex];
-            if (!q) return;
-
-            questionText.innerHTML = `${currentQuestionIndex + 1}. ${q.text}`;
-            optionsContainer.innerHTML = '';
-            explanationContainer.classList.add('hidden');
-            
-            q.options.forEach((optionText, index) => {
-                const btn = document.createElement('button');
-                btn.className = `option-button w-full px-4 py-3 rounded-lg bg-white text-gray-800 border-2 border-gray-200 transition`;
-                btn.innerHTML = `<span class="font-bold mr-2">${String.fromCharCode(65 + index)}.</span> ${optionText}`;
-                btn.dataset.index = index;
-                
-                const isSelected = userAnswers[currentQuestionIndex] === index;
-
-                if (isSelected) {
-                    btn.classList.add('selected');
-                }
-                
-                btn.addEventListener('click', () => handleOptionClick(btn, index));
-
-                optionsContainer.appendChild(btn);
-            });
-
-            updateProgress();
-            updateButtonState();
-        }
-
-        function handleOptionClick(selectedBtn, selectedIndex) {
-            optionsContainer.querySelectorAll('.option-button').forEach(btn => {
-                btn.classList.remove('selected');
-            });
-
-            selectedBtn.classList.add('selected');
-            userAnswers[currentQuestionIndex] = selectedIndex;
-            updateButtonState();
-        }
-        
-        function handleNextAction() {
-            const selectedIndex = userAnswers[currentQuestionIndex];
-        
-            if (selectedIndex === null) {
-                showModal("Wait!", "Please select an answer before proceeding.", false);
-                return;
-            }
-
-            if (currentQuestionIndex === quizData.length - 1) {
-                submitQuiz();
-                return;
-            } 
-            
-            currentQuestionIndex++;
-            renderQuestion();
-        }
-        
-        function navigatePrev() {
-            if (currentQuestionIndex > 0) {
-                currentQuestionIndex--;
-                renderQuestion();
-            }
-        }
-
-        function calculateScore() {
-            let score = 0;
-            quizData.forEach((q, index) => {
-                if (userAnswers[index] !== null && userAnswers[index] === q.correct_answer_index) {
-                    score++;
-                }
-            });
-            return score;
-        }
-
-        async function submitQuiz() {
-            showView('loading');
-            loadingMessage.textContent = "Calculating score and submitting results to Firestore...";
-
-            const score = calculateScore();
-            const total = quizData.length;
-            const percentage = (score / total) * 100;
-            
-            // 1. Submit results to Firestore (Private Collection)
-            try {
-                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                const resultsCollectionPath = `/artifacts/${appId}/users/${userId}/quiz_results`; 
-                
-                await addDoc(collection(db, resultsCollectionPath), {
-                    topic_slug: topicSlug,
-                    title: quizTitle,
-                    score: score,
-                    total_questions: total,
-                    timestamp: serverTimestamp(),
-                    user_id: userId,
-                });
-                console.log("Results successfully written to Firestore.");
-            } catch (error) {
-                console.error("Error writing results to Firestore:", error);
-                // Continue to display results even if saving fails
-            }
-
-            // 2. Display Results
-            finalScore.textContent = `${score} / ${total} (${percentage.toFixed(0)}%)`;
-
-            if (percentage >= 80) {
-                resultsMessage.textContent = "Excellent work! You've mastered this topic. Keep up the great studying!";
-                finalScore.classList.remove('text-accent-info', 'text-accent-danger');
-                finalScore.classList.add('text-accent-success');
-            } else if (percentage >= 50) {
-                resultsMessage.textContent = "Good effort! Review the topics you struggled with for better results next time.";
-                finalScore.classList.remove('text-accent-success', 'text-accent-danger');
-                finalScore.classList.add('text-accent-info');
-            } else {
-                resultsMessage.textContent = "Time for a dedicated study session! Don't worry, you can re-take the quiz anytime.";
-                finalScore.classList.remove('text-accent-success', 'text-accent-info');
-                finalScore.classList.add('text-accent-danger');
-            }
-
-            showView('results');
-        }
-
-        // --- MAIN CONTROL FLOW ---
-        
-        async function startQuizFlow() {
-            showView('loading');
-            const initResult = await initHybridServices();
-
-            if (initResult.success) {
-                const dataLoaded = await loadQuizData();
-                if (dataLoaded) {
-                    currentQuestionIndex = 0;
-                    renderQuestion();
-                    showView('quiz');
-                }
-            } else if (initResult.isAuthFailure) {
-                // Fallback to the Google Sign-In view
-                showView('auth-required');
-                document.getElementById('google-sign-in-btn').addEventListener('click', signInWithGoogle);
-            }
-        }
-
-        // --- EVENT LISTENERS ---
-        nextBtn.addEventListener('click', handleNextAction);
-        prevBtn.addEventListener('click', navigatePrev);
-
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-            // Start the flow which handles authentication first.
-            startQuizFlow(); 
-        });
-        
+    <!-- Placeholder for global config variables usually provided by the environment -->
+    <script>
+        // NOTE: These variables are usually provided by the environment. If not, set your values here.
+        const __supabase_url = "YOUR_SUPABASE_URL_HERE"; 
+        const __supabase_anon_key = "YOUR_SUPABASE_ANON_KEY_HERE"; 
     </script>
 </body>
 </html>
