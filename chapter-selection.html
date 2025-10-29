@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Select Chapter & Difficulty</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .cbse-blue { background-color: #1a3e6a; }
+        .cbse-light { background-color: #f5f7fa; }
+        .header-bg { background-color: #0d47a1; }
+        .card { @apply bg-white p-6 rounded-xl shadow-lg transition-transform duration-300 hover:shadow-xl; }
+        .chapter-card { cursor: pointer; }
+        .chapter-card:hover { transform: translateY(-3px); }
+        .selected-chapter { @apply border-4 border-blue-500 ring-2 ring-blue-500; }
+        .selected-difficulty { @apply bg-blue-600 text-white shadow-md; }
+    </style>
+</head>
+<body class="bg-cbse-light min-h-screen">
+    
+    <!-- BRANDING HEADER -->
+    <header class="p-4 header-bg text-white shadow-lg sticky top-0 z-10">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center max-w-6xl mx-auto">
+            <h1 class="text-2xl font-extrabold tracking-wider text-accent-gold">Ready4Exam</h1>
+            <p class="text-sm text-gray-300 font-light italic">Your Path to Academic Excellence</p>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto p-4 md:p-8 mt-6">
+        
+        <h2 class="text-3xl font-bold text-gray-900 mb-2">CBSE Class 9 Science</h2>
+        <p class="text-xl text-gray-600 mb-8">Select a Chapter and Difficulty to Start the Quiz.</p>
+
+        <!-- Chapter Selection -->
+        <h3 class="text-2xl font-semibold text-gray-800 mb-4">1. Choose Chapter</h3>
+        <div id="chapter-list" class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
+            <!-- Data to be loaded from JS -->
+        </div>
+
+        <!-- Difficulty Selection -->
+        <h3 class="text-2xl font-semibold text-gray-800 mb-4">2. Select Difficulty</h3>
+        <div id="difficulty-selection" class="flex flex-wrap gap-4 mb-10">
+            <button data-difficulty="simple" class="difficulty-btn px-6 py-3 bg-white text-gray-700 rounded-lg font-medium border-2 hover:border-blue-500 transition">Simple</button>
+            <button data-difficulty="medium" class="difficulty-btn px-6 py-3 bg-white text-gray-700 rounded-lg font-medium border-2 hover:border-blue-500 transition selected-difficulty">Medium</button>
+            <button data-difficulty="advanced" class="difficulty-btn px-6 py-3 bg-white text-gray-700 rounded-lg font-medium border-2 hover:border-blue-500 transition">Advanced (Premium)</button>
+        </div>
+
+        <!-- Start Quiz Button -->
+        <button id="start-quiz-btn" disabled class="w-full md:w-1/2 mx-auto block py-4 bg-gray-400 text-white text-xl font-bold rounded-xl transition duration-300 cursor-not-allowed">
+            <svg data-lucide="play" class="h-6 w-6 inline-block mr-2"></svg> Start Quiz
+        </button>
+        <p id="error-message" class="text-center text-red-500 mt-2 hidden">Please select a chapter to begin.</p>
+        
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="cbse-blue mt-16 py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
+            <small class="text-sm opacity-70 block mt-2">© 2025 Ready4Exam Academic Portal. All Rights Reserved.</small>
+        </div>
+    </footer>
+
+    <script>
+        // Data structure for the chapters (In a real app, this would come from an API)
+        const CHAPTERS = [
+            { id: 'motion', name: 'Motion', icon: 'zap' },
+            { id: 'force', name: 'Force & Laws of Motion', icon: 'move' },
+            { id: 'gravitation', name: 'Gravitation', icon: 'globe' },
+            { id: 'work_energy', name: 'Work & Energy', icon: 'power' },
+            { id: 'sound', name: 'Sound', icon: 'volume-2' },
+            // Placeholder chapters to show the selection functionality
+            { id: 'atoms', name: 'Atoms & Molecules', icon: 'atom' },
+            { id: 'cells', name: 'The Fundamental Unit of Life', icon: 'dna' },
+        ];
+
+        let selectedTopic = null;
+        let selectedDifficulty = 'medium'; // Default difficulty
+
+        const chapterListEl = document.getElementById('chapter-list');
+        const difficultySelectionEl = document.getElementById('difficulty-selection');
+        const startQuizBtn = document.getElementById('start-quiz-btn');
+        const errorMessageEl = document.getElementById('error-message');
+
+        function renderChapters() {
+            CHAPTERS.forEach(chapter => {
+                const card = document.createElement('div');
+                card.className = 'chapter-card card border border-gray-200';
+                card.setAttribute('data-topic', chapter.id);
+                card.innerHTML = `
+                    <div class="flex items-center space-x-4">
+                        <svg data-lucide="${chapter.icon}" class="text-blue-600 h-8 w-8 flex-shrink-0"></svg>
+                        <div>
+                            <p class="text-lg font-semibold text-gray-800">${chapter.name}</p>
+                            <span class="text-sm text-gray-500">${chapter.id.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</span>
+                        </div>
+                    </div>
+                `;
+                card.addEventListener('click', () => handleChapterSelection(chapter.id, card));
+                chapterListEl.appendChild(card);
+            });
+            lucide.createIcons(); // Re-render icons after adding content
+        }
+
+        function handleChapterSelection(topicId, clickedCard) {
+            // Remove selection from all cards
+            document.querySelectorAll('.chapter-card').forEach(card => {
+                card.classList.remove('selected-chapter');
+            });
+
+            // Add selection to the clicked card
+            clickedCard.classList.add('selected-chapter');
+            selectedTopic = topicId;
+            updateStartButton();
+        }
+
+        function handleDifficultySelection(difficultyId, clickedBtn) {
+            // Remove selection from all buttons
+            document.querySelectorAll('.difficulty-btn').forEach(btn => {
+                btn.classList.remove('selected-difficulty');
+            });
+
+            // Add selection to the clicked button
+            clickedBtn.classList.add('selected-difficulty');
+            selectedDifficulty = difficultyId;
+            updateStartButton();
+        }
+
+        function updateStartButton() {
+            if (selectedTopic && selectedDifficulty) {
+                startQuizBtn.disabled = false;
+                startQuizBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                startQuizBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+                errorMessageEl.classList.add('hidden');
+            } else {
+                startQuizBtn.disabled = true;
+                startQuizBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+                startQuizBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+            }
+        }
+
+        function handleStartQuiz() {
+            if (selectedTopic && selectedDifficulty) {
+                const subject = new URLSearchParams(window.location.search).get('subject') || 'Science';
+                const url = `quiz-engine.html?subject=${subject}&topic=${selectedTopic}&difficulty=${selectedDifficulty}`;
+                window.location.href = url;
+            } else {
+                errorMessageEl.classList.remove('hidden');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            renderChapters();
+
+            difficultySelectionEl.querySelectorAll('.difficulty-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => handleDifficultySelection(e.target.dataset.difficulty, e.target));
+            });
+
+            startQuizBtn.addEventListener('click', handleStartQuiz);
+
+            // Pre-select the 'medium' difficulty button on load
+            document.querySelector('.difficulty-btn[data-difficulty="medium"]').click();
+        });
+    </script>
+</body>
+</html>
