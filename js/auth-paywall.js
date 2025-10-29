@@ -1,5 +1,6 @@
 // js/auth-paywall.js
 // Handles Firebase Authentication, user state, and Razorpay Paywall logic.
+import { getInitializedClients } from './config.js'; // Import the safe client getter
 
 // Define a placeholder for the application ID for Firestore paths (optional for now)
 const APP_ID = "ready4exam";
@@ -13,12 +14,15 @@ let currentAuthUser = null;
  * @param {Function} onAuthStateChangedCallback - Callback to run when auth state changes.
  */
 export function initializeAuthListener(onAuthStateChangedCallback) {
-    if (!window.auth) {
+    // Safely retrieve the auth client
+    const { auth } = getInitializedClients();
+
+    if (!auth) {
         console.error("[AUTH] Firebase Auth not initialized. Check js/config.js.");
         return;
     }
     
-    window.auth.onAuthStateChanged((user) => {
+    auth.onAuthStateChanged((user) => {
         currentAuthUser = user;
         onAuthStateChangedCallback(user);
     });
@@ -28,13 +32,14 @@ export function initializeAuthListener(onAuthStateChangedCallback) {
  * Initiates Google Sign-In using Firebase Auth Pop-up.
  */
 export async function signInWithGoogle() {
-    if (!window.auth) {
+    const { auth } = getInitializedClients();
+    if (!auth) {
         throw new Error("Firebase Auth not available.");
     }
     
     const provider = new firebase.auth.GoogleAuthProvider();
     try {
-        const result = await window.auth.signInWithPopup(provider);
+        const result = await auth.signInWithPopup(provider);
         console.log("[AUTH] Google Sign-In successful:", result.user.email);
         return result.user;
     } catch (error) {
@@ -47,9 +52,10 @@ export async function signInWithGoogle() {
  * Logs out the current user.
  */
 export async function signOut() {
-    if (!window.auth) return;
+    const { auth } = getInitializedClients();
+    if (!auth) return;
     try {
-        await window.auth.signOut();
+        await auth.signOut();
         console.log("[AUTH] User signed out.");
     } catch (error) {
         console.error("[AUTH ERROR] Sign out failed:", error);
@@ -69,11 +75,17 @@ export async function checkPaymentStatus(topic) {
         return false;
     }
 
+    const { db } = getInitializedClients();
+    if (!db) {
+         console.error("[PAYWALL ERROR] Firestore DB not available.");
+         return false;
+    }
+
     try {
         // Check if user is a 'premium' user (placeholder logic)
         // Check Firestore Path: /artifacts/{APP_ID}/users/{userId}/access_status/premium
         const docPath = `artifacts/${APP_ID}/users/${currentAuthUser.uid}/access_status/premium`;
-        const docRef = window.db.doc(docPath);
+        const docRef = db.doc(docPath);
         const docSnap = await docRef.get();
 
         if (docSnap.exists && docSnap.data().is_premium === true) {
@@ -144,12 +156,13 @@ export function initiateRazorpayPayment(topic) {
  * @param {string} paymentId 
  */
 async function grantAccess(userId, topic, paymentId) {
-    if (!window.db || !userId) return;
+    const { db } = getInitializedClients();
+    if (!db || !userId) return;
 
     try {
         // 1. Log the payment event
         const paymentCollectionPath = `artifacts/${APP_ID}/users/${userId}/payment_history`;
-        await window.db.collection(paymentCollectionPath).add({
+        await db.collection(paymentCollectionPath).add({
             topic: topic,
             amount: 500,
             currency: 'INR',
@@ -159,7 +172,7 @@ async function grantAccess(userId, topic, paymentId) {
 
         // 2. Grant the 'premium' access status for this topic (or globally)
         const accessDocPath = `artifacts/${APP_ID}/users/${userId}/access_status/premium`;
-        await window.db.doc(accessDocPath).set({
+        await db.doc(accessDocPath).set({
             is_premium: true,
             granted_on: firebase.firestore.FieldValue.serverTimestamp(),
             granted_by: paymentId
@@ -176,4 +189,3 @@ async function grantAccess(userId, topic, paymentId) {
 export function getCurrentUser() {
     return currentAuthUser;
 }
-
