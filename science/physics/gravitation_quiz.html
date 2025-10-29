@@ -170,7 +170,9 @@
         const SUPABASE_TABLE = 'gravitation'; 
         // ---------------------
 
-        let supabaseClient;
+        // The initialized Supabase client is now the global 'supabase' variable 
+        // provided by ../../js/config.js. We don't need to re-declare or re-initialize it.
+        
         let questions = [];
         let selectedAnswers = {}; 
         let selectedDifficulty = null; 
@@ -209,35 +211,31 @@
         // --- Initialization ---
 
         function init() {
-            if (typeof SUPABASE_URL === 'undefined' || typeof SUPABASE_ANON_KEY === 'undefined') {
-                statusMessage.textContent = 'Configuration Error: SUPABASE_URL or SUPABASE_ANON_KEY is undefined. Check "../../js/config.js".';
+            // Check for the global Supabase client instance created by config.js
+            if (typeof supabase === 'undefined' || typeof supabase.from !== 'function') {
+                statusMessage.textContent = 'Configuration Error: Supabase client is not initialized. Ensure the Supabase library and "../../js/config.js" are loaded correctly.';
                 statusMessage.className = 'text-center p-4 rounded-lg bg-red-100 text-red-700 font-medium mb-6';
                 return;
             }
+            
+            // The client is already initialized as the global 'supabase' from config.js, 
+            // so we proceed directly to fetching data.
+            
+            fetchQuestionCounts(); 
+            
+            statusMessage.classList.add('hidden');
+            startScreen.classList.remove('hidden');
 
-            try {
-                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                
-                // Fetch question counts to update the cards like the template
-                fetchQuestionCounts(); 
-                
-                statusMessage.classList.add('hidden');
-                startScreen.classList.remove('hidden');
-
-            } catch (e) {
-                statusMessage.textContent = `Error initializing Supabase: ${e.message}`;
-                statusMessage.className = 'text-center p-4 rounded-lg bg-red-100 text-red-700 font-medium mb-6';
-            }
         }
         
         // --- Data Fetching for Start Screen ---
-        // This function dynamically gets the count for each difficulty level
         async function fetchQuestionCounts() {
             const difficulties = ['Simple', 'Medium', 'Advanced'];
             
             for (const difficulty of difficulties) {
                 try {
-                    const { count, error } = await supabaseClient
+                    // Use the global 'supabase' client directly
+                    const { count, error } = await supabase
                         .from(SUPABASE_TABLE)
                         .select('id', { count: 'exact', head: true })
                         .ilike('difficulty', difficulty); 
@@ -246,14 +244,12 @@
                     
                     const countStr = count === null ? '0' : String(count);
                     
-                    // Update all three elements on the card
                     difficultyElements[difficulty].available.textContent = countStr;
                     difficultyElements[difficulty].starting.textContent = countStr;
                     difficultyElements[difficulty].buttonQs.textContent = `${countStr} Qs`;
 
                 } catch (error) {
                     console.error(`Error fetching count for ${difficulty}:`, error);
-                    // Use -- on failure
                     difficultyElements[difficulty].available.textContent = '--';
                     difficultyElements[difficulty].starting.textContent = '--';
                     difficultyElements[difficulty].buttonQs.textContent = '-- Qs';
@@ -279,7 +275,8 @@
             quizContent.classList.add('hidden');
             
             try {
-                let query = supabaseClient
+                // Use the global 'supabase' client directly
+                let query = supabase
                     .from(SUPABASE_TABLE)
                     .select('*');
                 
