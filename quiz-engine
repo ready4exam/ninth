@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <link rel="icon" type="image/png" href="favicon.png"> 
+    
+    <title id="quiz-page-title">Ready4Exam | Loading Quiz...</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght@700;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Merriweather', 'serif'],
+                    },
+                    colors: {
+                        // Global brand colors (Main LMS branding)
+                        'cbse-blue': '#1a3e6a', // Deep primary blue
+                        'cbse-light': '#f0f4f8', // Light background for contrast
+                        'cbse-dark': '#0f2940', // Darker blue for text/accents
+                        // Subject accent colors (Used for branding borders/buttons)
+                        'accent-chemistry': '#059669', // Green
+                        'accent-biology': '#dc2626',   // Red
+                        'accent-physics': '#2563eb',  // Blue
+                        'accent-maths': '#f59e0b',    // Amber/Orange
+                        'unit-bg': '#e3f2fd', 
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    
+    <script src="js/config.js"></script> 
+    
+    <style>
+        /* Base Styles: Setting the stage for the professional look */
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f3f4f6; /* Light gray background */
+            min-height: 100vh;
+        }
+        .quiz-card {
+            max-width: 1000px; /* Slightly wider max-width for desktop wow factor */
+            margin: 2rem auto;
+            min-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            /* Enhanced Shadow for a 'floating card' effect */
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* Interactive element styles */
+        .option-label { 
+            transition: all 0.2s ease-in-out; 
+            border: 2px solid #e5e7eb;
+            user-select: none; /* Prevents text selection when clicking options */
+        }
+        /* Wow factor: Subtle hover effect for unselected options */
+        .option-label:hover:not(.correct):not(.incorrect) {
+            background-color: #f9fafb;
+            border-color: #cbse-blue;
+            transform: translateY(-1px);
+        }
+        
+        /* Feedback colors - High Contrast */
+        .correct { background-color: #d1fae5 !important; border-color: #059669 !important; color: #065f46 !important; box-shadow: 0 0 10px rgba(5, 150, 105, 0.2); }
+        .incorrect { background-color: #fee2e2 !important; border-color: #dc2626 !important; color: #991b1b !important; box-shadow: 0 0 10px rgba(220, 38, 38, 0.2); }
+
+        /* Difficulty Cards: Interactive and premium look */
+        .difficulty-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+            border: 1px solid #e5e7eb;
+        }
+        .difficulty-card:hover {
+            transform: translateY(-4px); /* Deeper lift */
+            box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.15); /* More pronounced shadow */
+        }
+        
+        /* Responsive/Fixed Elements */
+        .submit-sticky {
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+        }
+
+        /* Responsive Typography */
+        @media (max-width: 768px) {
+            .quiz-card {
+                margin: 0.5rem;
+                padding: 1.5rem;
+                min-height: auto;
+            }
+            #quiz-title { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+    
+    <header class="bg-white shadow-lg sticky top-0 z-20 border-t-8 border-cbse-blue">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col md:flex-row justify-between items-center">
+            
+            <div class="flex items-center space-x-3 mb-3 md:mb-0 cursor-pointer" id="header-home-btn" onclick="window.location.href='index.html'">
+                <img src="favicon.png" alt="Ready4Industry Logo" class="w-8 h-8">
+                <h1 class="text-2xl font-extrabold text-cbse-blue tracking-tight">Ready4Exam</h1>
+            </div>
+            
+            <nav class="flex space-x-4 items-center">
+                <a href="https://ready4industry.in" target="_blank" class="text-sm font-semibold text-gray-600 hover:text-cbse-blue transition">Ready4Industry.in</a>
+                <button id="logout-nav-btn" class="hidden px-3 py-1 rounded-lg text-white bg-accent-biology hover:bg-red-700 transition font-semibold text-sm">🚪 Logout</button>
+            </nav>
+        </div>
+    </header>
+
+
+    <div id="quiz-container" class="quiz-card bg-white p-6 md:p-10 rounded-xl shadow-xl">
+        
+        <h1 id="quiz-title" class="text-4xl md:text-5xl font-extrabold font-serif text-cbse-dark mb-2 text-center tracking-tight">
+            Quiz Engine
+        </h1>
+        <p id="quiz-subtitle" class="text-lg md:text-xl font-semibold text-gray-600 mb-8 text-center border-b pb-4">
+            Awaiting Initialization...
+        </p>
+
+
+        <div id="status-message" class="text-center p-4 md:p-6 rounded-xl bg-cbse-light text-cbse-blue font-bold shadow-inner mb-6 flex items-center justify-center space-x-2">
+            <i data-lucide="loader-circle" class="w-5 h-5 animate-spin"></i>
+            <span id="status-text">Initializing architecture...</span>
+        </div>
+
+
+        <div id="paywall-screen" class="hidden text-center p-8 bg-white border-4 border-accent-biology rounded-xl shadow-2xl">
+            <i data-lucide="lock" class="w-16 h-16 mx-auto text-accent-biology mb-4 stroke-1"></i>
+            <h2 class="text-3xl font-extrabold font-serif text-cbse-dark mb-4">Unlock This Chapter</h2>
+            <p class="text-xl text-gray-700 mb-6">Gain full access to: <span id="access-required-item" class="font-bold text-accent-biology"></span></p>
+            
+            <div class="space-y-4">
+                <button id="login-button" 
+                        class="w-full px-6 py-4 text-xl font-bold text-white bg-cbse-blue rounded-xl shadow-lg hover:bg-cbse-dark transition duration-200 flex items-center justify-center space-x-2">
+                    <i data-lucide="user-plus" class="w-5 h-5"></i>
+                    <span>Log In / Sign Up</span>
+                </button>
+                <button id="pay-button"
+                        class="w-full px-6 py-4 text-xl font-bold text-white bg-accent-chemistry rounded-xl shadow-lg hover:opacity-90 transition duration-200 flex items-center justify-center space-x-2">
+                    <i data-lucide="credit-card" class="w-5 h-5"></i>
+                    <span>Pay Now with Razorpay</span>
+                </button>
+            </div>
+        </div>
+
+
+        <div id="start-screen" class="p-8 bg-cbse-light rounded-xl shadow-inner hidden">
+            <h2 class="text-2xl font-bold text-cbse-dark mb-8 text-center">
+                Select Your Challenge
+            </h2>
+            <div class="space-y-6 md:space-y-0 md:grid md:grid-cols-3 md:gap-6">
+                
+                <div class="difficulty-card bg-white p-6 rounded-xl border-t-4 border-accent-chemistry">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-3 flex items-center space-x-2">
+                        <i data-lucide="zap" class="w-5 h-5 text-accent-chemistry"></i>
+                        <span>Simple</span>
+                    </h3>
+                    <p class="text-gray-600 text-base mb-4">Covers foundational concepts. Ideal for review.</p>
+                    <div class="text-sm text-gray-500 space-y-1 mb-6">
+                        <p>Available: <span id="simple-available-q" class="font-semibold text-gray-700">--</span> Qs</p>
+                    </div>
+                    <button data-difficulty="Simple" class="w-full py-3 text-md font-bold text-white bg-accent-chemistry rounded-lg shadow-md hover:bg-green-700 transition duration-150 start-quiz-btn">
+                        Start Now
+                    </button>
+                </div>
+
+                <div class="difficulty-card bg-white p-6 rounded-xl border-t-4 border-accent-maths">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-3 flex items-center space-x-2">
+                         <i data-lucide="flame" class="w-5 h-5 text-accent-maths"></i>
+                        <span>Medium</span>
+                    </h3>
+                    <p class="text-gray-600 text-base mb-4">Requires application of concepts and moderate effort.</p>
+                    <div class="text-sm text-gray-500 space-y-1 mb-6">
+                        <p>Available: <span id="medium-available-q" class="font-semibold text-gray-700">--</span> Qs</p>
+                    </div>
+                    <button data-difficulty="Medium" class="w-full py-3 text-md font-bold text-white bg-accent-maths rounded-lg shadow-md hover:bg-amber-600 transition duration-150 start-quiz-btn">
+                        Start Now
+                    </button>
+                </div>
+
+                <div class="difficulty-card bg-white p-6 rounded-xl border-t-4 border-accent-biology">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-3 flex items-center space-x-2">
+                        <i data-lucide="graduation-cap" class="w-5 h-5 text-accent-biology"></i>
+                        <span>Advanced</span>
+                    </h3>
+                    <p class="text-gray-600 text-base mb-4">Includes numericals, high-order thinking, and analysis.</p>
+                    <div class="text-sm text-gray-500 space-y-1 mb-6">
+                        <p>Available: <span id="advanced-available-q" class="font-semibold text-gray-700">--</span> Qs</p>
+                    </div>
+                    <button data-difficulty="Advanced" class="w-full py-3 text-md font-bold text-white bg-accent-biology rounded-lg shadow-md hover:bg-red-700 transition duration-150 start-quiz-btn">
+                        Start Now
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="quiz-content" class="hidden flex-grow">
+            
+            <p id="difficulty-display" class="text-xl font-bold text-cbse-blue mb-6 border-b-2 pb-2"></p>
+            
+            <div id="question-list" class="space-y-8 mb-8">
+                </div>
+
+            <div class="mt-8 submit-sticky bg-white p-4 shadow-2xl rounded-t-xl border-t-4 border-cbse-blue">
+                <button id="submit-button"
+                        class="w-full px-6 py-3 text-xl font-bold text-white bg-cbse-blue rounded-xl shadow-lg hover:bg-cbse-dark transition duration-150">
+                    Submit Quiz & Get Results
+                </button>
+            </div>
+        </div>
+
+        <div id="results-screen" class="hidden text-center p-8 bg-cbse-light rounded-xl shadow-2xl border-t-4 border-accent-chemistry">
+            <i data-lucide="trophy" class="w-16 h-16 mx-auto text-accent-chemistry mb-4 fill-accent-chemistry stroke-1"></i>
+            <h2 class="text-4xl font-extrabold font-serif text-accent-chemistry mb-4">Quiz Complete! Phenomenal Effort!</h2>
+            <p class="text-xl text-gray-700 mb-4">Your Final Score:</p>
+            <p id="score-display" class="text-7xl font-extrabold text-cbse-blue mb-8">0 / 0</p>
+            <button onclick="window.location.reload()"
+                    class="px-8 py-3 text-white bg-cbse-blue rounded-lg shadow-md hover:bg-cbse-dark transition duration-150 text-lg font-semibold">
+                Start New Quiz
+            </button>
+        </div>
+
+    </div>
+    
+    <footer class="bg-cbse-dark mt-12 py-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
+            <p class="text-lg font-bold mb-2">Ready4Exam</p>
+            <small class="text-sm opacity-80">A project by Ready4Industry.in | Academic Success Portal | © 2025</small>
+        </div>
+    </footer>
+
+
+    <script type="module" src="js/auth-paywall.js"></script>
+    <script type="module" src="js/api.js"></script>
+    <script type="module" src="js/ui-renderer.js"></script>
+    <script type="module" src="js/quiz-engine.js"></script>
+
+    <script>
+        // Initialize Lucide icons after the main content is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            // The logic for quiz buttons (start-quiz-btn, submit-button) is handled 
+            // by the js/quiz-engine.js module once it loads.
+        });
+    </script>
+</body>
+</html>
