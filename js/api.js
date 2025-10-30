@@ -36,20 +36,21 @@ export async function fetchQuestions(topicSlug, difficulty) {
                 .from(QUIZZES_TABLE)
                 .select('*');
             
-            // CRITICAL FIX: Using .filter() instead of .eq() to try and force the URL parameter to be 'topic_slug'
-            query = query.filter('topic_slug', 'eq', topicSlug); 
+            // FINAL ATTEMPT FIX: We are using 'topic' instead of 'topic_slug' 
+            // because the Supabase error message consistently referred to a missing 'quizzes.topic' column.
+            query = query.eq('topic', topicSlug); 
             
-            // Other filters use .eq()
+            // Other filters
             query = query
                 .eq('difficulty', difficulty)
-                .eq('question_type', type) // Ensure we filter by 'question_type' column
+                .eq('question_type', type) 
                 .limit(limit)
                 .order('id', { ascending: true }); // Ensure predictable ordering
 
             const { data, error } = await query;
 
             if (error) {
-                // This is the error indicating the column doesn't exist.
+                // Log the error but don't stop the application
                 console.error(`Supabase Query Error for ${type}:`, error.message);
                 return []; // Return empty array on error to allow other types to load
             }
@@ -62,8 +63,9 @@ export async function fetchQuestions(topicSlug, difficulty) {
 
         // Check if we successfully got any questions at all
         if (allQuestions.length === 0) {
+            // Note: I changed this back to a console.warn instead of throwing an error 
+            // to prevent the app from crashing if no data is present for that specific query.
             console.warn(`[API WARNING] No questions found for topic '${topicSlug}' at difficulty '${difficulty}'. Returning empty array.`);
-            // Do not throw an error here, just return an empty array. loadQuiz handles the empty array case.
             return [];
         }
 
