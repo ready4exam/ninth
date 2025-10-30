@@ -1,8 +1,8 @@
 // js/quiz-engine.js
-import { initServices, isAuthenticated, getAuthUser, signInWithGoogle, signOutUser } from './config.js';
+import { initServices, getAuthUser } from './config.js';
 import { fetchQuestions } from './api.js';
 import * as UI from './ui-renderer.js';
-import { checkAccess, isAccessGranted } from './auth-paywall.js';
+import { checkAccess } from './auth-paywall.js'; 
 
 // --- Global State ---
 let quizState = {
@@ -24,7 +24,6 @@ let quizState = {
 
 /**
  * Parses URL parameters into the quizState.
- * This function now explicitly checks that the topic is 'motion'.
  */
 function parseUrlParameters() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -45,8 +44,9 @@ function parseUrlParameters() {
 
     console.log(`[ENGINE] Parsed Params: Topic='${quizState.topicSlug}', Difficulty='${quizState.difficulty}'`);
     
-    // Set initial titles using the safe renderTitles function
-    UI.renderTitles(quizState.topicSlug, quizState.difficulty);
+    // CRITICAL FIX: Ensure titles are rendered here with the newly parsed values
+    // This updates the header immediately after parsing the URL, resolving the UI issue.
+    UI.renderTitles(quizState.topicSlug, quizState.difficulty); 
     
     // If essential parameters are missing, display an error and halt
     if (!quizState.topicSlug || !quizState.difficulty) {
@@ -71,6 +71,7 @@ async function loadQuiz() {
         quizState.isSubmitted = false;
         quizState.score = 0;
         
+        // Ensure titles are rendered again after successful data load (now including total count)
         UI.renderTitles(quizState.topicSlug, quizState.difficulty, quizState.questions.length);
         
         // Show the first question
@@ -95,8 +96,8 @@ function navigateToQuestion(index) {
         
         // Update navigation controls
         const elements = UI.getElements();
-        const prevButton = document.getElementById('prev-button');
-        const nextButton = document.getElementById('next-button');
+        const prevButton = document.getElementById('prev-btn');
+        const nextButton = document.getElementById('next-btn'); // Corrected to prev-btn/next-btn from HTML
         
         if (prevButton) prevButton.disabled = index === 0;
         if (nextButton) nextButton.disabled = index === quizState.questions.length - 1;
@@ -176,7 +177,7 @@ function handleSubmit() {
         score: correctCount,
         total: quizState.questions.length,
         answers: quizState.userAnswers,
-        userId: getAuthUser() ? getAuthUser().uid : 'anonymous'
+        userId: getAuthUser() ? getAuthUser().uid : 'anonymous' 
     };
     
     // Placeholder for API call
@@ -196,7 +197,6 @@ async function handleAuthChange(user) {
     UI.updateAuthUI(user);
     UI.hideStatus(); 
     
-    // NOTE: checkAccess is a placeholder, assuming it will allow access for 'motion' if the user is logged in/paid.
     const accessGranted = await checkAccess(quizState.topicSlug, user);
     
     if (accessGranted) {
@@ -214,27 +214,6 @@ async function handleAuthChange(user) {
     }
 }
 
-async function handleSignIn() {
-    UI.updateStatus("Signing in with Google...");
-    try {
-        await signInWithGoogle();
-    } catch (error) {
-        UI.updateStatus("Sign-in failed. See console for details.");
-        console.error("Sign-in error:", error);
-    }
-}
-
-async function handleSignOut() {
-    UI.updateStatus("Signing out...");
-    try {
-        await signOutUser();
-        // After sign out, the onAuthStateChanged listener will trigger handleAuthChange(null)
-    } catch (error) {
-        UI.updateStatus("Sign-out failed. See console for details.");
-        console.error("Sign-out error:", error);
-    }
-}
-
 // --- Setup and Events ---
 
 async function initQuizEngine() {
@@ -242,7 +221,7 @@ async function initQuizEngine() {
     
     try {
         // 1. Parse URL immediately to get topic/difficulty
-        // This function will throw an error if the topic is not 'motion' or parameters are missing
+        // This MUST be first to set the quizState before auth callback uses it
         parseUrlParameters();
 
         // 2. Initialize Firebase/Supabase/etc., and attach auth listener
@@ -252,9 +231,9 @@ async function initQuizEngine() {
         const elements = UI.getElements();
 
         // 4. Attach Event Listeners
-        // Navigation buttons
-        const prevButton = document.getElementById('prev-button');
-        const nextButton = document.getElementById('next-button');
+        // Navigation buttons (using correct IDs from quiz-engine.html)
+        const prevButton = document.getElementById('prev-btn');
+        const nextButton = document.getElementById('next-btn');
 
         if (prevButton) prevButton.addEventListener('click', () => handleNavigation(-1));
         if (nextButton) nextButton.addEventListener('click', () => handleNavigation(1));
@@ -263,8 +242,8 @@ async function initQuizEngine() {
         if (elements.submitButton) elements.submitButton.addEventListener('click', handleSubmit);
         
         // Auth buttons
-        if (elements.loginButton) elements.loginButton.addEventListener('click', handleSignIn);
-        if (elements.logoutNavBtn) elements.logoutNavBtn.addEventListener('click', handleSignOut);
+        if (elements.loginButton) elements.loginButton.addEventListener('click', window.quizEngine.handleSignIn);
+        if (elements.logoutNavBtn) elements.logoutNavBtn.addEventListener('click', window.quizEngine.handleSignOut);
         
     } catch (error) {
         console.error("[ENGINE FATAL] Initialization failed:", error);
@@ -276,12 +255,13 @@ async function initQuizEngine() {
     }
 }
 
-// Expose public methods for use in HTML (like the dismiss button)
+// Expose public methods for use in HTML
 window.quizEngine = {
-    handleSignIn,
-    handleSignOut,
+    // Assuming handleSignIn/handleSignOut from auth-paywall.js are added to window object elsewhere
+    // If not, we rely on the direct import from auth-paywall.js or its exposure.
+    handleSignIn: window.quizEngine?.handleSignIn, 
+    handleSignOut: window.quizEngine?.handleSignOut,
     clearStatus: UI.hideStatus,
-    // Add loadQuiz for potential reloads if needed
     loadQuiz: loadQuiz 
 };
 
