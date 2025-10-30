@@ -3,9 +3,9 @@
 import { getInitializedClients } from './config.js';
 import { updateAuthUI, updatePaywallContent } from './ui-renderer.js';
 
-// REMOVED: import { GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-// Using the global firebase object (made available by firebase-auth-compat.js in quiz-engine.html)
-// for the GoogleAuthProvider, which is necessary when mixing modular and compat SDKs in this way.
+// **FIX:** We must import the specific modular functions needed for Google Sign-In.
+// These functions work regardless of whether the primary SDK imports are modular or compat.
+import { GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
 
 // Global state tracking
@@ -43,18 +43,12 @@ export async function signInWithGoogle() {
         throw new Error("Firebase Auth not available.");
     }
     
-    // FIX: Reverting to use the global 'firebase' object for GoogleAuthProvider
-    // This object is guaranteed to be available because of the 'compat' script imports in the HTML.
-    // We must ensure 'firebase' is available globally for this to work.
-    if (typeof firebase === 'undefined' || !firebase.auth || !firebase.auth.GoogleAuthProvider) {
-        console.error("[AUTH ERROR] Global 'firebase' object is not fully defined. Check CDN imports in quiz-engine.html.");
-        throw new Error("Authentication libraries failed to load correctly.");
-    }
-
-    const provider = new firebase.auth.GoogleAuthProvider();
+    // **FIX:** Use the imported modular functions (GoogleAuthProvider and signInWithPopup).
+    // This removes the dependency on the global 'firebase' object.
+    const provider = new GoogleAuthProvider();
     try {
-        // Since we are using the 'compat' SDK setup, we use the auth instance's method.
-        const result = await auth.signInWithPopup(provider);
+        // Use signInWithPopup from the modular SDK, passing the auth instance
+        const result = await signInWithPopup(auth, provider);
         console.log("[AUTH] Google Sign-In successful:", result.user.email);
         return result.user;
     } catch (error) {
