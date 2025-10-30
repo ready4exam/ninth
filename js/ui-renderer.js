@@ -21,12 +21,13 @@ export function initializeElements() {
         paywallContent: document.getElementById('paywall-content'),
         authNav: document.getElementById('auth-nav-container'),
         loginButton: document.getElementById('login-btn'),
-        logoutNavBtn: document.getElementById('logout-nav-btn'),
+        // NOTE: We rely on the existence of this ID in the header once logged in
+        logoutNavBtn: document.getElementById('logout-nav-btn'), 
         submitButton: document.getElementById('submit-btn'),
-        reviewCompleteBtn: document.getElementById('review-complete-btn'), // Added for completeness
-        scoreDisplay: document.getElementById('score-display'), // Added for completeness
-        prevButton: document.getElementById('prev-btn'), // Added for completeness
-        nextButton: document.getElementById('next-btn'), // Added for completeness
+        reviewCompleteBtn: document.getElementById('review-complete-btn'),
+        scoreDisplay: document.getElementById('score-display'), 
+        prevButton: document.getElementById('prev-btn'), 
+        nextButton: document.getElementById('next-btn'), 
         viewContainers: {
             'quiz-content': document.getElementById('quiz-content'),
             'results-screen': document.getElementById('results-screen'),
@@ -158,12 +159,9 @@ export function renderQuestion(question, questionNumber, selectedAnswer, isSubmi
 
 /**
  * Renders a summary review screen (shows all questions).
- * NOTE: Since the quiz-engine is designed to review one by one, this function
- * is simplified to just set the current question index to 0 for review start.
+ * In this implementation, it prepares the view for review navigation.
  */
 export function renderAllQuestionsForReview(questions, userAnswers) {
-    // In this specific implementation, we just make sure the user is viewing the quiz-content area
-    // to begin review of the first question, as the submit action has already calculated the score.
     showView('quiz-content');
 }
 
@@ -180,16 +178,16 @@ export function updateNavigation(currentIndex, totalQuestions, isSubmitted) {
     });
 
     if (isSubmitted) {
-        // After submission, show navigation for review (if you intend to review questions one by one)
-        // If viewing first question, hide prev. If viewing last, hide next.
-        if (currentIndex > 0) elements.prevButton.classList.remove('hidden');
-        if (currentIndex < totalQuestions - 1) elements.nextButton.classList.remove('hidden');
+        // After submission, show navigation for review
+        if (elements.prevButton && currentIndex > 0) elements.prevButton.classList.remove('hidden');
+        if (elements.nextButton && currentIndex < totalQuestions - 1) elements.nextButton.classList.remove('hidden');
+        if (elements.reviewCompleteBtn) elements.reviewCompleteBtn.classList.remove('hidden');
 
     } else {
         // During quiz
-        if (currentIndex > 0) elements.prevButton.classList.remove('hidden');
-        if (currentIndex < totalQuestions - 1) elements.nextButton.classList.remove('hidden');
-        if (currentIndex === totalQuestions - 1) elements.submitButton.classList.remove('hidden');
+        if (elements.prevButton && currentIndex > 0) elements.prevButton.classList.remove('hidden');
+        if (elements.nextButton && currentIndex < totalQuestions - 1) elements.nextButton.classList.remove('hidden');
+        if (elements.submitButton && currentIndex === totalQuestions - 1) elements.submitButton.classList.remove('hidden');
     }
 }
 
@@ -210,13 +208,11 @@ export function attachAnswerListeners(handler) {
 }
 
 /**
- * Attaches event listeners for review navigation.
- * NOTE: Navigation buttons are already attached in quiz-engine.js's init.
+ * Attaches event listeners for review navigation (Placeholder/Helper).
  */
 export function attachReviewListeners(handler) {
-    // Buttons are already attached in initQuizEngine, no need to re-attach here
-    // This function serves as a placeholder to confirm review controls are ready.
-    console.log("[UI RENDERER] Review navigation listeners confirmed.");
+    // Handlers for prev/next buttons are already attached in quiz-engine.js's init.
+    console.log("[UI RENDERER] Review navigation controls confirmed ready.");
 }
 
 // --- Results Management ---
@@ -237,7 +233,7 @@ export function showResults(score, total) {
 
 /**
  * Updates the authentication area in the navigation bar.
- * @param {Object} user - The Firebase user object (or null).
+ * NOTE: This function must re-attach listeners for the new login/logout buttons created here.
  */
 export function updateAuthUI(user) {
     const elements = getElements();
@@ -261,8 +257,9 @@ export function updateAuthUI(user) {
                 Sign Out
             </button>
         `;
-        // Re-get the new logout button to attach the event listener in quiz-engine.js
+        // IMPORTANT: Re-get the new button references after modifying innerHTML
         elements.logoutNavBtn = document.getElementById('logout-nav-btn');
+        elements.loginButton = null; // Ensure login button is null when logged in
         
     } else {
         // User is logged out
@@ -271,14 +268,15 @@ export function updateAuthUI(user) {
                 Sign In (Google)
             </button>
         `;
-        // Re-get the new login button to attach the event listener in quiz-engine.js
+        // IMPORTANT: Re-get the new button references after modifying innerHTML
         elements.loginButton = document.getElementById('login-btn');
+        elements.logoutNavBtn = null; // Ensure logout button is null when logged out
     }
+    // Listeners are re-attached in quiz-engine.js's init function for the new element references.
 }
 
 /**
  * Updates the content displayed on the paywall screen.
- * @param {string} topic - The topic slug requiring payment.
  */
 export function updatePaywallContent(topic) {
     const elements = getElements();
@@ -297,9 +295,8 @@ export function updatePaywallContent(topic) {
         // Attach listener to the new login button created in the paywall content
         const paywallLoginBtn = document.getElementById('paywall-login-btn');
         if (paywallLoginBtn) {
-            // NOTE: The handler for this button needs to be attached in quiz-engine.js
+            // Re-use the handler for the main login button from the header
             paywallLoginBtn.addEventListener('click', () => {
-                // Since this module doesn't know the handler, we trigger the one on the main login button (if it exists)
                 const mainLoginBtn = document.getElementById('login-btn');
                 if (mainLoginBtn) mainLoginBtn.click();
             });
