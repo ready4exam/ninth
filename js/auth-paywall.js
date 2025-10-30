@@ -1,11 +1,14 @@
 // js/auth-paywall.js
 // Handles Firebase Authentication (Google Sign-In/Out) and initial access check.
+
 import { getInitializedClients } from './config.js';
-import { updateAuthUI, updatePaywallContent } from './ui-renderer.js';
+import { updateAuthUI } from './ui-renderer.js';
 
 // **FIX:** We must import the specific modular functions needed for Google Sign-In.
-// These functions work regardless of whether the primary SDK imports are modular or compat.
-import { GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { 
+    GoogleAuthProvider, 
+    signInWithPopup 
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
 
 // Global state tracking
@@ -42,12 +45,9 @@ export async function signInWithGoogle() {
     if (!auth) {
         throw new Error("Firebase Auth not available.");
     }
-    
-    // **FIX:** Use the imported modular functions (GoogleAuthProvider and signInWithPopup).
-    // This removes the dependency on the global 'firebase' object.
+
     const provider = new GoogleAuthProvider();
     try {
-        // Use signInWithPopup from the modular SDK, passing the auth instance
         const result = await signInWithPopup(auth, provider);
         console.log("[AUTH] Google Sign-In successful:", result.user.email);
         return result.user;
@@ -74,20 +74,20 @@ export async function signOut() {
 }
 
 /**
- * Checks the user's access status. Since payments are blocked, this only verifies
- * if the user is currently authenticated (logged in).
- * @returns {Promise<boolean>} - True if logged in, false otherwise.
+ * Checks the user's access status. 
+ * Access is only granted if the user is explicitly signed in (non-anonymous).
+ * @returns {Promise<boolean>} - True if logged in, non-anonymous, false otherwise.
  */
-export async function checkPaymentStatus() {
-    // NOTE: In a real app, this would check Firestore for a subscription record.
-    // For now, access is granted if the user is authenticated.
-    if (currentAuthUser) {
-         console.log("[ACCESS CHECK] Payments disabled. Access granted to authenticated user.");
+export function checkAccess() {
+    const isAccessGranted = currentAuthUser && !currentAuthUser.isAnonymous;
+    
+    if (isAccessGranted) {
+         console.log("[ACCESS CHECK] User authenticated with Google. Access granted.");
          return true;
     }
     
-    // If not authenticated, access is denied.
-    console.log("[ACCESS CHECK] User not authenticated. Access denied.");
+    // If not authenticated via Google, access is denied.
+    console.log("[ACCESS CHECK] User not authenticated via Google. Access denied (Sign-in required).");
     return false;
 }
 
@@ -97,3 +97,8 @@ export async function checkPaymentStatus() {
 export function getCurrentUser() {
     return currentAuthUser;
 }
+
+// Attach the new sign-in/out methods to the window for use in event listeners (e.g., in quiz-engine.js)
+window.quizEngine = window.quizEngine || {};
+window.quizEngine.handleSignIn = signInWithGoogle;
+window.quizEngine.handleSignOut = signOut;
