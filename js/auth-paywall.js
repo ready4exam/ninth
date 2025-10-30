@@ -1,104 +1,86 @@
-// js/auth-paywall.js
-// Handles Firebase Authentication (Google Sign-In/Out) and initial access check.
+// File: auth-paywall.js (REQUIRED UPDATES)
 
-// FIX: Importing getInitializedClients, getAuthUser, and signOutUser which are 
-// correctly exported by the final config.js code.
-import { getInitializedClients, getAuthUser, signOutUser } from './config.js';
-import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import * as API from './api.js';
+// Assuming 'auth', 'googleProvider' (GoogleAuthProvider instance), and 
+// any necessary firebase imports are already defined in this file's scope
+// or imported from config.js.
 
-// --- Internal State ---
-const googleProvider = new GoogleAuthProvider();
-let auth = null; // Will store the Firebase Auth object after initialization
+const LOG_TAG = '[AUTH]';
+const PAYWALL_TAG = '[PAYWALL]';
 
 /**
- * Initializes the Firebase Auth listener. 
- * @param {Function} callback - The function (onAuthChange) to call when the auth state changes.
+ * Signs the user in with Google.
+ * Attempts signInWithPopup first. If it fails due to the COOP policy 
+ * or explicit cancellation, it falls back to signInWithRedirect.
+ * * @param {firebase.auth.Auth} auth - The initialized Firebase Auth instance.
+ * @param {firebase.auth.GoogleAuthProvider} googleProvider - The Google auth provider.
  */
-export function initializeAuthListener(callback) {
-    // FIX: Retrieve the auth object from the initialized clients
-    auth = getInitializedClients().auth; 
+function signInWithGoogle(auth, googleProvider) {
+    console.log(LOG_TAG, 'Attempting Google sign-in (Primary: Popup)...');
 
-    if (!auth) {
-        console.error("[AUTH] Firebase Auth not available. Listener cannot be initialized.");
-        return;
-    }
+    // 1. Try the Popup method
+    return auth.signInWithPopup(googleProvider)
+        .then(result => {
+            console.log(LOG_TAG, 'Successfully signed in with Google (via Popup).');
+            return result;
+        })
+        .catch(error => {
+            // Check for errors caused by COOP, timeout, or user cancellation
+            const isPopupFailure = error.code === 'auth/cancelled-popup-request' ||
+                                   error.code === 'auth/popup-blocked';
 
-    // This listener immediately checks the current state and then listens for future changes.
-    onAuthStateChanged(auth, (user) => {
-        // user is null if no one is signed in.
-        callback(user); 
-    });
-    console.log("[AUTH] Auth state listener initialized.");
+            if (isPopupFailure) {
+                // The popup failed to communicate/close. Fallback to Redirect.
+                console.warn(LOG_TAG, 'Popup failed (Code: ' + error.code + '). Falling back to signInWithRedirect.');
+                
+                // This call initiates a full page redirect.
+                return auth.signInWithRedirect(googleProvider);
+                // NOTE: Execution stops here as the page reloads.
+
+            } else {
+                // Handle all other errors (network, server, etc.)
+                console.error(LOG_TAG, 'Google sign-in failed with unexpected error:', error);
+                throw error;
+            }
+        });
 }
 
 /**
- * Initiates the Google Sign-In process via a popup.
+ * Checks for a pending redirect result on page load.
+ * This MUST be called early in your initialization process (e.g., in onAuthChange).
+ * * @param {firebase.auth.Auth} auth - The initialized Firebase Auth instance.
  */
-export async function signInWithGoogle() {
-    if (!auth) {
-        console.error("[AUTH ERROR] Auth service not initialized.");
-        return;
-    }
-    try {
-        await signInWithPopup(auth, googleProvider);
-        console.log("[AUTH] Successfully signed in with Google.");
-    } catch (error) {
-        console.error("[AUTH ERROR] Google sign-in failed:", error);
-    }
+function checkRedirectResult(auth) {
+    // getRedirectResult resolves immediately if no redirect was pending.
+    auth.getRedirectResult()
+        .then((result) => {
+            if (result.credential) {
+                // User signed in successfully via redirect (e.g., after the fallback)
+                console.log(LOG_TAG, 'Successfully completed sign-in with Google (via Redirect).');
+                // The onAuthStateChanged listener will handle the quiz loading next.
+            }
+        })
+        .catch((error) => {
+            console.error(LOG_TAG, 'Redirect result check failed:', error);
+            // Handle redirect errors (e.g., auth/account-exists-with-different-credential)
+        });
 }
 
-/**
- * Signs the current user out of Firebase.
- */
-export async function signOut() {
-    if (!auth) {
-        console.error("[AUTH ERROR] Auth service not initialized.");
-        return;
-    }
-    try {
-        // Use the exported signOutUser function from config.js
-        await signOutUser(auth); 
-        console.log("[AUTH] User signed out.");
-    } catch (error) {
-        console.error("[AUTH ERROR] Sign-out failed:", error);
-    }
-}
+// ... your other functions in auth-paywall.js ...
 
+// --- Make sure to integrate checkRedirectResult ---
+// If your existing onAuthChange is called on initialization, add it there.
 
-/**
- * Checks if the currently authenticated user has access to the specified topic.
- * @param {string} topicSlug - The topic identifier (e.g., 'motion').
- * @returns {Promise<boolean>} - True if access is granted, false otherwise.
- */
-export async function checkAccess(topicSlug) {
-    const user = getAuthUser();
-    
-    // Rule 1: Must be authenticated (enforces the Google Login requirement)
-    if (!user) {
-        console.warn("[PAYWALL] Access denied: User is not authenticated.");
-        return false;
-    }
-    
-    // Rule 2: Check against a list of free topics
-    const FREE_TOPICS = ['motion', 'introduction-to-topic-x']; 
-    if (FREE_TOPICS.includes(topicSlug)) {
-        console.log(`[PAYWALL] Access granted for free topic: ${topicSlug}`);
-        return true;
-    }
+// Example onAuthChange function (Conceptual structure)
+// function onAuthChange(user) {
+//     // 1. Check for pending redirect result FIRST.
+//     checkRedirectResult(auth); 
+//     
+//     // 2. Then proceed with normal auth state handling
+//     if (user) {
+//         // User is signed in. Load quiz.
+//     } else {
+//         // User is signed out. Show sign-in button.
+//     }
+// }
 
-    // Rule 3: Check API/Firestore for premium access 
-    try {
-        // This assumes checkPremiumStatus is implemented in api.js
-        const hasPremium = await API.checkPremiumStatus(user.uid);
-        if (hasPremium) {
-            console.log("[PAYWALL] Access granted: User has premium status.");
-            return true;
-        }
-    } catch(error) {
-        console.error("[PAYWALL ERROR] Failed to check premium status (assuming no premium):", error);
-    }
-
-    console.warn(`[PAYWALL] Access denied: Topic ${topicSlug} requires premium access.`);
-    return false;
-}
+// You should ensure checkRedirectResult(auth) runs once when the app loads.
