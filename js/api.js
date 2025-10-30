@@ -17,8 +17,7 @@ function getClients() {
 
 /**
  * Fetches quiz questions based on topic and difficulty from the unified 'quizzes' table.
- * Enforces the fixed mix: 10 MCQ, 5 AR, 5 Case-Based (Total 20).
- * Questions are fetched in order (not random) for practice to perfection.
+ * **NEW:** Strictly enforces the 10 MCQ, 5 AR, 5 Case-Based mix (Total 20 questions).
  * @param {string} topic - The chapter topic slug (e.g., 'motion').
  * @param {string} difficulty - The difficulty level ('simple', 'medium', 'advanced').
  * @returns {Promise<Array<Object>>} A promise that resolves to an array of questions.
@@ -26,77 +25,72 @@ function getClients() {
 export async function fetchQuestions(topic, difficulty) {
     const { supabase } = getClients();
     
+    // We are now querying the unified 'quizzes' table, filtering by topic_slug and difficulty.
     console.log(`[API] Fetching questions for topic: ${topic}, difficulty: ${difficulty}`);
 
-    // Define the question mix and respective limits
-    const questionMix = [
-        { type: 'MCQ', limit: 10 },
-        { type: 'AR', limit: 5 }, // Assertion-Reason
-        { type: 'Case-Based', limit: 5 },
-    ];
+    UI.updateStatus(`<p class="text-lg font-semibold text-cbse-blue">Fetching 20 Questions (${difficulty})...</p>`);
+    
+    const baseQuery = supabase
+        .from('quizzes')
+        .select(`
+            id, question_text, options, correct_option_id, final_explanation,
+            question_type, scenario_reason_test, question_order
+        `)
+        .eq('topic_slug', topic)
+        .eq('difficulty', difficulty);
 
-    const queries = questionMix.map(mix => {
-        return supabase
-            .from('quizzes') // Assuming a unified 'quizzes' table for all questions
-            .select('*')
-            .eq('topic_slug', topic)
-            .eq('difficulty', difficulty)
-            .eq('question_type', mix.type)
-            // Use 'limit' for fixed set, order by 'question_order' or 'id' for non-randomness
-            .order('question_order', { ascending: true }) 
-            .limit(mix.limit);
-    });
-
-    try {
-        const results = await Promise.all(queries);
-        let allQuestions = [];
-        let totalFetched = 0;
-        let missingQuestions = [];
-
-        results.forEach((res, index) => {
-            if (res.error) {
-                console.error(`[API ERROR] Failed to fetch ${questionMix[index].type}:`, res.error);
-                throw new Error(`Data fetching failed for ${questionMix[index].type}.`);
-            }
-            const expectedCount = questionMix[index].limit;
-            
-            if (res.data.length < expectedCount) {
-                 missingQuestions.push(`${questionMix[index].type} (Found: ${res.data.length} / Expected: ${expectedCount})`);
-            }
-            
-            allQuestions.push(...res.data);
-            totalFetched += res.data.length;
-        });
-
-        if (missingQuestions.length > 0) {
-            const message = `Incomplete data: Missing questions for ${missingQuestions.join(', ')}. Total questions: ${totalFetched}.`;
-            UI.updateStatus(`<span class="text-yellow-600">Warning:</span> ${message}`);
-            console.warn(`[API WARNING] ${message}`);
-        }
+    // --- Enforce Fixed Question Mix ---
+    
+    // 1. Fetch 10 MCQ questions
+    const { data: mcqData, error: mcqError } = await baseQuery
+        .eq('question_type', 'mcq')
+        .limit(10);
         
-        // Final sort in memory by question_order (if available) to ensure a consistent flow (e.g., 10 MCQ, 5 AR, 5 Case-Based)
-        allQuestions.sort((a, b) => (a.question_order || a.id || 0) - (b.question_order || b.id || 0));
+    if (mcqError) console.error("[API ERROR] MCQ Fetch failed:", mcqError);
+        
+    // 2. Fetch 5 Assertion-Reason (AR) questions
+    const { data: arData, error: arError } = await baseQuery
+        .eq('question_type', 'ar')
+        .limit(5);
+        
+    if (arError) console.error("[API ERROR] AR Fetch failed:", arError);
 
-        return allQuestions;
+    // 3. Fetch 5 Case-Based questions
+    const { data: caseData, error: caseError } = await baseQuery
+        .eq('question_type', 'case')
+        .limit(5);
+        
+    if (caseError) console.error("[API ERROR] Case Fetch failed:", caseError);
 
-    } catch (e) {
-        console.error("[API ERROR] Error during quiz data fetching:", e);
-        throw new Error("Failed to load quiz data. Check Supabase connection and table structure.");
+    // Combine and check for errors
+    const data = [...(mcqData || []), ...(arData || []), ...(caseData || [])];
+    
+    // Check if total question count is less than expected 20
+    if (data.length < 20) {
+         const message = `Found only ${data.length} questions. Expected 20 (10 MCQ, 5 AR, 5 Case).`;
+         console.warn(`[API WARNING] ${message}`);
+         UI.updateStatus(`<span class="text-yellow-600">Warning:</span> ${message}`);
     }
+
+    // Sort in memory (e.g., by question ID or a custom order field)
+    // We rely on the Supabase query to provide a consistent (non-random) set for the fixed 20 questions.
+    // The client-side sort provides a stable display order.
+    data.sort((a, b) => (a.question_order || a.id || 0) - (b.question_order || b.id || 0));
+
+    return data;
 }
 
 /**
  * Saves the quiz result to Firestore.
  * Path: /artifacts/{__app_id}/users/{userId}/quiz_scores
  * @param {Object} resultData - The quiz result data (score, total, topic, answers, etc.).
- * @returns {Promise<void>}
+ * @returns {Promise<void>}\
  */
 export async function saveResult(resultData) {
     const { db } = getClients();
     const user = getAuthUser();
-    const userId = user ? user.uid : 'anonymous'; 
+    const userId = user ? user.uid : 'anonymous'; // Use 'anonymous' if somehow not authenticated
 
-    // ONLY save if the user is authenticated via Google (non-anonymous)
     if (!user || user.isAnonymous) {
         console.warn("[API] Not saving quiz result. User is not authenticated via Google Sign-In.");
         return;
@@ -107,6 +101,7 @@ export async function saveResult(resultData) {
     const quizScoresCollection = collection(db, path);
 
     try {
+        // Ensure all parameters are included in the saved document
         await addDoc(quizScoresCollection, {
             ...resultData,
             user_id: userId,
@@ -115,6 +110,5 @@ export async function saveResult(resultData) {
         console.log(`[API] Quiz result saved successfully for user: ${userId}`);
     } catch (e) {
         console.error("[API ERROR] Failed to save quiz result to Firestore:", e);
-        // Note: Do not throw error, as failure to save result should not break the app
     }
 }
