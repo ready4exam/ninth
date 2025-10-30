@@ -31,18 +31,25 @@ export async function fetchQuestions(topicSlug, difficulty) {
 
         // Use Promise.all to fetch all types concurrently for speed
         const fetchPromises = questionsToFetch.map(async ({ type, limit }) => {
-            // CRITICAL FIX CONFIRMATION: Using 'topic_slug' as confirmed by the database schema
-            const { data, error } = await supabase
+            
+            let query = supabase
                 .from(QUIZZES_TABLE)
-                .select('*')
-                .eq('topic_slug', topicSlug) // <--- ENSURING CORRECT COLUMN NAME IS USED
+                .select('*');
+            
+            // CRITICAL FIX: Using .filter() instead of .eq() to try and force the URL parameter to be 'topic_slug'
+            query = query.filter('topic_slug', 'eq', topicSlug); 
+            
+            // Other filters use .eq()
+            query = query
                 .eq('difficulty', difficulty)
-                .eq('question_type', type) // Ensure we filter by the column 'question_type' if it exists. Reverting to 'type' if that was the original intention. The schema says 'question_type'.
+                .eq('question_type', type) // Ensure we filter by 'question_type' column
                 .limit(limit)
                 .order('id', { ascending: true }); // Ensure predictable ordering
 
+            const { data, error } = await query;
+
             if (error) {
-                // If the error about 'topic' column still appears, the Supabase client or a DB policy is faulty.
+                // This is the error indicating the column doesn't exist.
                 console.error(`Supabase Query Error for ${type}:`, error.message);
                 return []; // Return empty array on error to allow other types to load
             }
