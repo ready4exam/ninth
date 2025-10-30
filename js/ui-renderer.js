@@ -1,13 +1,13 @@
 // js/ui-renderer.js
 // Handles all view rendering and switching logic.
-import { signOut } from './auth-paywall.js';
 
 // --- DOM Elements Cache ---
 const elements = {
     // Views
-    loadingStatus: document.getElementById('loading-status'),
+    loadingStatus: document.getElementById('loading-status'), // Renamed for clarity
     statusText: document.getElementById('status-text'),
     paywallScreen: document.getElementById('paywall-screen'),
+    startScreen: document.getElementById('start-screen'),
     quizContent: document.getElementById('quiz-content'),
     resultsScreen: document.getElementById('results-screen'),
     
@@ -17,10 +17,8 @@ const elements = {
     logoutNavBtn: document.getElementById('logout-nav-btn'),
 
     // Quiz Elements
-    questionContainer: document.getElementById('question-container'),
-    questionCounter: document.getElementById('question-counter'),
-    prevBtn: document.getElementById('prev-btn'),
-    nextBtn: document.getElementById('next-btn'),
+    // NOTE: This element ID is now correctly matched with quiz-engine.html
+    questionList: document.getElementById('question-list'),
     submitButton: document.getElementById('submit-button'),
     
     // Paywall Elements
@@ -30,217 +28,170 @@ const elements = {
     
     // Results
     scoreDisplay: document.getElementById('score-display'),
-    reviewCompleteBtn: document.getElementById('review-complete-btn'),
-};
-
-// Map of view names to their DOM elements
-const views = {
-    'loading-status': elements.loadingStatus,
-    'paywall-screen': elements.paywallScreen,
-    'quiz-content': elements.quizContent,
-    'results-screen': elements.resultsScreen,
 };
 
 /**
- * Hides all views and shows the specified one.
- * @param {string} viewName - The ID of the view to show.
+ * Hides all main view containers and shows the specified one.
+ * @param {string} viewId - The ID of the view to show ('loading-status', 'start-screen', 'quiz-content', 'results-screen', 'paywall-screen').
  */
-export function showView(viewName) {
-    Object.values(views).forEach(el => {
-        if (el) el.classList.add('hidden');
+export function showView(viewId) {
+    Object.values(elements).forEach(el => {
+        if (el && el.id && (el.id === 'loading-status' || el.id === 'paywall-screen' || el.id === 'start-screen' || el.id === 'quiz-content' || el.id === 'results-screen')) {
+            el.classList.add('hidden');
+        }
     });
-    if (views[viewName]) {
-        views[viewName].classList.remove('hidden');
+
+    const targetEl = elements[viewId];
+    if (targetEl) {
+        targetEl.classList.remove('hidden');
     }
 }
 
 /**
- * Updates the status text displayed on the loading screen.
- * @param {string} text 
+ * Updates the loading/status message.
+ * @param {string} text - The message to display.
  */
 export function updateStatus(text) {
-    if (elements.statusText) elements.statusText.textContent = text;
+    if (elements.statusText) {
+        elements.statusText.innerHTML = text; // Use innerHTML to allow for bolding
+    }
+    // Ensure the loading screen is visible when showing status
+    showView('loading-status');
 }
 
 /**
- * Hides the loading status element.
+ * Clears the loading/status message.
  */
-// *** CRITICAL FIX 1: Exporting hideStatus ***
 export function hideStatus() {
-    if (elements.loadingStatus) {
-        elements.loadingStatus.classList.add('hidden');
+    if (elements.statusText) {
+        elements.statusText.textContent = '';
     }
 }
 
 /**
- * Initializes the header branding using URL parameters and calls renderTitles.
- * @param {string} topicTitle - The display name of the topic.
- * @param {string} difficulty - The difficulty level ('simple', 'medium', 'advanced').
+ * Sets the main quiz titles in the header.
+ * @param {string} topic - The current topic name.
+ * @param {string} difficulty - The current difficulty level.
+ * @param {number} [totalQuestions=0] - The total number of questions.
  */
-// *** CRITICAL FIX 2: Exporting initBranding ***
-export function initBranding(topicTitle, difficulty) {
-    const params = new URLSearchParams(window.location.search);
-    const subject = params.get('subject') || 'Chapter'; 
-    renderTitles(topicTitle, difficulty, subject);
-}
+export function renderTitles(topic, difficulty, totalQuestions = 0) {
+    const topicName = topic || 'Undefined';
+    const difficultyLevel = difficulty || 'medium'; // Default to medium if not provided
 
-/**
- * Sets the main quiz page branding titles.
- * @param {string} topicTitle - The display name of the topic.
- * @param {string} difficulty - The difficulty level ('simple', 'medium', 'advanced').
- * @param {string} subject - The subject name (e.g., 'Science').
- */
-export function renderTitles(topicTitle, difficulty, subject) {
     if (elements.quizPageTitle) {
-        elements.quizPageTitle.textContent = `${topicTitle} Quiz`;
+        elements.quizPageTitle.textContent = topicName.charAt(0).toUpperCase() + topicName.slice(1) + ' Quiz';
     }
+    
+    // FIX: Add robust check to prevent TypeError when difficulty is undefined
+    const displayDifficulty = difficultyLevel.charAt(0).toUpperCase() + difficultyLevel.slice(1);
+
     if (elements.difficultyDisplay) {
-        const d = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
-        elements.difficultyDisplay.innerHTML = `${subject.replace('_', ' ')} | <span class="font-bold text-gray-700">${d} Difficulty</span>`;
+        elements.difficultyDisplay.textContent = `Difficulty: ${displayDifficulty} | ${totalQuestions} Questions`;
     }
+}
+
+/**
+ * Initializes basic branding elements (called on DOM load).
+ */
+export function initBranding() {
+    // Placeholder for any non-quiz specific header logic if needed
+    // The main titles are set by renderTitles after data loads
 }
 
 /**
  * Renders a single question into the question container.
- * @param {Object} question - The question object.
- * @param {number} index - The 0-based index of the question.
- * @param {number} total - The total number of questions.
- * @param {string | null} userAnswer - The user's previously saved answer.
- * @param {boolean} isSubmitted - If true, show correct/incorrect feedback.
+ * @param {Object} question - The question object from the Supabase result.
+ * @param {number} index - The index of the question in the quiz array (0-based).
+ * @param {string|null} userAnswer - The previously saved answer from the state.
+ * @param {boolean} isSubmitted - If the quiz has been submitted (shows correct/incorrect feedback).
  */
-export function renderQuestion(question, index, total, userAnswer, isSubmitted) {
-    if (!elements.questionContainer) return;
+export function renderQuestion(question, index, userAnswer, isSubmitted) {
+    // CRITICAL FIX: If questionList is null (element not found in HTML), exit
+    if (!elements.questionList) {
+        console.error("[UI RENDERER] Fatal Error: questionList element not found in HTML.");
+        return; 
+    }
 
-    // Determine the question type title for display
-    let typeTitle = '';
-    if (question.type === 'mcq') typeTitle = 'Multiple Choice Question';
-    else if (question.type === 'assertion_reasoning') typeTitle = 'Assertion & Reason';
-    else if (question.type === 'case_study') typeTitle = 'Case Study Based Question';
-    else typeTitle = question.type; // Fallback
+    // CRITICAL FIX: Check if question object is valid and has options (prevents the .map crash)
+    if (!question || !Array.isArray(question.options)) {
+        console.error("[UI RENDERER] Invalid question object received or missing options:", question);
+        // Display a fallback message if the question object is invalid
+        elements.questionList.innerHTML = `<div class="p-6 text-center text-red-600 bg-red-50 rounded-lg">
+            <h3 class="text-xl font-semibold">Question Not Available</h3>
+            <p>Could not load question data. Please ensure the question object contains a valid 'options' array.</p>
+        </div>`;
+        return;
+    }
 
-    const optionsHtml = question.options.map((option, optionIndex) => {
-        const optionId = `q${index}_opt${optionIndex}`;
-        const isChecked = userAnswer === option;
-        
-        let feedbackClass = '';
-        const isCorrect = option === question.correct_answer;
+    // Clear previous question content
+    elements.questionList.innerHTML = '';
+    
+    // Create the container for the new question content
+    const questionContent = document.createElement('div');
+    questionContent.id = 'question-content-display'; // Use a new ID for the dynamic content
+    questionContent.className = 'space-y-6';
 
-        if (isSubmitted) {
-            if (isCorrect) {
-                feedbackClass = 'correct';
-            } else if (isChecked && !isCorrect) {
-                feedbackClass = 'incorrect';
-            }
-        }
+    // 1. Render Question Text
+    questionContent.innerHTML += `
+        <h3 class="text-xl font-bold text-gray-800">Q${index + 1}. (${question.question_type.toUpperCase().replace('_', ' ')})</h3>
+        <p class="text-lg text-gray-700">${question.question_text}</p>
+    `;
 
+    // 2. Render Options
+    const optionsHtml = question.options.map((optionText, optionIndex) => {
+        // Use the option text itself as the value for simplicity
+        const optionValue = optionText; 
+        const isChecked = userAnswer === optionValue;
+        const inputId = `q${index}-option-${optionIndex}`;
+
+        // Added custom-radio span for better styling control
         return `
-            <div class="flex items-center space-x-3">
-                <input type="radio"
-                                   id="${optionId}"
-                                   name="question_${index}"
-                                   value="${option}"
-                                   class="radio-input"
-                                   ${isChecked ? 'checked' : ''}
-                                   ${isSubmitted ? 'disabled' : ''}
-                >
-                <label for="${optionId}" class="option-label ${feedbackClass}">
-                    <!-- Custom radio indicator -->
-                    <div class="h-5 w-5 rounded-full border-2 mr-3 flex items-center justify-center transition-all duration-150
-                                                    ${isChecked && !isSubmitted ? 'bg-cbse-blue border-cbse-blue' : isChecked && isCorrect ? 'bg-green-600 border-green-600' : isChecked && !isCorrect ? 'bg-red-600 border-red-600' : 'bg-white border-gray-400'}">
-                        <div class="h-2 w-2 rounded-full ${isChecked ? 'bg-white' : 'bg-transparent'}"></div>
-                    </div>
-                    <!-- Option Text -->
-                    <span class="text-base">${option}</span>
+            <div class="flex items-start">
+                <input type="radio" 
+                       id="${inputId}" 
+                       name="question-${index}" 
+                       value="${optionValue}" 
+                       class="sr-only"
+                       ${isChecked ? 'checked' : ''}
+                       ${isSubmitted ? 'disabled' : ''}>
+                <label for="${inputId}" class="option-label">
+                    <span class="custom-radio"></span>
+                    <span class="text-gray-700 font-medium">${optionText}</span>
                 </label>
             </div>
         `;
     }).join('');
 
-    const contentHtml = `
-        <div class="mb-6 border-b pb-4 border-gray-100">
-            <span class="question-index-tag">${typeTitle}</span>
-            ${question.case_study_text ? `<p class="mt-4 text-sm italic text-gray-600 bg-gray-50 p-3 rounded-lg border-l-2 border-gray-300">${question.case_study_text}</p>` : ''}
-        </div>
-        
-        <h3 class="text-xl font-semibold text-gray-800 mb-6">${question.question_text}</h3>
-        
-        <div class="space-y-4">
-            ${optionsHtml}
-        </div>
-        
-        ${isSubmitted ? `<div class="mt-6 p-4 ${userAnswer === question.correct_answer ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'} border rounded-lg">
-            <p class="font-bold">Correct Answer: ${question.correct_answer}</p>
-        </div>` : ''}
-    `;
-
-    elements.questionContainer.innerHTML = contentHtml;
-}
-
-
-/**
- * Updates the question counter and navigation button states.
- * @param {number} current - The current 0-based index.
- * @param {number} total - The total number of questions.
- * @param {boolean} isSubmitted - Flag to show/hide the submit button and control navigation text.
- */
-export function updateNavigation(current, total, isSubmitted) {
-    const isFirst = current === 0;
-    const isLast = current === total - 1;
-
-    if (elements.questionCounter) {
-        elements.questionCounter.textContent = `${current + 1} / ${total}`;
-    }
-
-    if (elements.prevBtn) {
-        elements.prevBtn.disabled = isFirst;
-        elements.prevBtn.classList.toggle('opacity-50', isFirst);
-    }
-
-    if (elements.nextBtn) {
-        elements.nextBtn.classList.remove('hidden');
-        if (isLast) {
-            elements.nextBtn.classList.add('hidden'); // Hide Next on last question
-        }
-    }
+    questionContent.innerHTML += `<div class="space-y-3">${optionsHtml}</div>`;
+    elements.questionList.appendChild(questionContent);
     
-    if (elements.submitButton) {
-        // Show Submit button ONLY on the last question AND if not submitted
-        elements.submitButton.classList.toggle('hidden', !isLast || isSubmitted);
-    }
-
-    // In Review Mode (isSubmitted is true), we adjust the buttons for navigation
+    // 3. Apply Submission Feedback if already submitted
     if (isSubmitted) {
-        if (elements.nextBtn) elements.nextBtn.textContent = 'Review Next';
-        if (elements.submitButton) elements.submitButton.classList.add('hidden'); // Ensure submit is hidden in review
-        // Show 'Next' even on the last question during review, but only if it's not the actual last question.
-        if (elements.nextBtn) {
-            elements.nextBtn.classList.remove('hidden');
-            if(isLast) elements.nextBtn.classList.add('hidden'); // Ensure it's hidden on the *very* last question
-        }
-    } else {
-        if (elements.nextBtn) elements.nextBtn.textContent = 'Next';
+        // Find all option labels and inputs
+        questionContent.querySelectorAll('input[type="radio"]').forEach(radioInput => {
+            const label = questionContent.querySelector(`label[for="${radioInput.id}"]`);
+            const customRadio = label.querySelector('.custom-radio');
+            const optionValue = radioInput.value;
+            const correctAnswer = question.correct_answer; // From the question object
+
+            // Check if this is the correct answer
+            if (optionValue === correctAnswer) {
+                label.classList.add('correct');
+                if (customRadio) customRadio.classList.add('correct');
+            }
+
+            // Highlight the user's incorrect choice if they made one
+            if (radioInput.checked && optionValue !== correctAnswer) {
+                label.classList.add('incorrect');
+                if (customRadio) customRadio.classList.add('incorrect');
+            }
+            
+            // Disable all options after submission (redundant check, but safe)
+            radioInput.disabled = true;
+        });
     }
 }
 
-/**
- * Calculates the score and prepares the quiz content for review mode.
- * @param {Array} questions - The array of question objects.
- * @param {Object} userAnswers - The user's answers.
- * @returns {number} The final score.
- */
-// *** CRITICAL FIX 3: Exporting processResultsAndRender ***
-export function processResultsAndRender(questions, userAnswers) {
-    let score = 0;
-    questions.forEach((q, index) => {
-        const userAnswer = userAnswers[index];
-        if (userAnswer === q.correct_answer) {
-            score++;
-        }
-    });
-    // Note: The actual rendering of feedback happens in renderQuestion 
-    // when isSubmitted is true. This function just calculates the score.
-    return score;
-}
 
 /**
  * Updates the score display on the results screen.
@@ -248,9 +199,7 @@ export function processResultsAndRender(questions, userAnswers) {
  * @param {number} total 
  */
 export function updateResultDisplay(score, total) {
-    if (elements.scoreDisplay) {
-        elements.scoreDisplay.textContent = `${score} / ${total}`;
-    }
+    elements.scoreDisplay.textContent = `${score} / ${total}`;
 }
 
 /**
@@ -258,17 +207,12 @@ export function updateResultDisplay(score, total) {
  * @param {Object|null} user 
  */
 export function updateAuthUI(user) {
-    if (elements.logoutNavBtn) {
-        if (user) {
-            elements.logoutNavBtn.classList.remove('hidden');
-            elements.logoutNavBtn.textContent = `🚪 Logout (${user.displayName || user.email || 'User'})`;
-            // Add sign out functionality
-            elements.logoutNavBtn.onclick = signOut;
-        } else {
-            elements.logoutNavBtn.classList.add('hidden');
-            elements.logoutNavBtn.textContent = `🚪 Logout`; // Reset if user logs out
-            elements.logoutNavBtn.onclick = null;
-        }
+    if (user) {
+        elements.logoutNavBtn.classList.remove('hidden');
+        elements.logoutNavBtn.textContent = `🚪 Logout (${user.displayName || user.email || 'User'})`;
+    } else {
+        elements.logoutNavBtn.classList.add('hidden');
+        elements.logoutNavBtn.textContent = `🚪 Logout`; // Reset if user logs out
     }
 }
 
