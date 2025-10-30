@@ -1,7 +1,8 @@
-// This file is an ES Module that correctly integrates with config.js
-// It implements the COOP-proof Popup-to-Redirect fallback.
+// js/auth-paywall.js
+// AUTH module — fixed to accept external onAuthChange callback and to export signOut
+// Uses Firebase Modular SDK as before.
 
-import { getInitializedClients } from './config.js'; 
+import { getInitializedClients } from './config.js';
 
 import {
     GoogleAuthProvider,
@@ -12,12 +13,13 @@ import {
     signOut as firebaseSignOut
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-const LOG_TAG = '[AUTH-PAYWALL-FINAL]';
+const LOG_TAG = '[AUTH-PAYWALL-FIX]';
 
 let authInstance = null;
-// FIX: Initialize the provider here, ensuring the constructor is called only once 
-// and in the correct ES Module context.
-const googleProvider = new GoogleAuthProvider(); 
+const googleProvider = new GoogleAuthProvider();
+
+// Module-level callback that quiz-engine will pass in via initializeAuthListener(callback)
+let externalOnAuthChange = null;
 
 /**
  * Internal helper to retrieve the initialized Firebase Auth instance.
@@ -25,68 +27,78 @@ const googleProvider = new GoogleAuthProvider();
 const getAuthInstance = () => {
     if (!authInstance) {
         try {
-            // Get the initialized Auth instance from config.js
-            const clients = getInitializedClients(); 
+            const clients = getInitializedClients();
             authInstance = clients.auth;
-            
+            if (!authInstance) throw new Error("Auth client not present");
         } catch (e) {
-             console.error(LOG_TAG, "Auth instance not available. Ensure services are initialized in config.js.", e);
-             throw new Error("Auth not initialized.");
+            console.error(LOG_TAG, "Auth instance not available. Ensure services are initialized in config.js.", e);
+            throw e;
         }
     }
     return authInstance;
 };
 
 /**
- * Placeholder for the function in quiz-engine.js that should run when 
- * the authentication state changes.
- * * @param {import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js").User|null} user - The current authenticated user object or null.
+ * Default internal auth-change handler (used if no external callback passed).
+ * It logs and proxies to any external callback if set.
  */
-const onAuthChangeCallback = (user) => {
+const internalAuthChangeHandler = (user) => {
     console.log(LOG_TAG, 'Auth state changed. User ID:', user ? user.uid : 'Signed Out');
-    // NOTE: Your quiz-engine.js logic needs to be executed here.
+    // If an external callback was provided by the app, call it.
+    if (typeof externalOnAuthChange === 'function') {
+        try {
+            externalOnAuthChange(user);
+        } catch (e) {
+            console.error(LOG_TAG, 'External onAuthChange callback threw an error:', e);
+        }
+    }
 };
 
 /**
- * Checks if the user is currently authenticated (logged in).
- * This function is required by quiz-engine.js to determine access.
- * @returns {boolean} True if a user is signed in, false otherwise.
+ * Checks if a user is currently signed in. Accepts optional topic parameter
+ * for API compatibility with quiz-engine.js which passes the topic.
+ * @param {string} [_topic]
+ * @returns {boolean}
  */
-const checkAccess = () => {
+const checkAccess = (_topic) => {
     try {
-        // Access is granted if Firebase has a current user
         return !!getAuthInstance().currentUser;
     } catch (e) {
-        // If Auth isn't initialized yet, assume no access.
         return false;
     }
 };
 
-
 /**
  * Initializes the Auth components and sets up listeners.
- * Matches the function name expected by quiz-engine.js.
+ * Accepts an optional callback: function(user) -> void
+ * This callback will be called on every auth state change (matching quiz-engine.js expectation).
  */
-const initializeAuthListener = async () => {
+const initializeAuthListener = async (onAuthChangeCallback = null) => {
     try {
+        // Store external callback so internal handler can call it
+        if (onAuthChangeCallback && typeof onAuthChangeCallback === 'function') {
+            externalOnAuthChange = onAuthChangeCallback;
+        }
+
         const auth = getAuthInstance();
-        
-        // 1. Set up the primary auth state listener.
-        onAuthStateChanged(auth, onAuthChangeCallback);
+
+        // 1. Primary auth state listener: uses the internal handler which forwards to external callback.
+        onAuthStateChanged(auth, internalAuthChangeHandler);
         console.log(LOG_TAG, 'Auth state listener established.');
 
-        // 2. IMPORTANT: Check for pending redirect result (for the fallback sign-in).
-        await getGoogleRedirectResult(); 
+        // 2. Check for redirect result in case a redirect flow completed
+        await getGoogleRedirectResult();
 
         console.log(LOG_TAG, 'Redirect result check completed.');
     } catch (error) {
         console.error(LOG_TAG, 'Failed to initialize Auth Listener:', error);
+        throw error;
     }
 };
 
-
 /**
  * Checks for a pending redirect result on page load.
+ * Returns the firebase redirect result Promise (or rejects).
  */
 const getGoogleRedirectResult = () => {
     try {
@@ -99,37 +111,32 @@ const getGoogleRedirectResult = () => {
 };
 
 /**
- * Primary function to initiate Google Sign-In. Implements the essential 
- * Popup-to-Redirect fallback to handle COOP and cancellation errors.
+ * Primary function to initiate Google Sign-In. Implements Popup -> Redirect fallback.
  */
 const signInWithGoogle = () => {
     const auth = getAuthInstance();
 
     console.log(LOG_TAG, 'Initiating Google sign-in (Popup attempt)...');
 
-    // 1. Attempt signInWithPopup first (v9 modular style).
     return signInWithPopup(auth, googleProvider)
         .then(result => {
             console.log(LOG_TAG, 'SUCCESS: Signed in via Popup.');
             return result;
         })
         .catch(error => {
-            // Check for the known failure modes (COOP-related and cancellation).
             const isPopupFailure = error.code === 'auth/cancelled-popup-request' ||
-                                   error.code === 'auth/popup-blocked';
+                                   error.code === 'auth/popup-blocked' ||
+                                   error.code === 'auth/web-storage-unsupported';
 
             if (isPopupFailure) {
-                // 2. FALLBACK: The popup failed to close/communicate. Redirect immediately.
                 console.warn(LOG_TAG, `Popup failed (Code: ${error.code}). Initiating signInWithRedirect fallback.`);
-                
-                // This starts the redirect process. The page will reload.
+                // start redirect; this reloads the page
                 return signInWithRedirect(auth, googleProvider)
                     .catch(redirectError => {
                         console.error(LOG_TAG, 'FATAL ERROR: signInWithRedirect also failed:', redirectError);
                         throw redirectError;
                     });
             } else {
-                // Log and throw other, non-COOP related errors (e.g., network failure).
                 console.error(LOG_TAG, 'Google sign-in failed with unexpected error:', error);
                 throw error;
             }
@@ -139,14 +146,25 @@ const signInWithGoogle = () => {
 /**
  * Signs the user out of Firebase.
  */
-const signOutUser = () => {
+const signOut = () => {
     const auth = getAuthInstance();
     console.log(LOG_TAG, 'Signing user out.');
     return firebaseSignOut(auth)
         .catch(error => {
             console.error(LOG_TAG, 'Sign out failed:', error);
+            throw error;
         });
 };
 
-// Export all functions required by quiz-engine.js and the main application
-export { signInWithGoogle, getGoogleRedirectResult, initializeAuthListener, checkAccess, signOutUser };
+// Keep backward-compatible named export
+const signOutUser = signOut;
+
+// EXPORTS
+export {
+    signInWithGoogle,
+    getGoogleRedirectResult,
+    initializeAuthListener,
+    checkAccess,
+    signOut,
+    signOutUser
+};
