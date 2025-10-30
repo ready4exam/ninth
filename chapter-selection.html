@@ -117,7 +117,6 @@
     <script src="https://unpkg.com/lucide@latest"></script> 
 
     <script type="module">
-        // **FIX:** The import path is corrected to reflect the file's location in the js/ directory.
         import curriculumData from './js/curriculum.js'; 
 
         // --- DOM Elements ---
@@ -142,14 +141,11 @@
 
         function handleTopicSelection(topicId, buttonElement) {
             selectedTopic = topicId;
-            // Deselect all topic buttons
             document.querySelectorAll('.topic-btn').forEach(btn => {
                 btn.classList.remove('selected');
             });
-            // Select the clicked button
             buttonElement.classList.add('selected');
             
-            // Show difficulty selection and enable the quiz button
             difficultySelectionContainerEl.classList.remove('hidden');
             if (selectedDifficulty) {
                 startQuizBtn.disabled = false;
@@ -159,7 +155,6 @@
 
         function handleDifficultySelection(difficulty, buttonElement) {
             selectedDifficulty = difficulty;
-            // Deselect all difficulty buttons
             difficultySelectionEl.querySelectorAll('.difficulty-btn').forEach(btn => {
                 btn.classList.remove('selected', 'bg-cbse-blue', 'text-white', 'border-cbse-blue');
                 // Re-apply original color classes for unselected state
@@ -173,11 +168,9 @@
                 }
             });
             
-            // Select the clicked button and apply consistent style
             buttonElement.classList.add('selected', 'bg-cbse-blue', 'text-white', 'border-cbse-blue');
-            buttonElement.classList.remove('bg-green-500', 'bg-yellow-500', 'bg-red-500', 'hover:bg-green-600', 'hover:bg-yellow-600', 'hover:bg-red-600'); // Remove specific color classes
+            buttonElement.classList.remove('bg-green-500', 'bg-yellow-500', 'bg-red-500', 'hover:bg-green-600', 'hover:bg-yellow-600', 'hover:bg-red-600'); 
             
-            // Enable the quiz button
             if (selectedTopic) {
                 startQuizBtn.disabled = false;
             }
@@ -187,21 +180,16 @@
         function handleSubSubjectSelection(subSubjectId, buttonElement) {
             selectedSubSubject = subSubjectId;
             
-            // Deselect all sub-subject buttons
             document.querySelectorAll('.sub-subject-btn').forEach(btn => {
                 btn.classList.remove('selected');
             });
-            // Select the clicked button
             buttonElement.classList.add('selected');
             
-            // Render the chapters for the selected sub-subject
             renderChapters(currentClass, currentSubject, selectedSubSubject);
             
-            // Hide the sub-subject container and show the chapter selection
             subjectSelectionContainerEl.classList.add('hidden'); 
             chapterSelectionContainerEl.classList.remove('hidden');
             
-            // Reset topic and difficulty
             selectedTopic = null;
             selectedDifficulty = null;
             startQuizBtn.disabled = true;
@@ -210,7 +198,7 @@
         }
 
         function renderSubSubjects(classId, subject) {
-            subSubjectListEl.innerHTML = ''; // Clear previous content
+            subSubjectListEl.innerHTML = ''; 
             
             const subjectData = curriculumData[classId]?.[subject];
 
@@ -238,7 +226,6 @@
                     subSubjectListEl.appendChild(card);
                 });
 
-                // Correct UI state for sub-subject display
                 pageTitleEl.textContent = `${currentSubject.replace(/_/g, ' ')} - Select Sub-Subject`;
                 subjectSelectionContainerEl.classList.remove('hidden');
                 chapterSelectionContainerEl.classList.add('hidden');
@@ -246,7 +233,7 @@
 
             } else if (subjectData && Array.isArray(subjectData)) {
                 // Case 2: Subject is a direct array of chapters (e.g., Mathematics)
-                selectedSubSubject = null; // No sub-subject
+                selectedSubSubject = null; 
                 subjectSelectionContainerEl.classList.add('hidden');
                 
                 renderChapters(classId, subject, selectedSubSubject);
@@ -255,28 +242,25 @@
                  // Case 3: No data found
                 pageTitleEl.textContent = `Error: Curriculum Not Found`;
                 subSubjectListEl.innerHTML = `<p class="text-red-500 font-semibold text-center">No chapters/sub-subjects found for subject **${currentSubject}** in class ${currentClass}.</p>`;
-                subjectSelectionContainerEl.classList.remove('hidden'); // Show container with the error message
+                subjectSelectionContainerEl.classList.remove('hidden'); 
                 chapterSelectionContainerEl.classList.add('hidden');
                 difficultySelectionContainerEl.classList.add('hidden');
             }
         }
 
         function renderChapters(classId, subject, subSubject) {
-            topicListEl.innerHTML = ''; // Clear previous chapters
+            topicListEl.innerHTML = ''; 
 
             let chapters = [];
 
             if (subSubject) {
-                // Get chapters from the nested sub-subject object
                 chapters = curriculumData[classId]?.[subject]?.[subSubject] || [];
                 pageTitleEl.textContent = `${subSubject.replace(/_/g, ' ')} Chapters`;
             } else {
-                 // Get chapters directly from the subject array
                  chapters = curriculumData[classId]?.[subject] || [];
                  pageTitleEl.textContent = `${subject.replace(/_/g, ' ')} Chapters`;
             }
             
-            // --- DIAGNOSTIC LINE (for self-testing) ---
             console.log(`[RENDER] Chapters Load Check: Subject=${subject}, SubSubject=${subSubject}, Found Chapters=${chapters.length}`);
 
             if (chapters.length > 0) {
@@ -296,10 +280,9 @@
                 chapterSelectionContainerEl.classList.remove('hidden');
             } else {
                 topicListEl.innerHTML = `<p class="text-center text-gray-500">No chapters available for this section yet.</p>`;
-                chapterSelectionContainerEl.classList.remove('hidden'); // Still show container with message
+                chapterSelectionContainerEl.classList.remove('hidden'); 
             }
-             // Re-initialize Lucide icons for newly created elements
-            lucide.createIcons();
+             lucide.createIcons();
         }
 
         function handleStartQuiz() {
@@ -316,7 +299,6 @@
             }
         }
         
-        // **NEW** Initialization function for clean execution
         function initPage() {
             lucide.createIcons();
             
@@ -326,12 +308,9 @@
             currentSubject = urlSubject ? decodeURIComponent(urlSubject) : 'Science';
             currentClass = params.get('class') || '9';
             
-            // Check if currentClass/currentSubject is valid before proceeding
             if (currentClass in curriculumData && currentSubject in curriculumData[currentClass]) {
-                 // This function handles the decision to render sub-subjects OR chapters directly
                  renderSubSubjects(currentClass, currentSubject);
             } else {
-                // Fallback for subjects not found (e.g., if link was bad or data missing)
                 pageTitleEl.textContent = "Error: Invalid Subject/Class";
                 subjectSelectionContainerEl.innerHTML = `<p class="text-red-500 font-semibold text-center">The requested subject (**${currentSubject}**) or class could not be found in the curriculum data. Please go back to the <a href="index.html" class="text-blue-600 hover:text-blue-800 underline">Main Page</a>.</p>`;
                 subjectSelectionContainerEl.classList.remove('hidden');
@@ -339,7 +318,6 @@
                 difficultySelectionContainerEl.classList.add('hidden');
             }
 
-            // Attach event listeners to difficulty buttons
             difficultySelectionEl.querySelectorAll('.difficulty-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const clickedButton = e.currentTarget; 
