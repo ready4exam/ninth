@@ -4,8 +4,8 @@ const QUIZZES_TABLE = 'quizzes';
 
 /**
  * Fetches the required mix of questions (10 MCQ, 5 AR, 5 Case) from the unified 'quizzes' table.
- * * CORRECT FIX APPLIED: Based on the provided schema, the topic column is named 'topic_slug'. 
- * * The query has been updated to use the correct column name.
+ * * CRITICAL FIX: The database column for filtering by chapter is 'topic_slug', not 'topic'.
+ * * This change corrects the query to match the provided schema.
  * @param {string} topicSlug - The topic identifier (e.g., 'motion').
  * @param {string} difficulty - The difficulty level (e.g., 'medium').
  * @returns {Promise<Array>} - A promise that resolves to an array of raw question objects.
@@ -23,6 +23,7 @@ export async function fetchQuestions(topicSlug, difficulty) {
             throw new Error("Data service not ready. Please try refreshing."); 
         }
         
+        // Console log updated to reflect the correct column name 'topic_slug'
         console.log(`[API] Fetching questions from table: ${QUIZZES_TABLE} for topic_slug: '${topicSlug}' and difficulty: ${difficulty}`);
 
         const questionsToFetch = [
@@ -37,7 +38,7 @@ export async function fetchQuestions(topicSlug, difficulty) {
             const query = supabase
                 .from(QUIZZES_TABLE)
                 .select('*')
-                // **CORRECT FIX: Filtering by the actual database column: 'topic_slug'**
+                // **FIXED HERE: Using 'topic_slug' as per the schema**
                 .eq('topic_slug', topicSlug)
                 .eq('difficulty', difficulty)
                 .eq('question_type', type)
