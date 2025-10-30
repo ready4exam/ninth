@@ -127,7 +127,8 @@ export function signInWithGoogle() {
 /**
  * Exposes the Firebase sign-out function.
  */
-export function signOutUser() {
+// FIX: Removed 'export' keyword from here to avoid duplicate export error.
+function signOutUser() {
     if (!authInstance) {
         console.error(LOG_TAG, "Auth instance not initialized. Cannot sign out.");
         return Promise.resolve();
