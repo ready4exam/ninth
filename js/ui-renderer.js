@@ -1,6 +1,6 @@
 // js/ui-renderer.js
 
-// --- DOM Element Map (For efficient access) ---\n
+// --- DOM Element Map (For efficient access) ---
 let elements = {};
 
 /**
@@ -15,12 +15,13 @@ export function getElements() {
             quizDifficulty: document.getElementById('quiz-difficulty'), // This is the difficulty element
             statusMessage: document.getElementById('status-message'),
             questionList: document.getElementById('question-list'),
-            resultsDisplay: document.getElementById('results-display'),
+            resultsDisplay: document.getElementById('score-display'),
             paywallContent: document.getElementById('paywall-content'),
             authNav: document.getElementById('auth-nav-container'),
             loginButton: document.getElementById('login-btn'),
             logoutNavBtn: document.getElementById('logout-nav-btn'),
-            submitButton: document.getElementById('submit-btn'),
+            submitButton: document.getElementById('submit-button'),
+            reviewCompleteBtn: document.getElementById('review-complete-btn'),
             viewContainers: {
                 'quiz-content': document.getElementById('quiz-content'),
                 'results-screen': document.getElementById('results-screen'),
@@ -28,202 +29,41 @@ export function getElements() {
             }
         };
         // Simple helper to check if all views are present
-        if (!elements.viewContainers['quiz-content'] || !elements.viewContainers['results-screen']) {
-             console.error("[UI RENDERER ERROR] Missing critical view containers in quiz-engine.html.");
+        if (!elements.viewContainers['quiz-content'] || !elements.viewContainers['results-screen'] || !elements.viewContainers['paywall-screen']) {
+            console.error("[UI RENDERER ERROR] One or more main view containers (quiz-content, results-screen, paywall-screen) are missing.");
         }
     }
     return elements;
 }
 
 /**
- * Helper to strip KaTeX/LaTeX markers as requested by the user.
- * It removes single ($) and double ($$) delimiters.
- * @param {string} text - The text possibly containing KaTeX/LaTeX markers.
- * @returns {string} - The cleaned text.
+ * Updates the title and difficulty displayed in the quiz header.
+ * @param {string} title - The topic title (e.g., "Motion").
+ * @param {string} difficulty - The difficulty level ("simple", "medium", "advanced").
  */
-export function stripKatexMarkers(text) {
-    if (typeof text !== 'string') return '';
-    // Remove inline math ($...$) and display math ($$...$$) markers
-    // This is a simple strip; in a full LMS, this would be a KaTeX render.
-    let cleaned = text.replace(/\$\$([\s\S]*?)\$\$/g, (match, p1) => p1.trim()); // Remove $$...$$
-    cleaned = cleaned.replace(/\$([^\$]*)\$/g, (match, p1) => p1.trim()); // Remove $...$
-    return cleaned;
-}
-
-/**
- * Updates the authentication UI in the header/nav based on the user state.
- * @param {firebase.User|null} user - The authenticated user object or null.
- */
-export function updateAuthUI(user) {
+export function updateQuizHeader(title, difficulty) {
     const elements = getElements();
-    if (elements.authNav && elements.loginButton && elements.logoutNavBtn) {
-        const userIdDisplay = document.getElementById('user-id-display');
-        const userEmailDisplay = document.getElementById('user-email-display');
-        
-        // Hide/Show Auth buttons
-        elements.loginButton.classList.toggle('hidden', user && !user.isAnonymous);
-        elements.logoutNavBtn.classList.toggle('hidden', !user || user.isAnonymous);
-
-        if (user && !user.isAnonymous) {
-            // User is signed in with Google
-            const uid = user.uid;
-            const email = user.email || 'N/A';
-            
-            // NOTE: Displaying the FULL UID is MANDATORY for canvas multi-user support.
-            if (userIdDisplay) {
-                 userIdDisplay.textContent = `UID: ${uid}`;
-                 userIdDisplay.classList.remove('hidden');
-            }
-            if (userEmailDisplay) {
-                 userEmailDisplay.textContent = `Email: ${email}`;
-                 userEmailDisplay.classList.remove('hidden');
-            }
-        } else {
-            // User is not signed in or is anonymous
-            if (userIdDisplay) userIdDisplay.classList.add('hidden');
-            if (userEmailDisplay) userEmailDisplay.classList.add('hidden');
-        }
+    if (elements.quizTitle) {
+        elements.quizTitle.textContent = title;
+    }
+    if (elements.quizDifficulty) {
+        // Capitalize the first letter for display
+        elements.quizDifficulty.textContent = `Difficulty: ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`;
     }
 }
 
 /**
- * Renders a single question card, handling different question types.
- * @param {Object} question - The question data.
- * @param {number} index - The 0-based index of the question.
- * @param {boolean} isSubmitted - Whether the quiz has been submitted.
- * @param {number} userAnswer - The user's selected answer index.
- * @returns {string} - The HTML string for the question card.
+ * Displays a status or error message at the top of the container.
+ * @param {string} message - The HTML content of the message.
+ * @param {boolean} isError - If true, styles the message as an error.
  */
-export function renderQuestion(question, index, isSubmitted, userAnswer) {
-    const questionNumber = index + 1;
-    const isAROrCase = question.question_type === 'AR' || question.question_type === 'Case-Based';
-    const isCorrect = isSubmitted && (userAnswer === question.correct_option_index);
-    const feedbackClass = isSubmitted ? (isCorrect ? 'border-green-600 bg-green-100' : 'border-red-600 bg-red-100') : 'border-gray-200';
-
-    // 1. Clean the main question text
-    const cleanQuestionText = stripKatexMarkers(question.question_text);
-    
-    // 2. Clean the scenario/reason text (only if applicable)
-    const cleanScenarioText = isAROrCase && question.scenario_reason_test
-        ? stripKatexMarkers(question.scenario_reason_test) 
-        : '';
-
-    // HTML for the optional AR/Case-Based scenario box
-    const scenarioBox = isAROrCase ? `
-        <div class="p-4 mb-4 text-sm bg-blue-50 border-l-4 border-blue-400 text-gray-700 rounded-r-lg">
-            <p class="font-semibold">${question.question_type} Scenario/Statement:</p>
-            <p class="mt-1">${cleanScenarioText}</p>
-        </div>
-    ` : '';
-
-    // HTML for options
-    const optionsHtml = question.options.map((option, optIndex) => {
-        const isSelected = userAnswer === optIndex;
-        const isAnswer = optIndex === question.correct_option_index;
-        
-        let optionClass = 'option-label';
-        
-        if (isSubmitted) {
-            if (isAnswer) {
-                // Highlight the correct answer
-                optionClass = 'option-label correct border-green-600 bg-green-100 shadow-md';
-            } else if (isSelected && !isAnswer) {
-                // Highlight the user's incorrect answer
-                optionClass = 'option-label incorrect border-red-600 bg-red-100 shadow-md';
-            }
-        }
-
-        const optionLetter = String.fromCharCode(65 + optIndex); // A, B, C, D
-        const cleanOptionText = stripKatexMarkers(option);
-        
-        return `
-            <div class="mb-2">
-                <input type="radio" id="q${index}-opt${optIndex}" name="q${index}" value="${optIndex}" 
-                       class="hidden peer" data-q-index="${index}" ${isSelected ? 'checked' : ''} ${isSubmitted ? 'disabled' : ''}>
-                <label for="q${index}-opt${optIndex}" class="${optionClass} ${isSelected ? 'shadow-lg' : ''}">
-                    <span class="font-bold w-6 text-center text-lg mr-3">${optionLetter}.</span>
-                    <span class="flex-1">${cleanOptionText}</span>
-                    ${isSubmitted && isAnswer ? '<i data-lucide="check-circle" class="text-green-600 ml-4 h-6 w-6"></i>' : ''}
-                    ${isSubmitted && isSelected && !isAnswer ? '<i data-lucide="x-circle" class="text-red-600 ml-4 h-6 w-6"></i>' : ''}
-                </label>
-            </div>
-        `;
-    }).join('');
-
-    return `
-        <div id="question-${index}" class="quiz-question bg-white p-6 rounded-xl shadow-xl transition-all duration-300 ${feedbackClass}">
-            <p class="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                <span class="mr-2 text-blue-600">${questionNumber}.</span>
-                <span class="flex-1">${cleanQuestionText}</span>
-            </p>
-            
-            ${scenarioBox}
-
-            <div class="options-container mt-4">
-                ${optionsHtml}
-            </div>
-        </div>
-    `;
-}
-
-/**
- * Updates the content displayed on the paywall screen (now Sign-In required screen).
- * @param {string} topic - The topic slug requiring sign-in.
- */
-export function updatePaywallContent(topic) {
-    const elements = getElements();
-    if (elements.paywallContent) {
-        elements.paywallContent.innerHTML = `
-            <div class="p-8 text-center space-y-6 bg-blue-50 rounded-xl shadow-inner max-w-lg mx-auto">
-                <i data-lucide="shield-alert" class="w-12 h-12 text-cbse-blue mx-auto"></i>
-                <h2 class="text-2xl font-extrabold text-heading">Google Sign-In Required</h2>
-                <p class="text-gray-600">
-                    To attempt the **${topic.toUpperCase()}** quiz and ensure your scores are recorded for progress tracking and analytics, 
-                    please sign in with your Google account.
-                </p>
-                <button id="auth-sign-in-btn" class="px-8 py-3 bg-accent-gold text-cbse-blue rounded-xl font-bold text-lg hover:bg-yellow-600 transition shadow-xl w-full" 
-                        onclick="window.quizEngine.handleSignIn()">
-                    Sign In with Google
-                </button>
-            </div>
-        `;
-        // Ensure Lucide icons are re-created for the new content
-        lucide.createIcons();
-    }
-}
-
-
-/**
- * Hides all main view containers and shows only the specified one.
- * @param {('quiz-content'|'results-screen'|'paywall-screen')} viewId - The ID of the view to show.
- */
-export function showView(viewId) {
-    const elements = getElements();
-    if (elements.mainContainer) {
-        // Hide all views first
-        Object.values(elements.viewContainers).forEach(el => {
-            if (el) el.classList.add('hidden');
-        });
-
-        // Show the desired view
-        const targetView = elements.viewContainers[viewId];
-        if (targetView) {
-            targetView.classList.remove('hidden');
-        } else {
-            console.error(`[UI RENDERER ERROR] Attempted to show unknown view: ${viewId}`);
-        }
-    }
-}
-
-/**
- * Shows a status message (e.g., loading or error).
- * @param {string} messageHtml - The HTML content of the message.
- */
-export function updateStatus(messageHtml) {
+export function updateStatus(message, isError = true) {
     const elements = getElements();
     if (elements.statusMessage) {
-        elements.statusMessage.innerHTML = messageHtml;
+        elements.statusMessage.innerHTML = message;
         elements.statusMessage.classList.remove('hidden');
+        elements.statusMessage.classList.add(isError ? 'bg-red-100/70' : 'bg-yellow-100/70', 'p-4', 'rounded-lg', 'shadow-md', 'mb-4');
+        elements.statusMessage.classList.remove(isError ? 'bg-yellow-100/70' : 'bg-red-100/70');
     }
 }
 
@@ -234,40 +74,251 @@ export function hideStatus() {
     const elements = getElements();
     if (elements.statusMessage) {
         elements.statusMessage.classList.add('hidden');
+        elements.statusMessage.innerHTML = '';
     }
 }
 
+
+// --- View Management ---
+
 /**
- * Updates the quiz metadata display (Title, Difficulty).
+ * Switches the main view displayed to the user.
+ * @param {('quiz-content'|'results-screen'|'paywall-screen')} viewName - The view to show.
  */
-export function updateQuizMetadata(title, difficulty) {
+export function switchView(viewName) {
     const elements = getElements();
-    if (elements.quizTitle) {
-        elements.quizTitle.textContent = title;
-    }
-    if (elements.quizDifficulty) {
-        // Capitalize difficulty for display
-        elements.quizDifficulty.textContent = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+    if (!elements.viewContainers) return;
+
+    // Iterate through all views and set display based on the requested viewName
+    Object.keys(elements.viewContainers).forEach(key => {
+        const element = elements.viewContainers[key];
+        if (element) {
+            if (key === viewName) {
+                element.classList.remove('hidden');
+            } else {
+                element.classList.add('hidden');
+            }
+        }
+    });
+}
+
+// --- Question Rendering ---
+
+/**
+ * Renders the full list of questions onto the question list container.
+ * @param {Array<Object>} questions - The array of quiz questions.
+ * @param {Object} userAnswers - The current object of user selections.
+ * @param {boolean} isSubmitted - If the quiz has been submitted (for review mode).
+ */
+export function renderQuestions(questions, userAnswers, isSubmitted) {
+    const elements = getElements();
+    if (!elements.questionList) return;
+
+    // Clear previous content
+    elements.questionList.innerHTML = '';
+
+    questions.forEach((q, index) => {
+        const questionHtml = createQuestionCard(q, index, userAnswers[q.id], isSubmitted);
+        elements.questionList.insertAdjacentHTML('beforeend', questionHtml);
+    });
+}
+
+/**
+ * Creates the HTML markup for a single question card.
+ * @param {Object} question - The question object.
+ * @param {number} index - The 0-based index of the question.
+ * @param {string|null} userAnswerId - The ID of the option selected by the user, or null.
+ * @param {boolean} isSubmitted - Whether the quiz is in review mode.
+ * @returns {string} The HTML string for the question card.
+ */
+function createQuestionCard(question, index, userAnswerId, isSubmitted) {
+    const questionNumber = index + 1;
+    let optionsHtml = '';
+
+    // Shuffle options for security/fairness, but maintain the stored correct ID
+    // Note: We don't shuffle here for simplicity, assuming data is pre-shuffled or order doesn't matter.
+
+    question.options.forEach(option => {
+        const optionId = option.id;
+        const optionText = option.text;
+        const isSelected = userAnswerId === optionId;
+        const isCorrectOption = optionId === question.correct_option_id;
+
+        let feedbackClass = '';
+        let feedbackIcon = '';
+        let checkedAttr = isSelected ? 'checked' : '';
+        let disabledAttr = isSubmitted ? 'disabled' : '';
+
+        if (isSubmitted) {
+            if (isCorrectOption) {
+                // Correct option is marked green
+                feedbackClass = 'correct';
+                feedbackIcon = '<i data-lucide="check-circle" class="w-5 h-5 text-green-600 ml-auto"></i>';
+            } else if (isSelected && !isCorrectOption) {
+                // User selected this, but it was wrong
+                feedbackClass = 'incorrect';
+                feedbackIcon = '<i data-lucide="x-circle" class="w-5 h-5 text-red-600 ml-auto"></i>';
+            }
+            // If user did not select the correct answer, show the correct one
+            if (isCorrectOption && !isSelected) {
+                feedbackIcon = '<i data-lucide="check-circle" class="w-5 h-5 text-green-600 ml-auto"></i>';
+            }
+        }
+
+        optionsHtml += `
+            <div class="relative">
+                <input type="radio" 
+                       id="q${questionNumber}-opt-${optionId}" 
+                       name="q${questionNumber}" 
+                       value="${optionId}" 
+                       class="hidden peer"
+                       data-question-id="${question.id}"
+                       ${checkedAttr}
+                       ${disabledAttr}
+                       onchange="window.quizEngine.handleAnswerSelection('${question.id}', '${optionId}')">
+                <label for="q${questionNumber}-opt-${optionId}" class="option-label peer-checked:border-cbse-blue ${feedbackClass}">
+                    <span class="text-gray-700">${optionText}</span>
+                    ${feedbackIcon}
+                </label>
+            </div>
+        `;
+    });
+
+    return `
+        <div id="q-card-${question.id}" class="question-card bg-white p-6 md:p-8 rounded-xl shadow-lg mb-8 border-t-4 border-cbse-blue/50">
+            <h3 class="text-xl font-semibold text-heading mb-4">
+                <span class="text-cbse-blue mr-2">Q${questionNumber}.</span> ${question.text}
+            </h3>
+            <div class="space-y-4">
+                ${optionsHtml}
+            </div>
+            ${isSubmitted && question.explanation ? `
+                <div class="mt-6 p-4 bg-gray-50 border-l-4 border-accent-gold rounded-lg">
+                    <p class="font-bold text-gray-700">Explanation:</p>
+                    <p class="text-sm text-gray-600 mt-1">${question.explanation}</p>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+// --- Results and Status Updates ---
+
+/**
+ * Updates the score display on the results screen.
+ * @param {number} score - The number of correct answers.
+ * @param {number} total - The total number of questions.
+ */
+export function updateScoreDisplay(score, total) {
+    const elements = getElements();
+    if (elements.resultsDisplay) {
+        elements.resultsDisplay.textContent = `${score} / ${total}`;
+        // Optionally update color based on performance
+        if (score / total < 0.5) {
+            elements.resultsDisplay.classList.remove('text-green-600');
+            elements.resultsDisplay.classList.add('text-red-600');
+        } else {
+            elements.resultsDisplay.classList.add('text-green-600');
+            elements.resultsDisplay.classList.remove('text-red-600');
+        }
     }
 }
 
 /**
- * Renders the final score on the results screen.
+ * Toggles the visibility of the main Submit button.
+ * @param {boolean} show - Whether to show or hide the button.
  */
-export function renderScore(score, total) {
-    const scoreDisplay = document.getElementById('score-display');
-    if (scoreDisplay) {
-        scoreDisplay.innerHTML = `${score} / ${total}`;
-        
-        // Optional: Add color based on score percentage
-        const percentage = (score / total) * 100;
-        scoreDisplay.classList.remove('text-red-600', 'text-yellow-600', 'text-green-600');
-        if (percentage >= 80) {
-            scoreDisplay.classList.add('text-green-600');
-        } else if (percentage >= 50) {
-            scoreDisplay.classList.add('text-yellow-600');
+export function toggleSubmitButton(show) {
+    const elements = getElements();
+    if (elements.submitButton) {
+        if (show) {
+            elements.submitButton.classList.remove('hidden');
         } else {
-            scoreDisplay.classList.add('text-red-600');
+            elements.submitButton.classList.add('hidden');
+        }
+    }
+}
+
+/**
+ * Updates the navigation bar elements (login/logout/user).
+ * @param {Object|null} user - The Firebase user object or null if logged out.
+ */
+export function updateAuthUI(user) {
+    const elements = getElements();
+
+    if (!elements.authNav || !elements.loginButton || !elements.logoutNavBtn) {
+        // This can happen if the elements aren't loaded yet, log a warning
+        console.warn("[UI RENDERER] Auth UI elements not found.");
+        return;
+    }
+
+    if (user && !user.isAnonymous) {
+        // User is logged in (via Google)
+        elements.loginButton.classList.add('hidden');
+        elements.logoutNavBtn.classList.remove('hidden');
+
+        let displayName = user.displayName || 'User';
+        let userSnippet = '';
+
+        if (user.photoURL) {
+             userSnippet = `<img src="${user.photoURL}" alt="${displayName}" class="w-8 h-8 rounded-full border border-white mr-2">`;
+        } else {
+             userSnippet = `<i data-lucide="user-circle" class="w-6 h-6 mr-2"></i>`;
+        }
+
+        // Show a condensed view of the user's status
+        elements.logoutNavBtn.innerHTML = `
+            ${userSnippet}
+            <span>${displayName}</span>
+        `;
+        // Ensure Lucide icons are rendered if the user snippet contains one
+        if (window.lucide) {
+             window.lucide.createIcons();
+        }
+
+    } else {
+        // User is logged out or anonymous
+        elements.loginButton.classList.remove('hidden');
+        elements.logoutNavBtn.classList.add('hidden');
+        // If the user is anonymous, still give a hint that they are "signed in"
+        if (user && user.isAnonymous) {
+             elements.loginButton.textContent = 'Sign in for Premium';
+             // Optionally show anonymous ID snippet for debugging
+             const anonId = user.uid;
+             if (elements.authNav) {
+                // If we want to show the anonymous ID, we can append it here
+                // For simplicity, we just keep the login button for upgrade
+             }
+        }
+    }
+}
+
+/**
+ * Updates the content displayed on the paywall screen.
+ * @param {string} topic - The topic slug requiring payment.
+ */
+export function updatePaywallContent(topic) {
+    const elements = getElements();
+    if (elements.paywallContent) {
+        elements.paywallContent.innerHTML = `
+            <div class="p-8 text-center space-y-4 bg-gray-50 rounded-xl shadow-inner">
+                <svg class="w-12 h-12 text-yellow-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                <h2 class="text-2xl font-bold text-gray-800">Access Restricted</h2>
+                <p class="text-gray-600">The **${topic.toUpperCase()}** quiz is part of our premium content.</p>
+                <p class="text-sm text-gray-500 mt-4">
+                    Please sign in with Google to access this quiz content.
+                    Since payment processing is currently disabled, simply signing in will grant you access.
+                </p>
+                <button id="login-btn-paywall" class="mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition shadow-lg">
+                    Sign In with Google
+                </button>
+            </div>
+        `;
+
+        // Attach event listener to the newly created button
+        const paywallLoginBtn = document.getElementById('login-btn-paywall');
+        if (paywallLoginBtn && window.quizEngine && window.quizEngine.handleSignIn) {
+            paywallLoginBtn.addEventListener('click', window.quizEngine.handleSignIn);
         }
     }
 }
