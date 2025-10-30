@@ -1,4 +1,120 @@
-<script src="https://unpkg.com/lucide@latest"></script> 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Select Chapter & Difficulty</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Merriweather', 'serif'],
+                    },
+                    colors: {
+                        'cbse-blue': '#1a3e6a', 
+                        'cbse-light': '#f5f7fa',
+                        'accent-gold': '#ffb703',
+                        'heading': '#0f172a',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .cbse-blue { background-color: #1a3e6a; }
+        .cbse-light { background-color: #f5f7fa; }
+        .header-bg { background-color: #1a3e6a; }
+        .card { @apply bg-white p-6 rounded-xl shadow-lg border border-gray-200; }
+        .topic-btn {
+            @apply flex items-center justify-between p-4 bg-white border border-gray-300 rounded-lg shadow-sm cursor-pointer hover:bg-cbse-light transition-all duration-200;
+        }
+        .topic-btn.selected {
+            @apply border-cbse-blue bg-blue-50/50 shadow-md;
+        }
+        .difficulty-btn {
+            @apply px-5 py-3 rounded-xl font-semibold transition-colors duration-200 border-2;
+        }
+        .difficulty-btn.selected {
+            @apply ring-4 ring-cbse-blue/50;
+        }
+        /* Style for sub-subject cards */
+        .sub-subject-btn.selected {
+            @apply border-4 border-cbse-blue ring-2 ring-cbse-blue/30;
+        }
+    </style>
+</head>
+<body class="bg-cbse-light min-h-screen flex flex-col">
+
+    <header class="bg-cbse-blue shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-extrabold text-accent-gold tracking-wider">
+                Ready4<span class="text-white">Exam</span> Portal
+            </h1>
+             <nav id="auth-nav-container">
+                <button id="login-btn" class="px-4 py-2 text-sm font-semibold rounded-lg bg-white text-cbse-blue hover:bg-gray-100 transition">
+                    Sign In
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div class="max-w-4xl mx-auto">
+            <h2 id="page-title" class="text-3xl font-extrabold text-heading mb-6 text-center">
+                Select Chapter & Difficulty
+            </h2>
+
+            <div id="subject-selection-container" class="space-y-6 mb-8">
+                <h3 class="text-2xl font-bold text-gray-800 border-b pb-2">1. Select Sub-Subject (if applicable)</h3>
+                <div id="sub-subject-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    </div>
+            </div>
+
+            <div id="chapter-selection-container" class="space-y-6 mb-8 hidden">
+                <h3 class="text-2xl font-bold text-gray-800 border-b pb-2">2. Select a Chapter/Topic</h3>
+                <div id="topic-list" class="grid grid-cols-1 gap-4">
+                    </div>
+            </div>
+
+            <div id="difficulty-selection-container" class="space-y-6 mb-10 hidden">
+                <h3 class="text-2xl font-bold text-gray-800 border-b pb-2">3. Select Quiz Difficulty</h3>
+                <div id="difficulty-selection" class="flex flex-wrap justify-center gap-4">
+                    <button data-difficulty="simple" class="difficulty-btn bg-green-500 text-white hover:bg-green-600 border-green-500">
+                        Simple (Easy)
+                    </button>
+                    <button data-difficulty="medium" class="difficulty-btn bg-yellow-500 text-white hover:bg-yellow-600 border-yellow-500">
+                        Medium
+                    </button>
+                    <button data-difficulty="advanced" class="difficulty-btn bg-red-500 text-white hover:bg-red-600 border-red-500">
+                        Advanced (Hard)
+                    </button>
+                </div>
+            </div>
+            
+            <p id="error-message" class="text-red-500 font-semibold text-center hidden mb-6">
+                Please select both a Topic and a Difficulty level to start the quiz.
+            </p>
+
+            <div class="text-center">
+                 <button id="start-quiz-btn" class="px-10 py-4 bg-cbse-blue text-white rounded-xl font-bold text-lg hover:bg-blue-700 transition shadow-xl disabled:opacity-50" disabled>
+                    Start Quiz
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-cbse-blue mt-16 py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
+            <small class="text-sm opacity-70 block mt-2">© 2025 Ready4Exam Academic Portal. All Rights Reserved.</small>
+        </div>
+    </footer>
+
+    <script src="https://unpkg.com/lucide@latest"></script> 
 
     <script type="module">
         // **FIX:** The import path is corrected to reflect the file's location in the js/ directory.
@@ -160,7 +276,7 @@
                  pageTitleEl.textContent = `${subject.replace(/_/g, ' ')} Chapters`;
             }
             
-            // --- DIAGNOSTIC LINE ADDED HERE ---
+            // --- DIAGNOSTIC LINE (for self-testing) ---
             console.log(`[RENDER] Chapters Load Check: Subject=${subject}, SubSubject=${subSubject}, Found Chapters=${chapters.length}`);
 
             if (chapters.length > 0) {
@@ -237,3 +353,5 @@
         // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', initPage);
     </script>
+</body>
+</html>
