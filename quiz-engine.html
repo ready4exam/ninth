@@ -4,132 +4,122 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ready4Exam Quiz Engine</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- NEW: Supabase Client CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2\"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Inter Font -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Merriweather', 'serif'],
+                    },
+                    colors: {
+                        'cbse-blue': '#1a3e6a', 
+                        'cbse-light': '#f5f7fa',
+                        'accent-gold': '#ffb703',
+                        'heading': '#0f172a',
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
         body { font-family: 'Inter', sans-serif; }
-        /* Custom Tailwind Config for Consistency */
-        :root {
-            --cbse-blue: #1a3e6a;
-            --cbse-light: #f5f7fa;
-            --accent-gold: #ffb703;
-        }
-        .cbse-blue { background-color: var(--cbse-blue); }
-        .cbse-light { background-color: var(--cbse-light); }
-        
+        /* Custom Styles for Quiz UI */
+        .cbse-blue { background-color: #1a3e6a; }
+        .cbse-light { background-color: #f5f7fa; }
         .option-label {
-            @apply flex items-center p-4 bg-white border-2 border-gray-300 rounded-xl shadow-sm cursor-pointer transition-all duration-200;
+            @apply flex items-center p-4 bg-white border-2 border-gray-300 rounded-lg shadow-sm cursor-pointer transition-all duration-200;
         }
         .option-label:hover {
             @apply border-blue-400 shadow-md;
         }
         input:checked + .option-label {
-            @apply border-[3px] border-blue-600 bg-blue-50/50 shadow-lg;
+            @apply border-cbse-blue bg-blue-50/50;
         }
         /* Feedback Styles */
         .option-label.correct {
-            @apply border-green-600 bg-green-100/80;
+            @apply border-green-600 bg-green-100;
         }
         .option-label.incorrect {
-            @apply border-red-600 bg-red-100/80;
+            @apply border-red-600 bg-red-100;
         }
-        .quiz-question.border-green-600 {
-            @apply border-l-8 border-green-600;
+        .option-label.selected-correct {
+            @apply border-green-600 bg-green-200 ring-4 ring-green-300;
         }
-        .quiz-question.border-red-600 {
-            @apply border-l-8 border-red-600;
+        .option-label.selected-incorrect {
+            @apply border-red-600 bg-red-200 ring-4 ring-red-300;
+        }
+        .quiz-container-shadow {
+            @apply shadow-2xl;
         }
     </style>
 </head>
 <body class="bg-cbse-light min-h-screen flex flex-col">
 
-    <!-- HEADER: Consistent Branding -->
     <header class="bg-cbse-blue shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <div class="flex-shrink-0">
-                    <a href="index.html" class="text-2xl font-bold text-white tracking-wider">Ready4Exam</a>
-                    <span class="text-xs text-accent-gold block -mt-1 opacity-80">A ready4industry initiative</span>
-                </div>
-                <nav class="hidden md:block">
-                    <a href="index.html" class="text-white hover:text-accent-gold px-3 py-2 rounded-md text-sm font-medium transition duration-150">Class 9 Home</a>
-                </nav>
-                <div id="auth-nav-container" class="flex items-center space-x-2">
-                    <!-- User Info & Auth Buttons -->
-                    <div class="hidden text-white text-xs text-right" id="user-info-display">
-                        <p class="font-semibold text-accent-gold" id="user-email-display"></p>
-                        <!-- MANDATORY: Display full UID for multi-user compliance -->
-                        <p class="text-white opacity-70" id="user-id-display"></p>
-                    </div>
-                    <button id="login-btn" class="px-3 py-1 bg-accent-gold text-cbse-blue rounded-md text-sm font-medium hover:bg-yellow-600 transition">
-                        Sign In
-                    </button>
-                    <button id="logout-nav-btn" class="px-3 py-1 bg-red-500 text-white rounded-md text-sm font-medium hover:bg-red-600 transition hidden">
-                        Logout
-                    </button>
-                </div>
-            </div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-extrabold text-accent-gold tracking-wider">
+                Ready4<span class="text-white">Exam</span> Quiz
+            </h1>
+            <nav id="auth-nav-container">
+                <button id="login-btn" class="px-4 py-2 text-sm font-semibold rounded-lg bg-white text-cbse-blue hover:bg-gray-100 transition">
+                    Sign In
+                </button>
+                <button id="logout-nav-btn" class="px-4 py-2 text-sm font-semibold rounded-lg bg-red-500 text-white hover:bg-red-600 transition hidden">
+                    Sign Out
+                </button>
+            </nav>
         </div>
     </header>
 
-    <!-- MAIN CONTENT CONTAINER -->
-    <main id="main-container" class="flex-grow max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full flex flex-col">
+    <main id="main-container" class="flex-grow max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col items-center">
 
-        <!-- --- 1. Loading/Status Message --- -->
-        <div id="status-message" class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded-lg shadow-md mb-6 hidden" role="alert">
-            <p>Loading Quiz...</p>
+        <div id="paywall-screen" class="hidden w-full max-w-md">
+            <div id="paywall-content" class="flex flex-col items-center p-12 bg-white rounded-xl quiz-container-shadow text-gray-800 text-center">
+                </div>
+            <div class="mt-6 text-center">
+                <button id="auth-paywall-btn" class="px-6 py-2 bg-accent-gold text-cbse-blue rounded-lg font-bold hover:bg-yellow-400 transition shadow-lg">
+                    Login / Get Access
+                </button>
+            </div>
         </div>
-
-        <!-- --- 2. Paywall/Sign-In Screen (Hidden by default) --- -->
-        <!-- NOTE: This now functions as the 'Sign In Required' screen -->
-        <div id="paywall-screen" class="hidden flex flex-col items-center justify-center p-12 bg-cbse-light rounded-xl shadow-2xl flex-grow">
-            <div id="paywall-content" class="w-full">
-                <!-- Content injected by ui-renderer.js/updatePaywallContent -->
+        
+        <div id="status-screen" class="w-full max-w-lg">
+            <div id="status-message" class="bg-white p-6 rounded-xl quiz-container-shadow text-center">
+                <p class="text-lg font-semibold text-gray-700">Initializing Quiz Engine...</p>
             </div>
         </div>
 
-        <!-- --- 3. Quiz Content View --- -->
-        <div id="quiz-content" class="hidden w-full flex-grow">
-            <div class="bg-white p-6 rounded-xl shadow-2xl mb-6">
-                <h1 class="text-2xl md:text-3xl font-extrabold text-heading">
-                    <span id="quiz-title">Loading Title...</span> 
-                    <span id="quiz-difficulty" class="text-lg font-semibold text-blue-600 ml-2"></span>
-                </h1>
-                <p class="text-sm text-gray-500 mt-1">Class 9 | Science | Physics Drill</p>
+        <div id="quiz-content" class="hidden w-full max-w-4xl">
+            <div class="bg-white p-6 rounded-xl quiz-container-shadow mb-6">
+                <h2 id="quiz-title" class="text-2xl font-extrabold text-cbse-blue mb-1">...</h2>
+                <p class="text-sm text-gray-600">Difficulty: <span id="quiz-difficulty" class="font-semibold">...</span></p>
+                <p class="text-sm text-gray-600 mt-2">Question <span id="current-q-num">1</span> of <span id="total-q-num">--</span></p>
             </div>
             
-            <!-- Question Navigation -->
-            <div class="flex items-center justify-between p-4 mb-4 bg-white rounded-xl shadow-md sticky top-0 z-10 border-b">
-                <button id="prev-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition" disabled>
-                    <i data-lucide="arrow-left" class="h-5 w-5 inline-block mr-1"></i> Prev
+            <div class="flex justify-between items-center mb-6">
+                <button id="prev-btn" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg font-semibold hover:bg-gray-400 transition disabled:opacity-50">
+                    <i data-lucide="chevron-left" class="w-5 h-5 inline-block align-text-bottom"></i> Previous
                 </button>
-                <div class="text-lg font-bold text-cbse-blue" id="question-indicator">Question 1 of 20</div>
-                <button id="next-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition">
-                    Next <i data-lucide="arrow-right" class="h-5 w-5 inline-block ml-1"></i>
+                <button id="next-btn" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg font-semibold hover:bg-gray-400 transition disabled:opacity-50">
+                    Next <i data-lucide="chevron-right" class="w-5 h-5 inline-block align-text-bottom"></i>
                 </button>
             </div>
 
-            <!-- Question List Container -->
-            <div id="question-list" class="space-y-6 mb-8">
-                <!-- Dynamic question content injected here -->
-            </div>
+            <div id="question-list" class="space-y-6">
+                </div>
 
-            <!-- Submit/End Section -->
-            <div class="mt-8 pt-4 border-t border-gray-200 flex justify-center">
-                <button id="submit-button" class="px-8 py-3 bg-green-600 text-white rounded-xl font-bold text-xl hover:bg-green-700 transition shadow-xl hidden">
+            <div class="flex justify-between items-center mt-6">
+                <button id="submit-btn" class="px-6 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition hidden">
                     Submit Quiz
                 </button>
             </div>
         </div>
 
-        <!-- --- 4. Results View --- -->
-        <div id="results-screen" class="hidden flex flex-col items-center p-12 bg-white rounded-xl shadow-2xl text-gray-800 text-center">
+        <div id="results-screen" class="hidden flex flex-col items-center p-12 bg-white rounded-xl quiz-container-shadow text-gray-800 text-center">
             <h2 class="text-4xl font-extrabold text-green-600 mb-4">Quiz Completed!</h2>
             <p class="text-xl text-gray-600 mb-6">Your final score is:</p>
             <p class="text-6xl font-extrabold text-red-600 mb-8" id="score-display">-- / --</p>
@@ -141,20 +131,21 @@
 
     </main>
 
-    <!-- FOOTER: Consistent Branding -->
     <footer class="bg-cbse-blue mt-16 py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
-            <p class="text-lg font-semibold mb-1">Ready4Exam</p>
-            <small class="text-sm opacity-70 block">© 2025 Ready4Exam Academic Portal. All Rights Reserved. | A child of ready4industry.</small>
+            <small class="text-sm opacity-70 block mt-2">© 2025 Ready4Exam Academic Portal. All Rights Reserved.</small>
         </div>
     </footer>
 
-    <!-- Script Imports (Must be type="module") -->
-    <!-- Note: These modules are defined in separate files (config.js, auth-paywall.js, etc.) -->
-    <script type="module" src="./config.js"></script>
-    <script type="module" src="./auth-paywall.js"></script>
-    <script type="module" src="./api.js"></script>
-    <script type="module" src="./ui-renderer.js"></script>
-    <script type="module" src="./quiz-engine.js"></script>
+
+    <script type="module" src="./js/config.js"></script>
+    <script type="module" src="./js/auth-paywall.js"></script>
+    <script type="module" src="./js/quiz-engine.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Lucide icons
+            lucide.createIcons();
+        });
+    </script>
 </body>
 </html>
