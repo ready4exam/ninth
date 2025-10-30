@@ -17,6 +17,21 @@ const LOG_TAG = '[AUTH-PAYWALL-FIX]';
 
 let authInstance = null;
 const googleProvider = new GoogleAuthProvider();
+// Explicitly bind your Web Client ID (from Firebase console > Authentication > Sign-in method > Google)
+googleProvider.setCustomParameters({
+    prompt: "select_account",
+});
+
+// Optional but safer: If your Firebase config object contains the clientId
+// (you can add it under window.__firebase_config.clientId), then set it here
+if (window.__firebase_config) {
+    try {
+        const cfg = JSON.parse(window.__firebase_config);
+        if (cfg.clientId) googleProvider.clientId = cfg.clientId;
+    } catch (err) {
+        console.warn("[AUTH-PAYWALL] Unable to parse clientId from config.", err);
+    }
+}
 
 // Module-level callback that quiz-engine will pass in via initializeAuthListener(callback)
 let externalOnAuthChange = null;
