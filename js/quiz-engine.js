@@ -1,21 +1,18 @@
-// js/quiz-engine.js
 import { fetchQuestions, saveResult } from './api.js';
-import { initializeAuthListener, checkPaymentStatus, getCurrentUser, signInWithGoogle, signOut } from './auth-paywall.js';
+import { initializeAuthListener, checkPaymentStatus, getCurrentUser } from './auth-paywall.js';
 import { 
     showView, 
     updateStatus, 
     hideStatus, 
+    renderTitles, 
     renderQuestion, 
     updateResultDisplay,
     initBranding,
-    updateNavigation,
     processResultsAndRender,
-    updatePaywallContent
+    getElements
 } from './ui-renderer.js';
 
-// --- Application Constants ---\
-const DEFAULT_TOPIC = 'motion';
-const DEFAULT_DIFFICULTY = 'easy';
+// --- Application Constants ---\nconst APP_TITLE = "Ready4Exam Quiz";
 
 // --- Quiz State Management ---
 const currentQuiz = {
@@ -28,7 +25,6 @@ const currentQuiz = {
 };
 let currentQuestionIndex = 0;
 let isQuizSubmitted = false;
-let isLoading = true;
 
 
 /**
@@ -36,13 +32,18 @@ let isLoading = true;
  * @returns {string | null} The selected answer string, or null if none is selected.
  */
 function getCurrentAnswerFromDOM() {
-    const questionContainer = document.getElementById('question-container');
+    // Get the question container element directly from the UI renderer
+    const elements = getElements();
+    const questionContainer = elements.questionList.children[0];
+    
+    // Check if the container exists and has radio inputs
     if (!questionContainer) return null;
 
-    // Use querySelector to find the checked radio button within the container
     const selectedInput = questionContainer.querySelector('input[type="radio"]:checked');
     if (selectedInput) {
-        // The value attribute of the radio button holds the option text
+        // Find the corresponding label for the text content
+        const label = questionContainer.querySelector(`label[for="${selectedInput.id}"]`);
+        // The value property of the radio input holds the actual option text
         return selectedInput.value;
     }
     return null;
@@ -50,211 +51,193 @@ function getCurrentAnswerFromDOM() {
 
 /**
  * Saves the current answer to the state and navigates to the specified question index.
- * @param {number} newIndex - The index of the question to show next.
+ * @param {number} index - The index of the question to show.
+ * @param {boolean} [shouldSaveCurrent=true] - Whether to save the answer for the current question before navigating.
  */
-function navigateToQuestion(newIndex) {
-    if (isLoading) return;
-
-    // 1. Save the answer for the current question before leaving
-    const currentAnswer = getCurrentAnswerFromDOM();
-    if (currentAnswer) {
-        currentQuiz.userAnswers[currentQuestionIndex] = currentAnswer;
-        console.log(`[STATE] Saved answer for Q${currentQuestionIndex + 1}: ${currentAnswer}`);
-    } else {
-        // If nothing is selected, we save null/undefined to mark it as unanswered
-        delete currentQuiz.userAnswers[currentQuestionIndex];
+function navigateToQuestion(index, shouldSaveCurrent = true) {
+    if (currentQuiz.questions.length === 0) {
+        console.warn("[ENGINE] Cannot navigate: No questions loaded.");
+        return;
     }
     
-    // 2. Update the index
-    currentQuestionIndex = newIndex;
+    // 1. Save the answer for the question we are leaving (if it was a valid question)
+    if (shouldSaveCurrent && currentQuiz.questions[currentQuestionIndex]) {
+        currentQuiz.userAnswers[currentQuestionIndex] = getCurrentAnswerFromDOM();
+        // Log the saved answer (optional)
+        console.log(`Answer saved for Q${currentQuestionIndex}: ${currentQuiz.userAnswers[currentQuestionIndex]}`);
+    }
 
-    // 3. Render the new question
-    renderQuestion(
-        currentQuiz.questions[currentQuestionIndex],
-        currentQuestionIndex,
-        currentQuiz.questions.length,
-        currentQuiz.userAnswers[currentQuestionIndex], // Pass previously saved answer
-        isQuizSubmitted
-    );
+    // 2. Validate the new index
+    if (index >= 0 && index < currentQuiz.questions.length) {
+        currentQuestionIndex = index;
+        const question = currentQuiz.questions[currentQuestionIndex];
+        
+        // 3. Render the question and restore the saved answer
+        renderQuestion(question, currentQuestionIndex, currentQuiz.userAnswers[currentQuestionIndex], isQuizSubmitted);
+        
+        // 4. Update navigation button visibility
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const submitBtn = document.getElementById('submit-button');
+        
+        prevBtn.disabled = currentQuestionIndex === 0;
 
-    // 4. Update navigation buttons
-    updateNavigation(currentQuestionIndex, currentQuiz.questions.length, isQuizSubmitted);
+        if (currentQuestionIndex === currentQuiz.questions.length - 1) {
+            nextBtn.classList.add('hidden');
+            if (!isQuizSubmitted) {
+                submitBtn.classList.remove('hidden');
+            }
+        } else {
+            nextBtn.classList.remove('hidden');
+            submitBtn.classList.add('hidden');
+        }
+    }
 }
 
 /**
- * Handles clicks on the Previous button.
+ * Handles navigation to the previous question.
  */
 function handlePrevious() {
-    if (currentQuestionIndex > 0) {
-        navigateToQuestion(currentQuestionIndex - 1);
-    }
+    navigateToQuestion(currentQuestionIndex - 1);
 }
 
 /**
- * Handles clicks on the Next button.
+ * Handles navigation to the next question.
  */
 function handleNext() {
-    if (currentQuestionIndex < currentQuiz.questions.length - 1) {
-        navigateToQuestion(currentQuestionIndex + 1);
-    }
+    navigateToQuestion(currentQuestionIndex + 1);
 }
 
 /**
- * Handles the submission of the quiz.
- */
-async function handleSubmit() {
-    if (isQuizSubmitted) {
-        // If already submitted and user clicks 'Submit' (now 'Review Quiz')
-        // We'll treat this as finishing the review for now.
-        showView('results-screen');
-        return;
-    }
-    
-    // 1. Save the final question's answer
-    const finalAnswer = getCurrentAnswerFromDOM();
-    if (finalAnswer) {
-        currentQuiz.userAnswers[currentQuestionIndex] = finalAnswer;
-    } else {
-        delete currentQuiz.userAnswers[currentQuestionIndex];
-    }
-
-    isQuizSubmitted = true;
-    
-    // 2. Calculate and process results
-    const score = processResultsAndRender(currentQuiz.questions, currentQuiz.userAnswers);
-    const total = currentQuiz.questions.length;
-
-    // 3. Display the results screen with the score
-    updateResultDisplay(score, total);
-    showView('results-screen');
-    
-    // 4. Optionally save the result to the database (async)
-    try {
-        const user = getCurrentUser();
-        if (user) {
-            const resultPayload = {
-                userId: user.uid,
-                topic: currentQuiz.topic,
-                difficulty: currentQuiz.difficulty,
-                score: score,
-                total: total,
-                answers: JSON.stringify(currentQuiz.userAnswers),
-                // Timestamp will be added by Firestore/Supabase
-            };
-            await saveResult(resultPayload);
-            console.log("[RESULT] Quiz result saved successfully.");
-        }
-    } catch (error) {
-        console.error("[RESULT ERROR] Failed to save quiz result:", error);
-    }
-    
-    // The 'review-complete-btn' listener will be set up below
-}
-
-
-/**
- * Loads the quiz data from the API and sets up the initial state.
+ * Loads the quiz data and transitions the UI.
  */
 async function loadQuiz() {
-    isLoading = true;
-    updateStatus(`Fetching **${currentQuiz.topic}** questions...`);
-
+    // Set status to inform the user what is happening
+    updateStatus(`Loading quiz for **${currentQuiz.topic}**...`);
+    
     try {
+        // The fetchQuestions now correctly uses 'topic_slug' and throws an error if empty
         const questions = await fetchQuestions(currentQuiz.topic, currentQuiz.difficulty);
         
-        // --- FIX: Check for empty questions array ---
+        // If the array is empty, the function should have thrown, but a safety check doesn't hurt.
         if (questions.length === 0) {
-             const errorMsg = `No questions found for topic **'${currentQuiz.topic}'** at difficulty **'${currentQuiz.difficulty}'**. Please check the database content (table: 'quizzes') or try a different difficulty/topic.`;
-             updateStatus(errorMsg);
-             console.error("[QUIZ ERROR]", errorMsg);
-             isLoading = false; // Important: reset loading state
-             // Stop execution and stay on the loading/status screen with the error message
-             return; 
+            throw new Error(`No questions found for topic '${currentQuiz.topic}' at difficulty '${currentQuiz.difficulty}'. Check database content.`);
         }
-        // --- END FIX ---
 
         currentQuiz.questions = questions;
-        currentQuestionIndex = 0;
-        isQuizSubmitted = false;
-        currentQuiz.userAnswers = {}; // Reset answers for a new quiz
-
-        // Initial setup
-        hideStatus();
-        navigateToQuestion(currentQuestionIndex);
-        showView('quiz-content');
+        renderTitles(currentQuiz.topic, currentQuiz.difficulty, currentQuiz.questions.length);
         
+        showView('quiz-content');
+        navigateToQuestion(0, false); // Start at the first question without saving an initial answer
+        hideStatus();
+
     } catch (error) {
-        console.error("[QUIZ ERROR] Failed to load quiz:", error);
-        updateStatus(`Failed to load quiz: ${error.message}.`);
-        // If it's a fatal API error (like Supabase not initialized), keep showing the status view.
-    } finally {
-        // Only reset if we didn't hit the "no questions found" return
-        if (currentQuiz.questions.length > 0) {
-            isLoading = false;
-        }
+        console.error("[QUIZ ENGINE ERROR] Failed to load quiz:", error);
+        // Display the error message to the user on the loading screen
+        updateStatus(`[QUIZ ERROR] ${error.message}. Please ensure the correct difficulty is selected or check your database.`);
+        // Ensure only the status/loading screen is visible
+        showView('loading-status');
     }
 }
 
-
 /**
- * Main authentication state change handler. Determines flow after sign-in/out.
- * @param {Object|null} user 
+ * Handles quiz submission.
  */
-async function onAuthChange(user) {
-    console.log("[AUTH CHANGE] User state updated. Loading app content...");
-    await checkAccessAndLoad(user);
-}
-
-/**
- * Checks access and proceeds to load the quiz or show the paywall.
- * @param {Object|null} user 
- */
-async function checkAccessAndLoad(user) {
-    // 1. Check if the user is authenticated (paywall substitute)
-    // Note: checkPaymentStatus currently only checks if a user is logged in
-    const hasAccess = await checkPaymentStatus(currentQuiz.topic); 
-
-    if (!hasAccess) {
-        console.log("[ACCESS] Access Denied. Showing paywall.");
-        updatePaywallContent(currentQuiz.topic);
-        showView('paywall-screen');
-        // Attach login handler if it hasn't been done
-        document.getElementById('login-button')?.addEventListener('click', signInWithGoogle);
+async function handleSubmit() {
+    // 1. Final save for the current question
+    currentQuiz.userAnswers[currentQuestionIndex] = getCurrentAnswerFromDOM();
+    
+    // 2. Prevent further submission
+    if (isQuizSubmitted) {
+        // If already submitted, this button is acting as 'Review Complete'
+        showView('start-screen');
         return;
     }
     
-    // 2. If access is granted, load the quiz
-    console.log("[ACCESS] Access Granted. Loading quiz.");
+    isQuizSubmitted = true;
     showView('loading-status');
-    await loadQuiz();
+    updateStatus("Submitting and calculating results...");
+
+    // 3. Calculate Score (A simplified process, as full scoring should be on the server)
+    let score = 0;
+    const total = currentQuiz.questions.length;
+
+    currentQuiz.questions.forEach((q, index) => {
+        // Get the saved answer (this is the value/text of the selected option)
+        const userAnswer = currentQuiz.userAnswers[index]; 
+        // Get the correct answer from the question object
+        const correctAnswer = q.correct_answer; 
+        
+        if (userAnswer === correctAnswer) {
+            score++;
+        }
+    });
+
+    // 4. Update the results display
+    updateResultDisplay(score, total);
+    
+    // 5. Save the result via API (Async, but we don't wait for it to complete the UI transition)
+    const quizResult = {
+        topic: currentQuiz.topic,
+        difficulty: currentQuiz.difficulty,
+        score: score,
+        total: total,
+        user: getCurrentUser() ? getCurrentUser().uid : 'anonymous',
+    };
+    saveResult(quizResult).catch(e => console.error("Failed to save result:", e));
+
+    // 6. Transition to results view
+    showView('results-screen');
+    hideStatus();
+}
+
+/**
+ * Wrapper function to check access and load the quiz if authorized.
+ * @param {Object|null} user - The current Firebase user object.
+ */
+async function checkAccessAndLoad(user) {
+    // updateStatus(`Authenticating user access...`);
+    
+    // If the user has access (either paid or authenticated based on current logic)
+    // NOTE: checkPaymentStatus logic is simplified in auth-paywall.js to only check if user is authenticated.
+    if (await checkPaymentStatus()) { 
+        showView('loading-status');
+        await loadQuiz(); // Proceed to load the quiz
+    } else {
+        // If access is denied (not logged in)
+        renderTitles(currentQuiz.topic, currentQuiz.difficulty);
+        showView('paywall-screen');
+        // The paywall content must be updated before showing the screen
+        const { updatePaywallContent } = await import('./ui-renderer.js');
+        updatePaywallContent(currentQuiz.topic);
+        hideStatus();
+    }
 }
 
 
-// --- Main Application Entry Point ---
+// --- Initialization ---
 document.addEventListener('DOMContentLoaded', async () => {
     // 1. Parse URL parameters to set context
     const params = new URLSearchParams(window.location.search);
-    // Use fallbacks for direct-page navigation
     currentQuiz.class = params.get('class');
     currentQuiz.subject = params.get('subject');
-    currentQuiz.topic = params.get('topic') || DEFAULT_TOPIC; 
-    currentQuiz.difficulty = params.get('difficulty') || DEFAULT_DIFFICULTY; 
+    // Note: The value from the URL parameter 'topic' is the 'topic_slug'
+    currentQuiz.topic = params.get('topic'); 
     
+    // *** CRITICAL FIX: Set default difficulty to 'difficult' for testing ***
+    // This allows the quiz to fetch data since you confirmed it's only available
+    // for this level.
+    currentQuiz.difficulty = params.get('difficulty') || 'difficult'; 
+
     // 2. Display Branding and Tagline immediately
-    initBranding(currentQuiz.topic, currentQuiz.difficulty, currentQuiz.subject || 'CBSE 9'); 
+    initBranding(); 
     
-    // 3. Initialize Auth listener. The listener calls onAuthChange.
-    initializeAuthListener(onAuthChange); 
+    // 3. Initialize Auth listener, which runs checkAccessAndLoad on state change
+    initializeAuthListener(checkAccessAndLoad); 
     
-    // --- Event Listeners (Must be attached after DOMContentLoaded) ---
+    // --- Event Listeners ---
     document.getElementById('prev-btn')?.addEventListener('click', handlePrevious);
     document.getElementById('next-btn')?.addEventListener('click', handleNext);
     document.getElementById('submit-button')?.addEventListener('click', handleSubmit);
-    document.getElementById('logout-nav-btn')?.addEventListener('click', signOut);
-
-    // After review, return to the start screen (placeholder for now, just clears view)
-    document.getElementById('review-complete-btn')?.addEventListener('click', () => {
-        showView('loading-status');
-        updateStatus("Quiz review finished. Ready for next quiz.");
-    });
+    document.getElementById('review-quiz-btn')?.addEventListener('click', handleSubmit); 
 });
