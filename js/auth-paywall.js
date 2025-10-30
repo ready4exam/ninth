@@ -42,6 +42,21 @@ const onAuthChangeCallback = (user) => {
     // Example: if (user) quizEngine.loadQuiz();
 };
 
+/**
+ * Checks if the user is currently authenticated (logged in).
+ * This function is required by quiz-engine.js to determine access.
+ * @returns {boolean} True if a user is signed in, false otherwise.
+ */
+const checkAccess = () => {
+    try {
+        // Access is granted if Firebase has a current user
+        return !!getAuthInstance().currentUser;
+    } catch (e) {
+        // If Auth isn't initialized yet, assume no access.
+        return false;
+    }
+};
+
 
 /**
  * Initializes the Auth components and sets up listeners.
@@ -118,4 +133,4 @@ const signInWithGoogle = () => {
 };
 
 // This is the ONLY place where functions are exported.
-export { signInWithGoogle, getGoogleRedirectResult, initializeAuthPaywall };
+export { signInWithGoogle, getGoogleRedirectResult, initializeAuthPaywall, checkAccess };
