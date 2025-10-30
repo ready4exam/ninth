@@ -27,7 +27,6 @@ let supabase = null;
 let isInitialized = false;
 
 // --- Supabase Config (LIVE CREDENTIALS) ---
-// Keys updated based on user input
 const SUPABASE_URL = 'https://gkyvojcmqsgdynmitcuf.supabase.co'; 
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdreXZvamNtcXNnZHlubWl0Y3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3NDQ0OTcsImV4cCI6MjA3NjMyMDQ5N30.5dn5HbXxQ5sYNECS9o3VxVeyL6I6Z2Yf-nmPwztx1hE'; 
 
@@ -56,16 +55,16 @@ export async function initializeServices() {
     console.log("[CONFIG] Supabase client initialized.");
 
     
-    // 3. Initial Authentication (Only checks for custom token, forces user to log in otherwise)
-    // NOTE: signInAnonymously has been removed to enforce Google Login.
+    // 3. Initial Authentication (Only checks for custom token)
     try {
         if (initialAuthToken) {
             await signInWithCustomToken(auth, initialAuthToken);
             console.log("[CONFIG] Signed in with custom token.");
         } 
+        // NOTE: signInAnonymously is intentionally removed to enforce Google Login.
     } catch (error) {
-        // If custom token fails, we log a warning and let the rest of the app continue 
-        // with a null user, forcing Google Sign-In.
+        // If custom token fails, we log a warning and let the app continue 
+        // with a null user, forcing the paywall/Google Sign-In prompt.
         console.warn("[CONFIG WARNING] Custom token sign-in failed. Relying on Google Sign-In.", error);
     }
 
@@ -75,13 +74,15 @@ export async function initializeServices() {
 
 /**
  * Retrieves the initialized Supabase, Firestore, and Auth clients.
+ * This function is used by auth-paywall.js to get the 'auth' object.
  */
 export function getInitializedClients() {
     if (!isInitialized) {
         console.error("[CONFIG ERROR] Attempted to get clients before initialization.");
         throw new Error("Core services must be initialized first.");
     }
-    return { supabase, db, auth };
+    // FIX: Ensure 'auth' is included in the returned object
+    return { supabase, db, auth }; 
 }
 
 /**
