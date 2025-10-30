@@ -3,6 +3,11 @@
 import { getInitializedClients } from './config.js';
 import { updateAuthUI, updatePaywallContent } from './ui-renderer.js';
 
+// We need to import the modular functions for sign-in and provider creation
+// from the Firebase modular SDK (which we assume is available via the CDN imports in quiz-engine.html)
+import { GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+
 // Global state tracking
 let currentAuthUser = null;
 
@@ -38,11 +43,11 @@ export async function signInWithGoogle() {
         throw new Error("Firebase Auth not available.");
     }
 
-    // Note: 'firebase' must be globally available from the CDN import in quiz-engine.html
-    const provider = new firebase.auth.GoogleAuthProvider();
+    // FIX: Using the imported GoogleAuthProvider and signInWithPopup functions
+    const provider = new GoogleAuthProvider();
     try {
-        // Use signInWithPopup for a non-breaking flow
-        const result = await auth.signInWithPopup(provider);
+        // Use signInWithPopup from the modular SDK
+        const result = await signInWithPopup(auth, provider);
         console.log("[AUTH] Google Sign-In successful:", result.user.email);
         return result.user;
     } catch (error) {
