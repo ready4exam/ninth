@@ -1,85 +1,49 @@
 import { getInitializedClients } from './config.js'; 
 
 import {
-    onAuthStateChanged,
     GoogleAuthProvider,
-    getRedirectResult,
+    getRedirectResult as firebaseGetRedirectResult,
     signInWithPopup,
     signInWithRedirect,
-    signOut
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
 
-const LOG_TAG = '[AUTH-PAYWALL]';
+const LOG_TAG = '[AUTH-PAYWALL-MINIMAL]';
 
 let authInstance = null;
 const googleProvider = new GoogleAuthProvider();
 
-
 /**
- * Initializes the Auth components and sets up listeners.
- * This MUST be called AFTER initializeServices() from config.js 
- * has successfully completed.
+ * Internal helper to retrieve the initialized Firebase Auth instance.
  */
-export async function initializeAuthPaywall() {
-    try {
-        const clients = getInitializedClients();
-        authInstance = clients.auth;
-        
-        if (!authInstance) {
-            console.error(LOG_TAG, "Auth instance not found. Initialization failed.");
-            return;
+function getAuthInstance() {
+    if (!authInstance) {
+        try {
+            // Attempt to get the initialized clients from config.js
+            const clients = getInitializedClients();
+            authInstance = clients.auth;
+        } catch (e) {
+             console.error(LOG_TAG, "Auth instance not available. Ensure services are initialized in config.js.", e);
+             throw new Error("Auth not initialized.");
         }
-
-        // 1. Set up the primary auth state listener.
-        onAuthStateChanged(authInstance, onAuthChangeCallback);
-        console.log(LOG_TAG, 'Auth state listener established.');
-
-        // 2. IMPORTANT: Check for pending redirect result. 
-        // This resolves the user sign-in if the previous attempt ended in a redirect (the fallback).
-        await checkRedirectResult(); 
-
-        console.log(LOG_TAG, 'Redirect result check completed.');
-    } catch (error) {
-        console.error(LOG_TAG, 'Failed to initialize Auth Paywall:', error);
     }
+    return authInstance;
 }
-
-/**
- * Placeholder for the function in quiz-engine.js that should run when 
- * the authentication state changes (i.e., when a user signs in or out).
- * * IMPORTANT: You need to ensure the quiz logic (loadQuiz, etc.) is called 
- * from here when 'user' is not null.
- * * @param {import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js").User|null} user - The current authenticated user object or null.
- */
-function onAuthChangeCallback(user) {
-    console.log(LOG_TAG, 'Auth state changed. User ID:', user ? user.uid : 'Signed Out');
-    
-    // Your application needs to make the quiz-engine's onAuthChange function 
-    // available here or call it if it's imported/global.
-    // Example call (assuming 'onAuthChange' is defined/imported elsewhere):
-    // if (typeof onAuthChange === 'function') {
-    //    onAuthChange(user); 
-    // }
-}
-
 
 /**
  * Checks for a pending redirect result on page load.
+ * This function MUST be called once on application startup to resolve sign-ins 
+ * completed via the signInWithRedirect fallback.
  */
-async function checkRedirectResult() {
+export function getGoogleRedirectResult() {
     try {
-        // getRedirectResult resolves the sign-in that occurred via redirect.
-        const result = await getRedirectResult(authInstance);
-        if (result && result.credential) {
-            console.log(LOG_TAG, 'REDIRECT SUCCESS: Successfully resolved user credential.');
-        }
+        const auth = getAuthInstance();
+        return firebaseGetRedirectResult(auth);
     } catch (error) {
-        // Log any errors that occurred during the redirect result check
-        console.error(LOG_TAG, 'Redirect result check error:', error);
+        console.error(LOG_TAG, 'Failed to get auth instance for redirect check:', error);
+        return Promise.reject(error);
     }
 }
-
 
 /**
  * Primary function to initiate Google Sign-In. Implements the essential 
@@ -87,15 +51,12 @@ async function checkRedirectResult() {
  * common in iFrames and restrictive hosting environments like GitHub Pages.
  */
 export function signInWithGoogle() {
-    if (!authInstance) {
-        console.error(LOG_TAG, "Auth instance not initialized. Cannot sign in.");
-        return Promise.reject(new Error("Auth not initialized. Ensure initializeAuthPaywall was called."));
-    }
+    const auth = getAuthInstance();
 
     console.log(LOG_TAG, 'Initiating Google sign-in (Popup attempt)...');
 
     // 1. Attempt signInWithPopup first (v9 modular style).
-    return signInWithPopup(authInstance, googleProvider)
+    return signInWithPopup(auth, googleProvider)
         .then(result => {
             console.log(LOG_TAG, 'SUCCESS: Signed in via Popup.');
             return result;
@@ -111,7 +72,7 @@ export function signInWithGoogle() {
                 
                 // This starts the redirect process. The page will reload.
                 // Execution stops here.
-                return signInWithRedirect(authInstance, googleProvider)
+                return signInWithRedirect(auth, googleProvider)
                     .catch(redirectError => {
                         console.error(LOG_TAG, 'FATAL ERROR: signInWithRedirect also failed:', redirectError);
                         throw redirectError; // Re-throw fatal errors
@@ -124,17 +85,5 @@ export function signInWithGoogle() {
         });
 }
 
-/**
- * Exposes the Firebase sign-out function.
- */
-// FIX: Removed 'export' keyword from here to avoid duplicate export error.
-function signOutUser() {
-    if (!authInstance) {
-        console.error(LOG_TAG, "Auth instance not initialized. Cannot sign out.");
-        return Promise.resolve();
-    }
-    return signOut(authInstance);
-}
-
-// Export the necessary functions so other modules (like quiz-engine.js) can use them.
-export { signInWithGoogle, initializeAuthPaywall, signOutUser, onAuthChangeCallback };
+// Export only the two required functions for a minimal Google Sign-On module.
+export { signInWithGoogle, getGoogleRedirectResult };
