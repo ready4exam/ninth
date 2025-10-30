@@ -15,8 +15,9 @@ import {
 const LOG_TAG = '[AUTH-PAYWALL-FINAL]';
 
 let authInstance = null;
-// FIX: GoogleAuthProvider is now imported and correctly used here.
-let googleProvider = null; 
+// FIX: Initialize the provider here, ensuring the constructor is called only once 
+// and in the correct ES Module context.
+const googleProvider = new GoogleAuthProvider(); 
 
 /**
  * Internal helper to retrieve the initialized Firebase Auth instance.
@@ -28,10 +29,6 @@ const getAuthInstance = () => {
             const clients = getInitializedClients(); 
             authInstance = clients.auth;
             
-            // Initialize provider only after successful service retrieval
-            if (!googleProvider) {
-                googleProvider = new GoogleAuthProvider();
-            }
         } catch (e) {
              console.error(LOG_TAG, "Auth instance not available. Ensure services are initialized in config.js.", e);
              throw new Error("Auth not initialized.");
@@ -47,8 +44,7 @@ const getAuthInstance = () => {
  */
 const onAuthChangeCallback = (user) => {
     console.log(LOG_TAG, 'Auth state changed. User ID:', user ? user.uid : 'Signed Out');
-    // Your application needs to call the quiz-engine's load function here.
-    // e.g., if (user) quizEngine.loadQuiz();
+    // NOTE: Your quiz-engine.js logic needs to be executed here.
 };
 
 /**
