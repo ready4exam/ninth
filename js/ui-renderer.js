@@ -1,107 +1,93 @@
 // js/ui-renderer.js
 import { cleanKatexMarkers } from './utils.js';
 
-let elements = {};
-let isInitialized = false;
+let els = {};
+let isInit = false;
 
 export function initializeElements() {
-    if (isInitialized) return;
-    elements = {
-        mainContainer: document.getElementById('main-container'),
-        quizTitle: document.getElementById('quiz-header-topic'),
-        statusMessage: document.getElementById('status-message'),
-        questionList: document.getElementById('question-list'),
-        scoreDisplay: document.getElementById('score-display'),
-        submitButton: document.getElementById('submit-btn'),
-        reviewContainer: document.getElementById('review-container'),
-    };
-    isInitialized = true;
-    console.log('[UI RENDERER] Elements initialized.');
+  if (isInit) return;
+  els = {
+    title: document.getElementById('quiz-page-title'),
+    diffBadge: document.getElementById('difficulty-display'),
+    status: document.getElementById('status-message'),
+    list: document.getElementById('question-list'),
+    counter: document.getElementById('question-counter'),
+    reviewScreen: document.getElementById('results-screen'),
+    score: document.getElementById('score-display'),
+    reviewBtn: document.getElementById('review-complete-btn'),
+  };
+  isInit = true;
 }
 
-export function showStatus(message) {
-    initializeElements();
-    if (elements.statusMessage) {
-        elements.statusMessage.innerHTML = message;
-        elements.statusMessage.classList.remove('hidden');
-    }
+export function showStatus(msg) {
+  initializeElements();
+  els.status.innerHTML = msg;
+  els.status.classList.remove('hidden');
 }
 
 export function hideStatus() {
-    if (elements.statusMessage) elements.statusMessage.classList.add('hidden');
+  els.status.classList.add('hidden');
+}
+
+export function updateHeader(topic, diff) {
+  initializeElements();
+  if (els.title) els.title.textContent = `${topic.toUpperCase()} Quiz`;
+  if (els.diffBadge) els.diffBadge.textContent = `Difficulty: ${diff}`;
 }
 
 /**
- * Renders a single question.
- * Only shows explanations after quiz is submitted.
+ * Render one question
  */
-export function renderQuestion(question, questionNumber, selectedAnswer, isSubmitted) {
-    initializeElements();
-    if (!elements.questionList) return;
+export function renderQuestion(q, idx, selected, submitted) {
+  initializeElements();
+  const isAR = q.question_type === 'ar' || q.question_type === 'case';
+  const qText = cleanKatexMarkers(q.text);
+  const reason = cleanKatexMarkers(q.scenario_reason);
 
-    const isARorCase = ['ar', 'case'].includes(question.question_type);
-    const qText = cleanKatexMarkers(question.text);
-    const rText = cleanKatexMarkers(question.scenario_reason);
-    const explanationText = cleanKatexMarkers(question.explanation || '');
-
-    elements.questionList.innerHTML = `
-        <div class="space-y-6">
-            <p class="text-xl font-bold text-heading">Q${questionNumber}: ${qText}</p>
-            ${isARorCase && rText
-                ? `<p class="italic text-gray-700 border-l-4 border-blue-300 pl-4">${rText}</p>`
-                : ''
-            }
-            <div id="options-container" class="space-y-3">
-                ${['A','B','C','D'].map(opt => {
-                    const optText = cleanKatexMarkers(question.options[opt] || '');
-                    const isSel = selectedAnswer === opt;
-                    const isCorrect = isSubmitted && opt === question.correct_answer;
-                    const isIncorrect = isSubmitted && isSel && !isCorrect;
-
-                    let cls = 'option-label';
-                    if (isCorrect) cls += ' border-green-600 bg-green-100';
-                    else if (isIncorrect) cls += ' border-red-600 bg-red-100';
-                    else if (isSel) cls += ' border-blue-500 bg-blue-50 shadow-md';
-
-                    return `
-                        <label>
-                            <input type="radio" name="q-${question.id}" value="${opt}" class="hidden"
-                                   ${isSel ? 'checked' : ''} ${isSubmitted ? 'disabled' : ''}>
-                            <div class="${cls} p-3 rounded-lg border cursor-pointer flex items-start gap-2">
-                                <span class="font-bold">${opt}.</span>
-                                <p>${optText}</p>
-                            </div>
-                        </label>`;
-                }).join('')}
-            </div>
-
-            ${isSubmitted && isARorCase && explanationText
-                ? `<div class="mt-4 p-3 border-l-4 border-blue-500 bg-blue-50 rounded-lg">
-                     <p class="text-sm"><strong>Explanation:</strong> ${explanationText}</p>
-                   </div>`
-                : ''
-            }
-        </div>
-    `;
+  els.list.innerHTML = `
+    <div class="space-y-4">
+      <p class="text-lg font-bold text-gray-800">Q${idx + 1}: ${qText}</p>
+      ${isAR && reason ? `<p class="italic text-gray-700 border-l-4 border-blue-400 pl-4">${reason}</p>` : ''}
+      <div class="space-y-3">
+        ${['A', 'B', 'C', 'D'].map(opt => {
+          const text = cleanKatexMarkers(q.options[opt]);
+          const isSel = selected === opt;
+          const isCorrect = submitted && q.correct_answer === opt;
+          const isWrong = submitted && isSel && !isCorrect;
+          let cls = 'option-label';
+          if (isCorrect) cls += ' correct';
+          else if (isWrong) cls += ' incorrect';
+          else if (isSel) cls += ' border-blue-500 bg-blue-50';
+          return `
+            <label>
+              <input type="radio" name="q-${q.id}" value="${opt}" class="hidden" ${isSel ? 'checked' : ''} ${submitted ? 'disabled' : ''}>
+              <div class="${cls}">
+                <span class="font-bold mr-2">${opt}.</span> ${text}
+              </div>
+            </label>`;
+        }).join('')}
+      </div>
+    </div>
+  `;
 }
 
 /**
- * After submission — render all correct answers in one view.
+ * After submission — show all questions with correct answers.
  */
-export function renderAllQuestionsForReview(questions) {
-    initializeElements();
-    if (!elements.reviewContainer) return;
-    elements.reviewContainer.innerHTML = questions.map((q, i) => `
-        <div class="mb-6 p-4 bg-gray-50 rounded-lg shadow">
-            <p class="font-bold text-lg mb-2">Q${i + 1}: ${cleanKatexMarkers(q.text)}</p>
-            ${q.scenario_reason
-                ? `<p class="italic text-gray-600 mb-2">${cleanKatexMarkers(q.scenario_reason)}</p>`
-                : ''
-            }
-            <p class="text-green-700 font-semibold">
-                Correct Answer: ${q.correct_answer}
-            </p>
-        </div>
-    `).join('');
-    elements.reviewContainer.classList.remove('hidden');
+export function renderReview(questions) {
+  initializeElements();
+  els.list.innerHTML = questions.map((q, i) => `
+    <div class="mb-6 p-4 bg-gray-50 rounded-lg border">
+      <p class="font-bold text-lg mb-1">Q${i + 1}: ${cleanKatexMarkers(q.text)}</p>
+      ${q.scenario_reason ? `<p class="italic text-gray-600 mb-2">${cleanKatexMarkers(q.scenario_reason)}</p>` : ''}
+      <p class="text-green-700 font-semibold">Correct Answer: ${q.correct_answer}</p>
+    </div>
+  `).join('');
+  els.reviewScreen.classList.remove('hidden');
+}
+
+export function showScore(score, total) {
+  initializeElements();
+  els.score.textContent = `${score} / ${total}`;
+  els.reviewScreen.classList.remove('hidden');
 }
