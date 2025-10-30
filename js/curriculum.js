@@ -1,4 +1,4 @@
-{
+export default {
   "9": {
     "Science": {
       "Physics": [
@@ -18,31 +18,13 @@
         { "id": "fundamental_unit_of_life", "title": "Chapter 5: The Fundamental Unit of Life" },
         { "id": "tissues", "title": "Chapter 6: Tissues" },
         // Chapter 13 (Why Do We Fall Ill) and Chapter 14 (Natural Resources) are often taught for formative assessment/projects but are generally excluded from the final theory syllabus in the rationalised book.
-        { "id": "improvement_in_food_resources", "title": "Chapter 12: Improvement in Food Resources" }
-      ]
-    },
-    "Mathematics": {
-      "General": [
-        { "id": "number_systems", "title": "Chapter 1: Number Systems" },
-        { "id": "polynomials", "title": "Chapter 2: Polynomials" },
-        { "id": "coordinate_geometry", "title": "Chapter 3: Coordinate Geometry" },
-        { "id": "linear_equations_in_two_variables", "title": "Chapter 4: Linear Equations in Two Variables" },
-        // Introduction to Euclid's Geometry (Ch 5) is removed from the latest rationalised curriculum.
-        { "id": "lines_and_angles", "title": "Chapter 5: Lines and Angles" },
-        { "id": "triangles", "title": "Chapter 6: Triangles" },
-        { "id": "quadrilaterals", "title": "Chapter 7: Quadrilaterals" },
-        { "id": "circles", "title": "Chapter 8: Circles" },
-        // Areas of Parallelograms and Triangles (Ch 9) is removed from the latest rationalised curriculum.
-        { "id": "herons_formula", "title": "Chapter 9: Heron's Formula" },
-        { "id": "surface_areas_and_volumes", "title": "Chapter 10: Surface Areas and Volumes" },
-        { "id": "statistics", "title": "Chapter 11: Statistics" },
-        // Constructions (Ch 11) and Probability (Ch 15) are removed from the latest rationalised curriculum.
+        { "id": "improvement_in_food_resources", "title": "Chapter 15: Improvement in Food Resources" }
       ]
     },
     "Social_Science": {
       "History": [
         { "id": "french_revolution", "title": "Chapter 1: The French Revolution" },
-        { "id": "socialism_in_europe_and_russian_revolution", "title": "Chapter 2: Socialism in Europe and the Russian Revolution" },
+        { "id": "socialism_in_europe_and_the_russian_revolution", "title": "Chapter 2: Socialism in Europe and the Russian Revolution" },
         { "id": "nazism_and_the_rise_of_hitler", "title": "Chapter 3: Nazism and the Rise of Hitler" },
         { "id": "forest_society_and_colonialism", "title": "Chapter 4: Forest Society and Colonialism" },
         { "id": "pastoralists_in_the_modern_world", "title": "Chapter 5: Pastoralists in the Modern World" }
@@ -68,6 +50,31 @@
         { "id": "poverty_as_a_challenge", "title": "Chapter 3: Poverty as a Challenge" },
         { "id": "food_security_in_india", "title": "Chapter 4: Food Security in India" }
       ]
-    }
+    },
+    "Mathematics": [
+        { "id": "number_systems", "title": "Chapter 1: Number Systems" },
+        { "id": "polynomials", "title": "Chapter 2: Polynomials" },
+        { "id": "coordinate_geometry", "title": "Chapter 3: Coordinate Geometry" },
+        { "id": "linear_equations_in_two_variables", "title": "Chapter 4: Linear Equations in Two Variables" },
+        { "id": "introduction_to_euclids_geometry", "title": "Chapter 5: Introduction to Euclid’s Geometry" },
+        { "id": "lines_and_angles", "title": "Chapter 6: Lines and Angles" },
+        { "id": "triangles", "title": "Chapter 7: Triangles" },
+        { "id": "quadrilaterals", "title": "Chapter 8: Quadrilaterals" },
+        { "id": "areas_of_parallelograms_and_triangles", "title": "Chapter 9: Areas of Parallelograms and Triangles" },
+        { "id": "circles", "title": "Chapter 10: Circles" },
+        { "id": "constructions", "title": "Chapter 11: Constructions" },
+        { "id": "herons_formula", "title": "Chapter 12: Heron's Formula" },
+        { "id": "surface_areas_and_volumes", "title": "Chapter 13: Surface Areas and Volumes" },
+        { "id": "statistics", "title": "Chapter 14: Statistics" },
+        { "id": "probability", "title": "Chapter 15: Probability" }
+    ],
+    "Hindi": [
+        { "id": "placeholder_hindi_a", "title": "Hindi A: Placeholder Chapter" },
+        { "id": "placeholder_hindi_b", "title": "Hindi B: Placeholder Chapter" }
+    ],
+    "English": [
+        { "id": "placeholder_beehive", "title": "Beehive: Placeholder Chapter" },
+        { "id": "placeholder_moments", "title": "Moments: Placeholder Chapter" }
+    ]
   }
 }
