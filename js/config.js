@@ -1,11 +1,11 @@
 // js/config.js
 // Centralized configuration and initialization for all services (Firebase/Firestore/Auth and Supabase).
 
-// --- Mandatory Global Variables ---\n
+// --- Mandatory Global Variables ---
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-// --- Firebase Imports ---\n
+// --- Firebase Imports ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { 
     getAuth, 
@@ -17,61 +17,62 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-// --- Supabase Imports ---\n
+// --- Supabase Imports ---
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.44.4/+esm';
 
-// --- Internal State ---\n
+// --- Internal State ---
 let firebaseApp = null;
 let db = null;
 let auth = null;
 let supabase = null;
 let isInitialized = false;
 
-// --- Supabase Config (Placeholder - *** MUST BE REPLACED BY USER ***) ---\n
-// NOTE: Replace these with your actual Supabase project credentials.
+// --- Supabase Config (Placeholder) ---
 const SUPABASE_URL = 'https://your-supabase-url.supabase.co'; 
-const SUPABASE_ANON_KEY = 'your-supabase-anon-key'; 
+const SUPABASE_ANON_KEY = 'your-anon-key'; 
 
 /**
  * Initializes all core services (Firebase and Supabase).
  */
-export async function initializeServices() {
+export async function initServices() {
     if (isInitialized) return;
-
+    
+    console.log("[CONFIG] Initializing core services...");
+    
     // 1. Firebase Initialization
-    try {
+    if (Object.keys(firebaseConfig).length > 0) {
         firebaseApp = initializeApp(firebaseConfig);
-        db = getFirestore(firebaseApp);
         auth = getAuth(firebaseApp);
-        setLogLevel('Debug'); // Enable logging for debugging Firestore/Auth
-
-        console.log("[CONFIG] Firebase services initialized.");
-    } catch (error) {
-        console.error("[CONFIG ERROR] Firebase initialization failed:", error);
-        throw new Error("Firebase initialization failed.");
+        db = getFirestore(firebaseApp);
+        // Optional: Set log level for debugging
+        // setLogLevel('error'); 
+        console.log("[CONFIG] Firebase initialized.");
+    } else {
+        console.warn("[CONFIG WARNING] Firebase config is missing. Authentication/Firestore will not function.");
+        // Throw an error in a production setup
     }
     
     // 2. Supabase Initialization
     try {
-        if (SUPABASE_URL.includes('your-supabase-url')) {
-            console.error("[CONFIG WARNING] Supabase credentials are placeholders. Data fetching will fail.");
-        }
         supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        console.log("[CONFIG] Supabase client initialized.");
-    } catch (error) {
-        console.error("[CONFIG ERROR] Supabase initialization failed:", error);
-        throw new Error("Supabase initialization failed.");
+        console.log("[CONFIG] Supabase initialized.");
+    } catch (e) {
+        console.error("[CONFIG ERROR] Supabase initialization failed:", e);
     }
-    
+   
     // 3. Initial Authentication (Secures userId for Firestore)
     try {
         if (initialAuthToken) {
             await signInWithCustomToken(auth, initialAuthToken);
             console.log("[CONFIG] Signed in with custom token.");
         } else {
-            // Note: If the environment does not provide a custom token, sign in anonymously.
-            await signInAnonymously(auth);
-            console.log("[CONFIG] Signed in anonymously.");
+            // Check if there is already a user (e.g., from a previous session)
+            if (!auth.currentUser) { 
+                await signInAnonymously(auth);
+                console.log("[CONFIG] Signed in anonymously.");
+            } else {
+                 console.log("[CONFIG] Existing user session found.");
+            }
         }
     } catch (error) {
         console.error("[CONFIG ERROR] Initial authentication failed:", error);
@@ -90,17 +91,6 @@ export function getInitializedClients() {
         throw new Error("Core services must be initialized first.");
     }
     return { supabase, db, auth };
-}
-
-/**
- * Retrieves the Firebase Auth instance.
- */
-export function getAuthInstance() {
-    if (!isInitialized) {
-        console.error("[CONFIG ERROR] Attempted to get auth instance before initialization.");
-        throw new Error("Core services must be initialized first.");
-    }
-    return auth;
 }
 
 /**
