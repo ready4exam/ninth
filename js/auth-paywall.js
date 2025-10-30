@@ -1,40 +1,63 @@
-/**
- * Firebase Auth Paywall Logic - auth-paywall.js
- * * NOTE: This code assumes that the Firebase SDK (App and Auth) has been 
- * initialized and is available globally (e.g., via a <script> tag loading 
- * firebase-app.js and firebase-auth.js). 
- * * You must ensure that 'auth' and 'googleProvider' are correctly initialized 
- * and exposed by your config.js before this script runs.
- */
+import { getInitializedClients } from './config.js'; 
 
-// --- GLOBAL REFERENCES (Assumed to be initialized in config.js) ---
-// For this code to run smoothly, ensure these variables are defined globally 
-// or imported from config.js before execution:
-// const auth = firebase.auth();
-// const googleProvider = new firebase.auth.GoogleAuthProvider();
+import {
+    onAuthStateChanged,
+    GoogleAuthProvider,
+    getRedirectResult,
+    signInWithPopup,
+    signInWithRedirect,
+    signOut
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
 
 const LOG_TAG = '[AUTH-PAYWALL]';
+
+let authInstance = null;
+const googleProvider = new GoogleAuthProvider();
+
+
+/**
+ * Initializes the Auth components and sets up listeners.
+ * This MUST be called AFTER initializeServices() from config.js 
+ * has successfully completed.
+ */
+export async function initializeAuthPaywall() {
+    try {
+        const clients = getInitializedClients();
+        authInstance = clients.auth;
+        
+        if (!authInstance) {
+            console.error(LOG_TAG, "Auth instance not found. Initialization failed.");
+            return;
+        }
+
+        // 1. Set up the primary auth state listener.
+        onAuthStateChanged(authInstance, onAuthChangeCallback);
+        console.log(LOG_TAG, 'Auth state listener established.');
+
+        // 2. IMPORTANT: Check for pending redirect result. 
+        // This resolves the user sign-in if the previous attempt ended in a redirect (the fallback).
+        await checkRedirectResult(); 
+
+        console.log(LOG_TAG, 'Redirect result check completed.');
+    } catch (error) {
+        console.error(LOG_TAG, 'Failed to initialize Auth Paywall:', error);
+    }
+}
 
 /**
  * Placeholder for the function in quiz-engine.js that should run when 
  * the authentication state changes (i.e., when a user signs in or out).
- * @param {firebase.User|null} user - The current authenticated user object or null.
+ * * IMPORTANT: You need to ensure the quiz logic (loadQuiz, etc.) is called 
+ * from here when 'user' is not null.
+ * * @param {import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js").User|null} user - The current authenticated user object or null.
  */
 function onAuthChangeCallback(user) {
-    // IMPORTANT: You must replace this placeholder with the actual function 
-    // from quiz-engine.js that handles user sign-in/out and loads the quiz.
-    console.log(LOG_TAG, 'Placeholder: Auth state changed. User ID:', user ? user.uid : 'Signed Out');
+    console.log(LOG_TAG, 'Auth state changed. User ID:', user ? user.uid : 'Signed Out');
     
-    // Example: If your quiz-engine.js has a function called loadQuizEngine(user), 
-    // you would call it here:
-    // if (user) { 
-    //     loadQuizEngine(user); 
-    // } else {
-    //     displaySignInUI();
-    // }
-
-    // Your logs suggest a function called 'onAuthChange' in quiz-engine.js
-    // If that function is globally available or imported, call it:
+    // Your application needs to make the quiz-engine's onAuthChange function 
+    // available here or call it if it's imported/global.
+    // Example call (assuming 'onAuthChange' is defined/imported elsewhere):
     // if (typeof onAuthChange === 'function') {
     //    onAuthChange(user); 
     // }
@@ -42,15 +65,37 @@ function onAuthChangeCallback(user) {
 
 
 /**
- * Primary function to initiate Google Sign-In. Implements the essential 
- * Popup-to-Redirect fallback to handle COOP and cancellation errors.
- * This should be attached to your "Sign in with Google" button.
+ * Checks for a pending redirect result on page load.
  */
-function signInWithGoogle() {
+async function checkRedirectResult() {
+    try {
+        // getRedirectResult resolves the sign-in that occurred via redirect.
+        const result = await getRedirectResult(authInstance);
+        if (result && result.credential) {
+            console.log(LOG_TAG, 'REDIRECT SUCCESS: Successfully resolved user credential.');
+        }
+    } catch (error) {
+        // Log any errors that occurred during the redirect result check
+        console.error(LOG_TAG, 'Redirect result check error:', error);
+    }
+}
+
+
+/**
+ * Primary function to initiate Google Sign-In. Implements the essential 
+ * Popup-to-Redirect fallback to handle COOP and cancellation errors 
+ * common in iFrames and restrictive hosting environments like GitHub Pages.
+ */
+export function signInWithGoogle() {
+    if (!authInstance) {
+        console.error(LOG_TAG, "Auth instance not initialized. Cannot sign in.");
+        return Promise.reject(new Error("Auth not initialized. Ensure initializeAuthPaywall was called."));
+    }
+
     console.log(LOG_TAG, 'Initiating Google sign-in (Popup attempt)...');
 
-    // 1. Attempt signInWithPopup first.
-    return auth.signInWithPopup(googleProvider)
+    // 1. Attempt signInWithPopup first (v9 modular style).
+    return signInWithPopup(authInstance, googleProvider)
         .then(result => {
             console.log(LOG_TAG, 'SUCCESS: Signed in via Popup.');
             return result;
@@ -65,9 +110,8 @@ function signInWithGoogle() {
                 console.warn(LOG_TAG, `Popup failed (Code: ${error.code}). Initiating signInWithRedirect fallback.`);
                 
                 // This starts the redirect process. The page will reload.
-                // Execution stops here. The redirect result will be handled 
-                // by the initializeAuthListener function on the next page load.
-                return auth.signInWithRedirect(googleProvider)
+                // Execution stops here.
+                return signInWithRedirect(authInstance, googleProvider)
                     .catch(redirectError => {
                         console.error(LOG_TAG, 'FATAL ERROR: signInWithRedirect also failed:', redirectError);
                         throw redirectError; // Re-throw fatal errors
@@ -81,33 +125,15 @@ function signInWithGoogle() {
 }
 
 /**
- * Initializes the Firebase Auth listener and checks for a pending redirect result.
- * This function MUST be called once when the application loads.
+ * Exposes the Firebase sign-out function.
  */
-function initializeAuthListener() {
-    // 1. Set up the primary auth state listener.
-    firebase.auth().onAuthStateChanged(onAuthChangeCallback);
-    console.log(LOG_TAG, 'Auth state listener established.');
-
-    // 2. IMPORTANT: Check for pending redirect result. 
-    // This resolves the user sign-in if the previous attempt ended in a redirect (the fallback).
-    firebase.auth().getRedirectResult()
-        .then((result) => {
-            if (result.credential) {
-                console.log(LOG_TAG, 'REDIRECT SUCCESS: Successfully resolved user credential.');
-            }
-        })
-        .catch((error) => {
-            // Log any errors that occurred during the redirect result check
-            console.error(LOG_TAG, 'Redirect result check error:', error);
-        });
-
-    console.log(LOG_TAG, 'Redirect result check completed.');
+export function signOutUser() {
+    if (!authInstance) {
+        console.error(LOG_TAG, "Auth instance not initialized. Cannot sign out.");
+        return Promise.resolve();
+    }
+    return signOut(authInstance);
 }
 
-// --- MODULE EXPORTS (Ensure these are available globally or imported) ---
-
-// Assuming your quiz-engine.js and other files rely on these being global:
-window.signInWithGoogle = signInWithGoogle;
-window.initializeAuthListener = initializeAuthListener;
-window.onAuthChangeCallback = onAuthChangeCallback; // Expose the callback for debugging/integration
+// Export the necessary functions so other modules (like quiz-engine.js) can use them.
+export { signInWithGoogle, initializeAuthPaywall, signOutUser, onAuthChangeCallback };
