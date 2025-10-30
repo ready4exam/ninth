@@ -1,120 +1,99 @@
 // js/api.js
 import { getInitializedClients, getAuthUser } from './config.js';
 import * as UI from './ui-renderer.js';
-import { cleanKatexMarkers } from './utils.js';
 import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+// Identify app instance
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
 function getClients() {
     const { supabase, db } = getInitializedClients();
-    if (!supabase || !db) throw new Error("[API] Core services not initialized.");
+    if (!supabase || !db) throw new Error("Supabase/Firestore not initialized.");
     return { supabase, db };
 }
 
 /**
- * Fetches questions from the topic-specific table.
- * Each table corresponds to a topic (e.g., 'motion').
+ * Fetches quiz questions from topic tables (e.g., 'motion') with mix:
+ * 10 MCQ + 5 AR + 5 Case.
  */
 export async function fetchQuestions(topic, difficulty) {
     const { supabase } = getClients();
-    const tableName = topic.toLowerCase().trim();
+    console.log(`[API] Fetching questions for topic: ${topic}, difficulty: ${difficulty}`);
 
-    console.log(`[API] Fetching from '${tableName}' table for difficulty '${difficulty}'`);
+    if (UI?.showStatus) UI.showStatus(`Fetching questions for <b>${topic}</b> (${difficulty})...`);
 
-    if (UI?.showStatus) {
-        UI.showStatus(`<p class="text-lg font-semibold text-cbse-blue">
-            Fetching 20 questions for <strong>${topic}</strong> (${difficulty})...
-        </p>`);
-    }
+    // Normalize difficulty capitalization
+    const diff = difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase();
+    const base = supabase.from(topic);
 
-    // Normalize difficulty and question_type case
-    const normalizedDifficulty = difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase();
+    // --- 10 MCQ ---
+    const { data: mcqData, error: mcqError } = await base
+        .select('*')
+        .eq('difficulty', diff)
+        .eq('question_type', 'MCQ')
+        .limit(10);
+    if (mcqError) console.error('[API ERROR] MCQ fetch failed:', mcqError);
 
-    async function fetchByType(type, limit) {
-        const normalizedType = type.toUpperCase();
-        const { data, error } = await supabase
-            .from(tableName)
-            .select(`id, question_text, question_type, scenario_reason_text,
-                     option_a, option_b, option_c, option_d, correct_answer_key`)
-            .eq('difficulty', normalizedDifficulty)
-            .eq('question_type', normalizedType)
-            .limit(limit);
+    // --- 5 AR ---
+    const { data: arData, error: arError } = await base
+        .select('*')
+        .eq('difficulty', diff)
+        .eq('question_type', 'AR')
+        .limit(5);
+    if (arError) console.error('[API ERROR] AR fetch failed:', arError);
 
-        if (error) {
-            console.error(`[API ERROR] Fetch failed (${type}):`, error);
-            return [];
-        }
-        return data || [];
-    }
+    // --- 5 Case ---
+    const { data: caseData, error: caseError } = await base
+        .select('*')
+        .eq('difficulty', diff)
+        .eq('question_type', 'Case')
+        .limit(5);
+    if (caseError) console.error('[API ERROR] Case fetch failed:', caseError);
 
-    // Fetch question types with enforced mix
-    const [mcqData, arData, caseData] = await Promise.all([
-        fetchByType('MCQ', 10),
-        fetchByType('AR', 5),
-        fetchByType('Case', 5)
-    ]);
+    const data = [...(mcqData || []), ...(arData || []), ...(caseData || [])];
 
-    const allData = [...mcqData, ...arData, ...caseData];
+    if (!data.length) throw new Error('No questions found for this topic/difficulty.');
 
-    if (allData.length === 0) {
-        console.error(`[API CRITICAL] No data found in '${tableName}' for difficulty '${normalizedDifficulty}'.`);
-        UI?.showStatus(`<span class="text-red-600 font-semibold">
-            No questions found for this topic/difficulty.
-        </span>`);
-        throw new Error("No questions found for this topic/difficulty.");
-    }
+    if (data.length < 20)
+        console.warn(`[API WARNING] Found only ${data.length} questions.`);
 
-    if (allData.length < 20) {
-        const msg = `Found only ${allData.length} questions. Expected 20 (10 MCQ, 5 AR, 5 Case).`;
-        console.warn(`[API WARNING] ${msg}`);
-        UI?.showStatus(`<span class="text-yellow-600">${msg}</span>`);
-    }
-
-    // Normalize + clean text
-    const normalized = allData.map((q, idx) => ({
-        id: q.id,
-        text: cleanKatexMarkers(q.question_text),
+    // --- Normalize for renderer ---
+    const normalized = data.map((item, index) => ({
+        id: item.id,
+        text: item.question_text || '',
+        scenario_reason: item.scenario_reason_text || '',
         options: {
-            A: cleanKatexMarkers(q.option_a),
-            B: cleanKatexMarkers(q.option_b),
-            C: cleanKatexMarkers(q.option_c),
-            D: cleanKatexMarkers(q.option_d),
+            A: item.option_a || '',
+            B: item.option_b || '',
+            C: item.option_c || '',
+            D: item.option_d || '',
         },
-        correct_answer: q.correct_answer_key,
-        explanation: cleanKatexMarkers(q.scenario_reason_text || ''),
-        question_type: q.question_type.toLowerCase(),
-        question_order: idx + 1,
+        correct_answer: item.correct_answer_key || '',
+        question_type: item.question_type?.toLowerCase() || 'mcq',
+        difficulty: item.difficulty || diff,
+        question_order: index + 1,
     }));
 
-    console.log(`[API] Retrieved ${normalized.length} questions from '${tableName}'.`);
     return normalized;
 }
 
 /**
- * Saves quiz results to Firestore.
+ * Save quiz results to Firestore (authenticated users only)
  */
 export async function saveResult(resultData) {
     const { db } = getClients();
     const user = getAuthUser();
-    const userId = user ? user.uid : 'anonymous';
+    if (!user || user.isAnonymous) return console.warn('[API] Skipped save; user not authenticated.');
 
-    if (!user || user.isAnonymous) {
-        console.warn("[API] Skipping save — user not authenticated via Google.");
-        return;
-    }
-
-    const path = `/artifacts/${appId}/users/${userId}/quiz_scores`;
-    const quizScoresCollection = collection(db, path);
-
+    const quizScoresCollection = collection(db, `/artifacts/${appId}/users/${user.uid}/quiz_scores`);
     try {
         await addDoc(quizScoresCollection, {
             ...resultData,
-            user_id: userId,
+            user_id: user.uid,
             timestamp: serverTimestamp(),
         });
-        console.log(`[API] Quiz result saved successfully for ${userId}`);
-    } catch (error) {
-        console.error("[API ERROR] Failed to save quiz result:", error);
+        console.log('[API] Quiz result saved successfully.');
+    } catch (e) {
+        console.error('[API ERROR] Failed to save result:', e);
     }
 }
