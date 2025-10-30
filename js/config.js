@@ -2,8 +2,7 @@
 // Centralized configuration and initialization for all services (Firebase/Firestore/Auth and Supabase).
 
 // --- Mandatory Global Variables ---
-// These are placeholders that must be defined globally in a script tag BEFORE this module loads,
-// or provided via a secure server environment.
+// These are placeholders for security variables provided by the environment.
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
@@ -15,7 +14,7 @@ import {
     signInWithCustomToken, 
     onAuthStateChanged, 
     signOut as firebaseSignOut
-    // NOTE: setLogLevel is NOT a named export in this module and must be excluded.
+    // FIX: Removed 'setLogLevel' which is not a named export from this module.
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
@@ -35,6 +34,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 /**
  * Initializes all core services (Firebase and Supabase).
+ * NOTE: This function is exported as 'initializeServices'.
  */
 export async function initializeServices() {
     if (isInitialized) {
@@ -67,17 +67,14 @@ export async function initializeServices() {
     // 4. Initial Authentication (Ensures a user ID is available for Firestore)
     try {
         if (initialAuthToken) {
-            // Attempt to sign in with a provided custom token (e.g., from a secure backend)
             await signInWithCustomToken(auth, initialAuthToken);
             console.log("[CONFIG] Signed in with custom token.");
         } else {
-            // Fallback to anonymous sign-in for unauthenticated sessions
             await signInAnonymously(auth);
             console.log("[CONFIG] Signed in anonymously.");
         }
     } catch (error) {
         console.error("[CONFIG ERROR] Initial authentication failed:", error);
-        // Throwing here will stop the quiz engine initialization
         throw new Error("Failed to establish initial authentication session."); 
     }
 
