@@ -7,7 +7,7 @@
 import { getInitializedClients, getAuthUser } from './config.js';
 import * as UI from './ui-renderer.js';
 import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { cleanLatex } from './utils.js'; // ✅ import the text-cleaning helper
+import { cleanKatexMarkers } from './utils.js'; // ✅ your function name
 
 // Global constant for app ID
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
@@ -87,14 +87,14 @@ export async function fetchQuestions(topic, difficulty) {
     // 🧼 Clean and normalize all question data
     const normalized = allQuestions.map(q => ({
         id: q.id,
-        question_text: cleanLatex(q.question_text),
+        question_text: cleanKatexMarkers(q.question_text),
         question_type: q.question_type || 'mcq',
-        scenario_reason_test: cleanLatex(q.scenario_reason_text || ''),
+        scenario_reason_test: cleanKatexMarkers(q.scenario_reason_text || ''),
         options: [
-            { key: 'A', text: cleanLatex(q.option_a) },
-            { key: 'B', text: cleanLatex(q.option_b) },
-            { key: 'C', text: cleanLatex(q.option_c) },
-            { key: 'D', text: cleanLatex(q.option_d) }
+            { key: 'A', text: cleanKatexMarkers(q.option_a) },
+            { key: 'B', text: cleanKatexMarkers(q.option_b) },
+            { key: 'C', text: cleanKatexMarkers(q.option_c) },
+            { key: 'D', text: cleanKatexMarkers(q.option_d) }
         ],
         correct_answer_key: q.correct_answer_key,
         difficulty: q.difficulty
