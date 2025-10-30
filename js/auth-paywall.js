@@ -1,16 +1,19 @@
 // js/auth-paywall.js
+// Handles Firebase Authentication (Google Sign-In/Out) and initial access check.
 
-// FIX: getAuthInstance is not a named export. We use getInitializedClients to get the 'auth' object.
-import { getInitializedClients, getAuthUser, signOutUser } from './config.js'; 
+// FIX: Importing getInitializedClients, getAuthUser, and signOutUser which are 
+// correctly exported by the final config.js code.
+import { getInitializedClients, getAuthUser, signOutUser } from './config.js';
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import * as API from './api.js';
 
 // --- Internal State ---
 const googleProvider = new GoogleAuthProvider();
-let auth = null; // Will store the Firebase Auth object
+let auth = null; // Will store the Firebase Auth object after initialization
 
 /**
  * Initializes the Firebase Auth listener. 
+ * @param {Function} callback - The function (onAuthChange) to call when the auth state changes.
  */
 export function initializeAuthListener(callback) {
     // FIX: Retrieve the auth object from the initialized clients
@@ -23,7 +26,7 @@ export function initializeAuthListener(callback) {
 
     // This listener immediately checks the current state and then listens for future changes.
     onAuthStateChanged(auth, (user) => {
-        // user is null if no one is signed in (or signed out).
+        // user is null if no one is signed in.
         callback(user); 
     });
     console.log("[AUTH] Auth state listener initialized.");
@@ -65,25 +68,28 @@ export async function signOut() {
 
 /**
  * Checks if the currently authenticated user has access to the specified topic.
+ * @param {string} topicSlug - The topic identifier (e.g., 'motion').
+ * @returns {Promise<boolean>} - True if access is granted, false otherwise.
  */
 export async function checkAccess(topicSlug) {
     const user = getAuthUser();
     
-    // Rule 1: Must be authenticated
+    // Rule 1: Must be authenticated (enforces the Google Login requirement)
     if (!user) {
-        console.warn("[PAYWALL] Access denied: User is not authenticated (must use Google Login).");
+        console.warn("[PAYWALL] Access denied: User is not authenticated.");
         return false;
     }
     
-    // Rule 2: Check against a list of free topics (e.g., 'motion' is free)
+    // Rule 2: Check against a list of free topics
     const FREE_TOPICS = ['motion', 'introduction-to-topic-x']; 
     if (FREE_TOPICS.includes(topicSlug)) {
         console.log(`[PAYWALL] Access granted for free topic: ${topicSlug}`);
         return true;
     }
 
-    // Rule 3: Check API/Firestore for premium access (assuming API.checkPremiumStatus is implemented)
+    // Rule 3: Check API/Firestore for premium access 
     try {
+        // This assumes checkPremiumStatus is implemented in api.js
         const hasPremium = await API.checkPremiumStatus(user.uid);
         if (hasPremium) {
             console.log("[PAYWALL] Access granted: User has premium status.");
