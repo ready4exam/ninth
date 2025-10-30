@@ -1,96 +1,111 @@
 // js/api.js
+// -----------------------------------------------------------------------------
+// Responsible for fetching questions from Supabase and saving results to Firestore.
+// Implements exact CBSE Quiz logic (10 MCQ, 5 AR, 5 Case) and LaTeX cleanup.
+// -----------------------------------------------------------------------------
+
 import { getInitializedClients, getAuthUser } from './config.js';
 import * as UI from './ui-renderer.js';
 import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { cleanLatex } from './utils.js'; // ✅ import the text-cleaning helper
 
-// Global constant to be used across the app for the app ID
+// Global constant for app ID
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
 function getClients() {
     const { supabase, db } = getInitializedClients();
     if (!supabase || !db) {
-        throw new Error("Core services (Supabase or Firestore) are not initialized. Check config.js setup.");
+        throw new Error("[API] Core services (Supabase or Firestore) not initialized. Check config.js setup.");
     }
     return { supabase, db };
 }
 
 /**
- * Fetches quiz questions based on topic and difficulty from the unified 'quizzes' table.
- * Enforces the 10 MCQ, 5 AR, 5 CASE mix (20 total).
+ * Fetches quiz questions for a topic & difficulty.
+ * Guarantees a fixed mix: 10 MCQ + 5 AR + 5 Case-Based = 20 total.
+ * Dynamically picks the table based on the topic slug (e.g. 'motion').
  */
 export async function fetchQuestions(topic, difficulty) {
     const { supabase } = getClients();
 
     console.log(`[API] Fetching questions for topic: ${topic}, difficulty: ${difficulty}`);
 
-    // Use UI.showStatus (the correct exported function in ui-renderer.js)
     if (UI && typeof UI.showStatus === 'function') {
         UI.showStatus(`<p class="text-lg font-semibold text-cbse-blue">Fetching 20 Questions (${difficulty})...</p>`);
     }
 
-    const base = supabase.from('quizzes');
+    // 🔹 Determine which table to use
+    const tableName = topic.toLowerCase();
 
-    // It's important to run three separate queries to guarantee non-random fixed sets.
-    const { data: mcqData, error: mcqError } = await base
-        .select(`id, question_text, options, correct_option_id, final_explanation, question_type, scenario_reason_test, question_order`)
-        .eq('topic_slug', topic)
-        .eq('difficulty', difficulty)
-        .eq('question_type', 'mcq')
-        .limit(10);
+    // 🔹 Fixed question mix
+    const mix = [
+        { type: 'mcq', limit: 10 },
+        { type: 'ar', limit: 5 },
+        { type: 'case', limit: 5 }
+    ];
 
-    if (mcqError) console.error("[API ERROR] MCQ Fetch failed:", mcqError);
+    let allQuestions = [];
 
-    const { data: arData, error: arError } = await base
-        .select(`id, question_text, options, correct_option_id, final_explanation, question_type, scenario_reason_test, question_order`)
-        .eq('topic_slug', topic)
-        .eq('difficulty', difficulty)
-        .eq('question_type', 'ar')
-        .limit(5);
+    for (const { type, limit } of mix) {
+        const { data, error } = await supabase
+            .from(tableName)
+            .select(`
+                id,
+                question_text,
+                scenario_reason_text,
+                option_a,
+                option_b,
+                option_c,
+                option_d,
+                correct_answer_key,
+                question_type,
+                difficulty
+            `)
+            .eq('difficulty', difficulty)
+            .eq('question_type', type)
+            .limit(limit);
 
-    if (arError) console.error("[API ERROR] AR Fetch failed:", arError);
+        if (error) {
+            console.error(`[API ERROR] ${type.toUpperCase()} Fetch failed:`, error);
+            continue;
+        }
 
-    const { data: caseData, error: caseError } = await base
-        .select(`id, question_text, options, correct_option_id, final_explanation, question_type, scenario_reason_test, question_order`)
-        .eq('topic_slug', topic)
-        .eq('difficulty', difficulty)
-        .eq('question_type', 'case')
-        .limit(5);
-
-    if (caseError) console.error("[API ERROR] Case Fetch failed:", caseError);
-
-    const data = [...(mcqData || []), ...(arData || []), ...(caseData || [])];
-
-    if (data.length < 20) {
-        const message = `Found only ${data.length} questions. Expected 20 (10 MCQ, 5 AR, 5 Case).`;
-        console.warn(`[API WARNING] ${message}`);
-        if (UI && typeof UI.showStatus === 'function') {
-            UI.showStatus(`<span class="text-yellow-600">Warning:</span> ${message}`);
+        if (data && data.length > 0) {
+            allQuestions.push(...data);
         }
     }
 
-    // Sort to ensure deterministic ordering (uses question_order then id)
-    data.sort((a, b) => (a.question_order || a.id || 0) - (b.question_order || b.id || 0));
+    // 🧮 Check mix completeness
+    if (allQuestions.length < 20) {
+        const message = `Found only ${allQuestions.length} questions. Expected 20 (10 MCQ, 5 AR, 5 Case).`;
+        console.warn(`[API WARNING] ${message}`);
+        if (UI && typeof UI.showStatus === 'function') {
+            UI.showStatus(`<span class="text-yellow-600">${message}</span>`);
+        }
+    }
 
-    // Normalize field names to match the client-side expectation (if necessary)
-    // e.g., ensure 'text', 'options', 'correct_answer' exist for the UI renderer.
-    const normalized = data.map(item => {
-        return {
-            id: item.id,
-            text: item.question_text || item.text || '',
-            options: item.options || {},
-            correct_answer: item.correct_option_id || null,
-            explanation: item.final_explanation || item.scenario_reason_test || '',
-            question_type: item.question_type || 'mcq',
-            question_order: item.question_order || 0,
-            raw: item
-        };
-    });
+    // 🧼 Clean and normalize all question data
+    const normalized = allQuestions.map(q => ({
+        id: q.id,
+        question_text: cleanLatex(q.question_text),
+        question_type: q.question_type || 'mcq',
+        scenario_reason_test: cleanLatex(q.scenario_reason_text || ''),
+        options: [
+            { key: 'A', text: cleanLatex(q.option_a) },
+            { key: 'B', text: cleanLatex(q.option_b) },
+            { key: 'C', text: cleanLatex(q.option_c) },
+            { key: 'D', text: cleanLatex(q.option_d) }
+        ],
+        correct_answer_key: q.correct_answer_key,
+        difficulty: q.difficulty
+    }));
 
+    console.log(`[API] Retrieved ${normalized.length} questions from ${tableName}.`);
     return normalized;
 }
 
 /**
- * Saves the quiz result to Firestore.
+ * Saves quiz result to Firestore.
  */
 export async function saveResult(resultData) {
     const { db } = getClients();
