@@ -37,7 +37,6 @@ function parseUrlParameters() {
     
     // Enforce the requirement: only run the quiz if the topic is 'motion'
     if (quizState.topicSlug !== 'motion') {
-         // Fix: Uses UI.showStatus here
          UI.showStatus(`
             <span class="text-red-500">Error: Invalid Topic.</span> 
             This quiz engine is currently configured ONLY for the **Motion** topic. Found: ${quizState.topicSlug}
@@ -117,7 +116,8 @@ async function handleSubmit() {
     
     // Ensure the user is logged in before trying to save
     const user = getAuthUser();
-    if (user && !user.isAnonymous) {
+    // Only attempt to save if a user object exists (i.e., not null/unauthenticated)
+    if (user) { 
         await saveResult(resultData);
     }
 
@@ -176,11 +176,11 @@ async function loadQuiz() {
  */
 async function onAuthChange(user) {
     if (user) {
-        // 1. User is authenticated, check payment/access status
-        UI.showStatus(`Checking access for user: ${user.email || 'Anonymous'}...`, "text-blue-600");
+        // 1. User is authenticated (signed in via Google or custom token)
+        UI.showStatus(`Checking access for user: ${user.email}...`, "text-blue-600");
         const hasAccess = await checkAccess(quizState.topicSlug);
         
-        // Update the header auth UI based on the user object
+        // Update the header auth UI 
         UI.updateAuthUI(user);
 
         if (hasAccess) {
@@ -191,20 +191,13 @@ async function onAuthChange(user) {
             UI.showView('paywall-screen');
         }
     } else {
-        // 2. User is logged out / anonymous
+        // 2. User is logged out / unauthenticated (NO ANONYMOUS ACCESS)
         UI.updateAuthUI(null); // Update to show login button
         UI.showStatus("Please sign in to access premium quizzes.", "text-yellow-600");
         
-        // Check access for anonymous user (will likely fail unless topic is free)
-        const hasAccess = await checkAccess(quizState.topicSlug);
-        
-        if (hasAccess) {
-             await loadQuiz();
-        } else {
-            // Default to paywall for anonymous users
-            UI.updatePaywallContent(quizState.topicSlug);
-            UI.showView('paywall-screen');
-        }
+        // Default to paywall for all unauthenticated users
+        UI.updatePaywallContent(quizState.topicSlug);
+        UI.showView('paywall-screen');
     }
 }
 
@@ -252,7 +245,7 @@ async function initQuizEngine() {
         
     } catch (error) {
         console.error("[ENGINE FATAL] Initialization failed:", error);
-        // FIX: This line is changed from UI.updateStatus to UI.showStatus
+        // FIX: Ensures UI.showStatus is correctly used for error display
         UI.showStatus(`
             <span class="text-red-600">CRITICAL ERROR: Initialization Failed.</span> 
             <p class="mt-2">Reason: ${error.message}</p>
