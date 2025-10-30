@@ -1,16 +1,14 @@
 // js/quiz-engine.js
-import { initServices, getAuthUser } from './config.js';
+import { initializeServices, getAuthUser } from './config.js'; // FIX: Renamed import to initializeServices
 import { fetchQuestions, saveResult } from './api.js';
 import * as UI from './ui-renderer.js';
-import { initializeAuthListener, checkAccess, signInWithGoogle, signOut } from './auth-paywall.js'; 
-import { cleanKatexMarkers, capitalizeFirstLetter } from './utils.js'; // NEW: Import from utils
+import { checkAccess, initializeAuthListener, signInWithGoogle, signOut } from './auth-paywall.js'; 
 
 // --- Global State ---
 let quizState = {
     // Parsed from URL
     classId: null,
     subject: null,
-    subSubject: null, // NEW: Added subSubject
     topicSlug: null,
     difficulty: null,
     
@@ -32,267 +30,212 @@ function parseUrlParameters() {
     
     quizState.classId = urlParams.get('class');
     quizState.subject = urlParams.get('subject');
-    quizState.subSubject = urlParams.get('sub_subject'); // NEW: Capture optional sub_subject
     quizState.topicSlug = urlParams.get('topic'); // e.g., 'motion'
     quizState.difficulty = urlParams.get('difficulty'); // e.g., 'simple' or 'medium'
     
-    // Enforce the requirement: Must have class, subject, topic, and difficulty
-    if (!quizState.classId || !quizState.subject || !quizState.topicSlug || !quizState.difficulty) {
+    // Enforce the requirement: only run the quiz if the topic is 'motion'
+    if (quizState.topicSlug !== 'motion') {
          UI.updateStatus(`
-            <span class="text-red-500">Error: Missing Parameters.</span> 
-            <p class="mt-2">Ensure class, subject, topic, and difficulty are provided in the URL.</p>
+            <span class="text-red-500">Error: Invalid Topic.</span> 
+            This quiz engine is currently configured ONLY for the **Motion** topic. Found: ${quizState.topicSlug}
         `);
-        throw new Error("Quiz URL parameters missing.");
+        throw new Error("Quiz topic must be 'motion'.");
+    }
+    
+    // Set the UI title
+    UI.updateHeader(quizState.topicSlug, quizState.difficulty);
+}
+
+/**
+ * Renders the current question based on quizState.currentQuestionIndex.
+ */
+function renderQuestion() {
+    const q = quizState.questions[quizState.currentQuestionIndex];
+    if (!q) return;
+
+    UI.renderQuestion(q, quizState.currentQuestionIndex + 1, quizState.userAnswers[q.id], quizState.isSubmitted);
+    UI.updateNavigation(quizState.currentQuestionIndex, quizState.questions.length, quizState.isSubmitted);
+    UI.hideStatus();
+}
+
+/**
+ * Handles navigation to the previous or next question.
+ * @param {number} direction - -1 for previous, 1 for next.
+ */
+function handleNavigation(direction) {
+    const newIndex = quizState.currentQuestionIndex + direction;
+    const totalQuestions = quizState.questions.length;
+    
+    if (newIndex >= 0 && newIndex < totalQuestions) {
+        quizState.currentQuestionIndex = newIndex;
+        renderQuestion();
     }
 }
 
 /**
- * Loads the quiz data from the API and renders the first question.
+ * Handles user selecting an answer option.
+ * @param {string} questionId - The ID of the question.
+ * @param {string} selectedOption - The option letter selected (A, B, C, D).
+ */
+function handleAnswerSelection(questionId, selectedOption) {
+    if (quizState.isSubmitted) return; // Cannot change answers after submission
+    
+    // Store the answer
+    quizState.userAnswers[questionId] = selectedOption;
+    
+    // Re-render to reflect the selected state
+    renderQuestion(); 
+}
+
+/**
+ * Calculates the score and renders the results screen.
+ */
+async function handleSubmit() {
+    quizState.isSubmitted = true;
+    quizState.score = 0;
+    
+    quizState.questions.forEach(q => {
+        const userAnswer = quizState.userAnswers[q.id];
+        // NOTE: Answer keys are expected to be provided in the fetched data.
+        if (userAnswer === q.correct_answer) {
+            quizState.score++;
+        }
+    });
+
+    // Save the result to the API (Firestore)
+    const resultData = {
+        classId: quizState.classId,
+        subject: quizState.subject,
+        topic: quizState.topicSlug,
+        difficulty: quizState.difficulty,
+        score: quizState.score,
+        total: quizState.questions.length,
+        user_answers: quizState.userAnswers,
+    };
+    
+    await saveResult(resultData);
+
+    // Render feedback on all questions
+    UI.renderAllQuestionsForReview(quizState.questions, quizState.userAnswers);
+    
+    // Show results screen
+    UI.showResults(quizState.score, quizState.questions.length);
+
+    // Re-attach listeners for review navigation
+    UI.attachReviewListeners(handleNavigation);
+    
+    // Hide navigation buttons once submitted, or keep them for review
+    UI.updateNavigation(quizState.currentQuestionIndex, quizState.questions.length, true);
+}
+
+
+/**
+ * Main function to load the quiz after checks are passed.
  */
 async function loadQuiz() {
-    UI.updateStatus(`<p class="text-lg font-semibold text-cbse-blue">Loading quiz for topic: ${quizState.topicSlug}...</p>`);
-
     try {
+        UI.showStatus("Fetching questions...", "text-blue-600");
+        
         const questions = await fetchQuestions(quizState.topicSlug, quizState.difficulty);
         quizState.questions = questions;
 
         if (questions.length === 0) {
-            UI.updateStatus(`
-                <span class="text-red-500">Error: No Questions Found.</span> 
-                <p class="mt-2">Could not retrieve questions for the selected topic/difficulty.</p>
-            `);
+            UI.updateStatus("<span class=\"text-red-600\">Error:</span> No questions found for this topic/difficulty.", "text-red-600");
             return;
         }
 
-        // Apply Katex cleaning to all question content once after fetch (for saveResult)
-        // Also, create a clean title for the UI
-        let cleanTitle = quizState.topicSlug.replace(/_/g, ' ');
-        if (quizState.subSubject) {
-            cleanTitle = `${quizState.subject.replace(/_/g, ' ')} / ${quizState.subSubject.replace(/_/g, ' ')}: ${cleanTitle}`;
-        } else {
-             cleanTitle = `${quizState.subject.replace(/_/g, ' ')}: ${cleanTitle}`;
-        }
-        
-        UI.updateQuizMetadata(cleanKatexMarkers(cleanTitle), quizState.difficulty);
+        // Initialize userAnswers with an empty value for each question
+        quizState.questions.forEach(q => {
+            quizState.userAnswers[q.id] = null;
+        });
 
-        renderQuestion(quizState.currentQuestionIndex);
-        UI.updateQuestionNumber(quizState.currentQuestionIndex + 1, quizState.questions.length);
-        UI.hideStatus();
+        // Set up the first question view
+        quizState.currentQuestionIndex = 0;
+        renderQuestion();
         
-        // Show/Hide submit button based on question count
-        const elements = UI.getElements();
-        if (elements.submitButton) {
-            elements.submitButton.classList.remove('hidden');
-        }
+        // Attach event listener for user option selection (delegation)
+        UI.attachAnswerListeners(handleAnswerSelection);
+        UI.showView('quiz-content'); // Show the main quiz area
 
     } catch (error) {
         console.error("[ENGINE ERROR] Failed to load quiz:", error);
-        UI.updateStatus(`
-            <span class="text-red-500">CRITICAL ERROR: Quiz Load Failed.</span> 
-            <p class="mt-2">Reason: ${error.message}</p>
-        `);
+        UI.updateStatus(`<span class="text-red-600">ERROR:</span> Could not load quiz questions. ${error.message}`, "text-red-600");
     }
 }
 
 /**
- * Renders the question at the specified index.
- * @param {number} index - The index of the question to render.
- */
-function renderQuestion(index) {
-    if (index < 0 || index >= quizState.questions.length) return;
-    
-    const elements = UI.getElements();
-    const questionContainer = elements.questionList;
-    const prevButton = document.getElementById('prev-btn');
-    const nextButton = document.getElementById('next-btn');
-
-    // 1. Clear current question
-    questionContainer.innerHTML = ''; 
-
-    // 2. Build and append new question card
-    const question = quizState.questions[index];
-    const userAnswer = quizState.userAnswers[question.id] || null;
-    const card = UI.createQuestionCard(question, index, userAnswer, quizState.isSubmitted);
-    questionContainer.appendChild(card);
-    
-    // 3. Attach event listener for option selection
-    if (!quizState.isSubmitted) {
-        card.querySelectorAll('input[type="radio"]').forEach(input => {
-            input.addEventListener('change', (e) => handleAnswerSelection(question.id, e.target.dataset.optionId));
-        });
-    }
-
-    // 4. Update navigation state
-    quizState.currentQuestionIndex = index;
-    prevButton.disabled = index === 0;
-    nextButton.disabled = index === quizState.questions.length - 1;
-    
-    // Show/Hide submit button
-    if (elements.submitButton) {
-        if (index === quizState.questions.length - 1 && !quizState.isSubmitted) {
-             elements.submitButton.classList.remove('hidden');
-        } else {
-             elements.submitButton.classList.add('hidden');
-        }
-    }
-
-    UI.updateQuestionNumber(index + 1, quizState.questions.length);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-/**
- * Stores the user's selected answer in the state.
- * @param {string} questionId - The ID of the question.
- * @param {string} optionId - The ID of the selected option.
- */
-function handleAnswerSelection(questionId, optionId) {
-    quizState.userAnswers[questionId] = {
-        selectedOption: optionId,
-        questionIndex: quizState.currentQuestionIndex // Store index for easy review
-    };
-    
-    // Automatically move to the next question if available
-    if (quizState.currentQuestionIndex < quizState.questions.length - 1) {
-        setTimeout(() => handleNavigation(1), 300); // 300ms delay for visual feedback
-    }
-    console.log(`Answer stored for QID ${questionId}: ${optionId}`);
-}
-
-/**
- * Handles navigation between questions.
- * @param {1|-1} direction - 1 for next, -1 for previous.
- */
-function handleNavigation(direction) {
-    const newIndex = quizState.currentQuestionIndex + direction;
-    if (newIndex >= 0 && newIndex < quizState.questions.length) {
-        renderQuestion(newIndex);
-    }
-}
-
-/**
- * Calculates the score and submits the quiz.
- */
-async function handleSubmit() {
-    if (quizState.isSubmitted) return;
-    
-    if (Object.keys(quizState.userAnswers).length < quizState.questions.length) {
-        if (!confirm("You have not answered all questions. Do you want to submit anyway?")) {
-            return;
-        }
-    }
-
-    quizState.isSubmitted = true;
-    let correctCount = 0;
-
-    quizState.questions.forEach(q => {
-        const userAnswer = quizState.userAnswers[q.id];
-        if (userAnswer && userAnswer.selectedOption === q.correct_option_id) {
-            correctCount++;
-        }
-    });
-
-    quizState.score = correctCount;
-    
-    // Render the current question in review mode
-    renderQuestion(quizState.currentQuestionIndex); 
-    
-    // Update score display and switch view
-    UI.updateScoreDisplay(quizState.score, quizState.questions.length);
-    
-    // Hide submit button permanently
-    const elements = UI.getElements();
-    if (elements.submitButton) elements.submitButton.classList.add('hidden');
-
-
-    // --- Save Result to Firestore ---
-    const user = getAuthUser();
-    if (user && !user.isAnonymous) {
-        const resultData = {
-            class_id: quizState.classId,
-            subject: quizState.subject,
-            sub_subject: quizState.subSubject, // NEW: Include subSubject
-            topic_slug: quizState.topicSlug,
-            difficulty: quizState.difficulty,
-            score: quizState.score,
-            total_questions: quizState.questions.length,
-            answers: quizState.userAnswers, // Store user answers
-            // Include a sample of questions for context if needed (e.g., QID, type)
-            questions_summary: quizState.questions.map(q => ({ 
-                id: q.id, 
-                type: q.question_type, 
-                order: q.question_order 
-            })), 
-        };
-        await saveResult(resultData);
-    } else {
-        console.warn("[ENGINE] Quiz result not saved. User not authenticated.");
-    }
-}
-
-/**
- * Main handler when Firebase Auth state changes.
- * @param {Object|null} user - The authenticated user.
+ * Main handler run when authentication state changes.
+ * @param {Object} user - The authenticated Firebase user object (or null).
  */
 async function onAuthChange(user) {
-    console.log(`[AUTH] State changed. User ID: ${user ? (user.isAnonymous ? 'anonymous' : user.uid) : 'null'}`);
-    
-    const hasAccess = await checkAccess(quizState.topicSlug); 
+    if (user) {
+        // 1. User is authenticated, check payment/access status
+        UI.showStatus(`Checking access for user: ${user.email || 'Anonymous'}...`, "text-blue-600");
+        const hasAccess = await checkAccess(quizState.topicSlug);
 
-    if (hasAccess) {
-        console.log("[ACCESS] Granted. Starting quiz load.");
-        if (quizState.questions.length === 0) {
-             await loadQuiz(); // Load quiz only if it hasn't been loaded yet
+        if (hasAccess) {
+            await loadQuiz();
         } else {
-             UI.switchView('quiz-content'); // Switch back to quiz content
+            // Access denied due to paywall (if checkAccess was active)
+            UI.updatePaywallContent(quizState.topicSlug);
+            UI.showView('paywall-screen');
         }
     } else {
-        console.log("[ACCESS] Denied. Showing paywall/login prompt.");
-        UI.updatePaywallContent(quizState.topicSlug);
-        UI.switchView('paywall-screen');
+        // 2. User is logged out / anonymous
+        UI.showStatus("Please sign in to access premium quizzes.", "text-yellow-600");
+        
+        // Check access for anonymous user (will likely fail unless topic is free)
+        const hasAccess = await checkAccess(quizState.topicSlug);
+        
+        if (hasAccess) {
+             await loadQuiz();
+        } else {
+            // Default to paywall for anonymous users
+            UI.updatePaywallContent(quizState.topicSlug);
+            UI.showView('paywall-screen');
+        }
     }
 }
 
+
 /**
- * Initial setup for the quiz engine.
+ * Initializes the quiz engine: parses params, initializes services, and sets up listeners.
  */
 async function initQuizEngine() {
     try {
-        // 1. Parse URL parameters and validate
+        UI.initializeElements(); // Get all DOM elements first
         parseUrlParameters();
         
-        // 2. Initialize all core services (Firebase/Supabase)
-        await initServices();
+        // 1. Initialize services (Firebase/Supabase)
+        UI.showStatus("Initializing core services...", "text-blue-600");
+        await initializeServices(); // Correctly calls initializeServices
         
-        // 3. Initialize Auth listener with the main callback
+        // 2. Initialize the Auth Listener (kicks off the whole flow via onAuthChange)
         initializeAuthListener(onAuthChange); 
         
-        // 4. Attach general listeners
+        // 3. Attach common event listeners
         const elements = UI.getElements();
+
+        // Navigation buttons
         const prevButton = document.getElementById('prev-btn');
         const nextButton = document.getElementById('next-btn');
-        const reviewCompleteBtn = document.getElementById('review-complete-btn'); // For results screen
 
         if (prevButton) prevButton.addEventListener('click', () => handleNavigation(-1));
         if (nextButton) nextButton.addEventListener('click', () => handleNavigation(1));
-        if (reviewCompleteBtn) reviewCompleteBtn.addEventListener('click', () => {
-             // Redirect back to chapter selection for the same subject/class
-             let url = `chapter-selection.html?class=${quizState.classId}&subject=${quizState.subject}`;
-             if (quizState.subSubject) {
-                 url += `&sub_subject=${quizState.subSubject}`;
-             }
-             window.location.href = url;
-        });
         
         // Submit button
         if (elements.submitButton) elements.submitButton.addEventListener('click', handleSubmit);
         
         // Auth buttons
-        if (elements.loginButton) elements.loginButton.addEventListener('click', handleSignIn);
-        // Auth button on paywall screen
-        const paywallAuthBtn = document.getElementById('auth-paywall-btn');
-        if (paywallAuthBtn) paywallAuthBtn.addEventListener('click', handleSignIn); 
+        if (elements.loginButton) elements.loginButton.addEventListener('click', signInWithGoogle); // Use imported signInWithGoogle
+        if (elements.logoutNavBtn) elements.logoutNavBtn.addEventListener('click', signOut); // Use imported signOut
         
-        if (elements.logoutNavBtn) elements.logoutNavBtn.addEventListener('click', handleSignOut);
+        // Review button
+        const reviewCompleteBtn = document.getElementById('review-complete-btn');
+        if (reviewCompleteBtn) reviewCompleteBtn.addEventListener('click', () => {
+             // Reloads the index page or whatever the final destination is
+             window.location.href = "index.html";
+        });
         
     } catch (error) {
         console.error("[ENGINE FATAL] Initialization failed:", error);
@@ -303,14 +246,6 @@ async function initQuizEngine() {
         `);
     }
 }
-
-// Expose public methods for use in HTML
-window.quizEngine = {
-    handleSignIn: signInWithGoogle, // Exported from auth-paywall.js
-    handleSignOut: signOut, // Exported from auth-paywall.js
-    clearStatus: UI.hideStatus,
-    loadQuiz: loadQuiz 
-};
 
 // Start the engine once the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', initQuizEngine);
