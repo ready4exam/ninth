@@ -1,6 +1,6 @@
-<script type="module" src="./js/curriculum.js"></script>
-    <script type="module">
-        import curriculumData from './curriculum.js';
+<script type="module">
+        // **FIX:** The import path is corrected to reflect the file's location in the js/ directory.
+        import curriculumData from './js/curriculum.js'; 
 
         // --- DOM Elements ---
         const pageTitleEl = document.getElementById('page-title');
@@ -20,14 +20,18 @@
         let currentClass = '9'; // Fixed for the pilot
         let currentSubject = ''; 
 
-        // --- Core Logic (Functions unchanged from previous response for brevity) ---
+        // --- Core Logic ---
 
         function handleTopicSelection(topicId, buttonElement) {
             selectedTopic = topicId;
+            // Deselect all topic buttons
             document.querySelectorAll('.topic-btn').forEach(btn => {
                 btn.classList.remove('selected');
             });
+            // Select the clicked button
             buttonElement.classList.add('selected');
+            
+            // Show difficulty selection and enable the quiz button
             difficultySelectionContainerEl.classList.remove('hidden');
             if (selectedDifficulty) {
                 startQuizBtn.disabled = false;
@@ -37,8 +41,10 @@
 
         function handleDifficultySelection(difficulty, buttonElement) {
             selectedDifficulty = difficulty;
+            // Deselect all difficulty buttons
             difficultySelectionEl.querySelectorAll('.difficulty-btn').forEach(btn => {
                 btn.classList.remove('selected', 'bg-cbse-blue', 'text-white', 'border-cbse-blue');
+                // Re-apply original color classes for unselected state
                 const difficultyType = btn.dataset.difficulty;
                 if (difficultyType === 'simple') {
                     btn.classList.add('bg-green-500', 'text-white', 'hover:bg-green-600', 'border-green-500');
@@ -49,9 +55,11 @@
                 }
             });
             
+            // Select the clicked button and apply consistent style
             buttonElement.classList.add('selected', 'bg-cbse-blue', 'text-white', 'border-cbse-blue');
-            buttonElement.classList.remove('bg-green-500', 'bg-yellow-500', 'bg-red-500', 'hover:bg-green-600', 'hover:bg-yellow-600', 'hover:bg-red-600'); 
+            buttonElement.classList.remove('bg-green-500', 'bg-yellow-500', 'bg-red-500', 'hover:bg-green-600', 'hover:bg-yellow-600', 'hover:bg-red-600'); // Remove specific color classes
             
+            // Enable the quiz button
             if (selectedTopic) {
                 startQuizBtn.disabled = false;
             }
@@ -61,16 +69,21 @@
         function handleSubSubjectSelection(subSubjectId, buttonElement) {
             selectedSubSubject = subSubjectId;
             
+            // Deselect all sub-subject buttons
             document.querySelectorAll('.sub-subject-btn').forEach(btn => {
                 btn.classList.remove('selected');
             });
+            // Select the clicked button
             buttonElement.classList.add('selected');
             
+            // Render the chapters for the selected sub-subject
             renderChapters(currentClass, currentSubject, selectedSubSubject);
             
+            // Hide the sub-subject container and show the chapter selection
             subjectSelectionContainerEl.classList.add('hidden'); 
             chapterSelectionContainerEl.classList.remove('hidden');
             
+            // Reset topic and difficulty
             selectedTopic = null;
             selectedDifficulty = null;
             startQuizBtn.disabled = true;
@@ -81,7 +94,6 @@
         function renderSubSubjects(classId, subject) {
             subSubjectListEl.innerHTML = ''; // Clear previous content
             
-            // *** IMPORTANT FIX: Use decoded subject name from URL in the lookup ***
             const subjectData = curriculumData[classId]?.[subject];
 
             if (subjectData && !Array.isArray(subjectData)) {
@@ -90,7 +102,6 @@
                 
                 subSubjectNames.forEach(subSubName => {
                     const card = document.createElement('div');
-                    // Ensure the subject name is displayed nicely
                     const displaySubName = subSubName.replace(/_/g, ' '); 
                     card.className = 'sub-subject-btn card flex flex-col justify-between cursor-pointer transition-all duration-200 hover:border-cbse-blue';
                     card.setAttribute('data-sub-subject', subSubName);
@@ -190,8 +201,6 @@
             
             const params = new URLSearchParams(window.location.search);
             
-            // *** FIX 1: Ensure URL subject is decoded and used correctly ***
-            // Use currentSubject to hold the correctly case-matched or parsed subject.
             const urlSubject = params.get('subject');
             currentSubject = urlSubject ? decodeURIComponent(urlSubject) : 'Science';
             currentClass = params.get('class') || '9';
