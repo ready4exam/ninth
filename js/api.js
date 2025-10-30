@@ -1,4 +1,3 @@
-// js/api.js
 import { getInitializedClients } from './config.js'; // Import the safe client getter
 
 const QUIZZES_TABLE = 'quizzes';
@@ -12,39 +11,40 @@ const QUIZZES_TABLE = 'quizzes';
 export async function fetchQuestions(topicSlug, difficulty) {
     let allQuestions = [];
     
+    // Define the question types and limits to fetch
+    const questionsToFetch = [
+        { type: 'mcq', limit: 10 },
+        { type: 'assertion_reasoning', limit: 5 },
+        { type: 'case_study', limit: 5 },
+    ];
+
     try {
         // Safely retrieve the Supabase client
         const { supabase } = getInitializedClients(); 
 
         if (!supabase) {
             console.error("[API FATAL] Supabase client is not initialized.");
-            // Throw a generic error to the UI
             throw new Error("Data service not ready. Please try refreshing."); 
         }
         
         console.log(`[API] Fetching questions from table: ${QUIZZES_TABLE} for topic: '${topicSlug}' and difficulty: ${difficulty}`);
 
-        const questionsToFetch = [
-            { type: 'mcq', limit: 10 },
-            { type: 'assertion_reasoning', limit: 5 },
-            { type: 'case_study', limit: 5 },
-        ];
-
         // Use Promise.all to fetch all types concurrently for speed
         const fetchPromises = questionsToFetch.map(async ({ type, limit }) => {
+            // FIX: Using 'topic_slug' as confirmed by the database schema
             const { data, error } = await supabase
                 .from(QUIZZES_TABLE)
                 .select('*')
-                .eq('topic', topicSlug)
+                .eq('topic_slug', topicSlug) // <--- CORRECTED COLUMN NAME
                 .eq('difficulty', difficulty)
                 .eq('type', type)
                 .limit(limit)
                 .order('id', { ascending: true }); // Ensure predictable ordering
 
             if (error) {
+                // This will now only log if another error occurs, as the 'column does not exist' error should be gone.
                 console.error(`Supabase Query Error for ${type}:`, error.message);
-                // Return empty array on error
-                return []; 
+                return []; // Return empty array on error to allow other types to load
             }
             console.log(`Fetched ${data.length} ${type} questions.`);
             return data;
@@ -55,8 +55,8 @@ export async function fetchQuestions(topicSlug, difficulty) {
 
         // Check if we successfully got any questions at all
         if (allQuestions.length === 0) {
-            // DO NOT throw an error here. Return an empty array.
             console.warn(`[API WARNING] No questions found for topic '${topicSlug}' at difficulty '${difficulty}'. Returning empty array.`);
+            // Do not throw an error here, just return an empty array. loadQuiz handles the empty array case.
             return [];
         }
 
@@ -65,8 +65,8 @@ export async function fetchQuestions(topicSlug, difficulty) {
 
     } catch (e) {
         console.error("[API FATAL] General error in fetchQuestions:", e);
-        // Re-throw if it's a critical error (like Supabase not initialized)
-        throw e; 
+        // Re-throw a generic, user-friendly error message
+        throw e; // Propagate the error up to loadQuiz
     }
 }
 
