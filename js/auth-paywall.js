@@ -44,8 +44,6 @@ function onAuthChangeCallback(user) {
 
 /**
  * Initializes the Auth components and sets up listeners.
- * This function is defined WITHOUT the 'export' keyword to prevent
- * the duplicate export error, as it is exported at the end of the module.
  */
 async function initializeAuthPaywall() {
     try {
@@ -71,7 +69,7 @@ async function initializeAuthPaywall() {
  * This function MUST be called once on application startup to resolve sign-ins 
  * completed via the signInWithRedirect fallback.
  */
-export function getGoogleRedirectResult() {
+function getGoogleRedirectResult() { // REMOVED: 'export' keyword
     try {
         const auth = getAuthInstance();
         // Return the promise so we can use 'await' on it in initializeAuthPaywall()
@@ -87,7 +85,7 @@ export function getGoogleRedirectResult() {
  * Popup-to-Redirect fallback to handle COOP and cancellation errors 
  * common in iFrames and restrictive hosting environments like GitHub Pages.
  */
-export function signInWithGoogle() {
+function signInWithGoogle() { // REMOVED: 'export' keyword
     const auth = getAuthInstance();
 
     console.log(LOG_TAG, 'Initiating Google sign-in (Popup attempt)...');
@@ -122,5 +120,5 @@ export function signInWithGoogle() {
         });
 }
 
-// Export the necessary functions. This is where initializeAuthPaywall is exported.
+// Export the necessary functions. This is the ONLY place where functions are exported.
 export { signInWithGoogle, getGoogleRedirectResult, initializeAuthPaywall };
