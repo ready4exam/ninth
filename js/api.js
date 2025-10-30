@@ -1,80 +1,41 @@
-import { getInitializedClients } from './config.js'; // Import the safe client getter
-
-const QUIZZES_TABLE = 'quizzes';
-
-/**
- * Fetches the required mix of questions (10 MCQ, 5 AR, 5 Case) from the unified 'quizzes' table.
- * @param {string} topicSlug - The topic identifier (e.g., 'gravitation').
- * @param {string} difficulty - The difficulty level (e.g., 'medium').
- * @returns {Promise<Array>} - A promise that resolves to an array of raw question objects.
- */
-export async function fetchQuestions(topicSlug, difficulty) {
-    let allQuestions = [];
-    
-    try {
-        // Safely retrieve the Supabase client
-        const { supabase } = getInitializedClients(); 
-
-        if (!supabase) {
-            console.error("[API FATAL] Supabase client is not initialized.");
-            // Throw a generic error to the UI
-            throw new Error("Data service not ready. Please try refreshing."); 
-        }
-        
-        console.log(`[API] Fetching questions from table: ${QUIZZES_TABLE} for topic: '${topicSlug}' and difficulty: ${difficulty}`);
-
-        const questionsToFetch = [
-            { type: 'mcq', limit: 10 },
-            { type: 'assertion_reasoning', limit: 5 },
-            { type: 'case_study', limit: 5 },
-        ];
-
-        // Use Promise.all to fetch all types concurrently for speed
-        const fetchPromises = questionsToFetch.map(async ({ type, limit }) => {
-            const { data, error } = await supabase
-                .from(QUIZZES_TABLE)
-                .select('*')
-                .eq('topic_slug', topicSlug)
-                .eq('difficulty', difficulty)
-                .eq('question_type', type)
-                .limit(limit)
-                .order('id', { ascending: true }); // Ensure predictable ordering
-
-            if (error) {
-                console.error(`Supabase Query Error for ${type}:`, error.message);
-                return []; // Return empty array on error to allow other types to load
-            }
-            console.log(`Fetched ${data.length} ${type} questions.`);
-            return data;
-        });
-        
-        const results = await Promise.all(fetchPromises);
-        allQuestions = results.flat();
-
-        // Check if we successfully got any questions at all
-        if (allQuestions.length === 0) {
-            throw new Error(`No questions found for topic '${topicSlug}' at difficulty '${difficulty}'. Check database content.`);
-        }
-
-        // Shuffle the combined array for a non-sequential quiz experience
-        return allQuestions.sort(() => Math.random() - 0.5);
-
-    } catch (e) {
-        console.error("[API FATAL] General error in fetchQuestions:", e);
-        // Re-throw a generic, user-friendly error message
-        throw e; // Propagate the error up to loadQuiz
-    }
-}
-
-// Placeholder functions for other required modules
-export async function countQuestions(topicSlug) { 
-    // This function would fetch the total count if needed
-    return 20; 
-}
-
-export async function saveResult(quizResult) { 
-    // Implement result saving logic here (e.g., to a 'quiz_results' table)
-    console.log("[API] Saving result:", quizResult);
-    // Placeholder implementation
-    return { success: true };
-}
+api.js:63 [API FATAL] General error in fetchQuestions: Error: No questions found for topic 'motion' at difficulty 'easy'. Check database content.
+    at fetchQuestions (api.js:56:19)
+    at async loadQuiz (quiz-engine.js:163:33)
+    at async checkAccessAndLoad (quiz-engine.js:204:9)
+fetchQuestions @ api.js:63
+await in fetchQuestions
+loadQuiz @ quiz-engine.js:163
+checkAccessAndLoad @ quiz-engine.js:204
+await in checkAccessAndLoad
+onAuthChange @ quiz-engine.js:223
+(anonymous) @ auth-paywall.js:33
+(anonymous) @ subscribe.ts:109
+(anonymous) @ subscribe.ts:238
+Promise.then
+sendOne @ subscribe.ts:231
+forEachObserver @ subscribe.ts:230
+next @ subscribe.ts:109
+notifyAuthListeners @ auth_impl.ts:728
+(anonymous) @ auth_impl.ts:453
+Promise.then
+queue @ auth_impl.ts:808
+_updateCurrentUser @ auth_impl.ts:447
+await in _updateCurrentUser
+_signInWithCredential @ credential.ts:75
+await in _signInWithCredential
+_signIn @ idp.ts:93
+onAuthEvent @ abstract_popup_redirect_operation.ts:110
+sendToConsumer @ auth_event_manager.ts:105
+(anonymous) @ auth_event_manager.ts:69
+onEvent @ auth_event_manager.ts:67
+(anonymous) @ popup_redirect.ts:142
+Tm @ cb=gapi.loaded_0?le=scs:195
+(anonymous) @ cb=gapi.loaded_0?le=scs:195
+hl @ cb=gapi.loaded_0?le=scs:174
+ql @ cb=gapi.loaded_0?le=scs:174
+Lk @ cb=gapi.loaded_0?le=scs:175
+Rk.eI @ cb=gapi.loaded_0?le=scs:168Understand this error
+quiz-engine.js:181 [QUIZ ERROR] Failed to load quiz: Error: No questions found for topic 'motion' at difficulty 'easy'. Check database content.
+    at fetchQuestions (api.js:56:19)
+    at async loadQuiz (quiz-engine.js:163:33)
+    at async checkAccessAndLoad (quiz-engine.js:204:9)
