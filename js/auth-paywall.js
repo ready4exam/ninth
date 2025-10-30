@@ -17,7 +17,7 @@ const googleProvider = new GoogleAuthProvider();
 /**
  * Internal helper to retrieve the initialized Firebase Auth instance.
  */
-function getAuthInstance() {
+const getAuthInstance = () => {
     if (!authInstance) {
         try {
             // Attempt to get the initialized clients from config.js
@@ -29,23 +29,24 @@ function getAuthInstance() {
         }
     }
     return authInstance;
-}
+};
 
 /**
  * Placeholder for the function in quiz-engine.js that should run when 
  * the authentication state changes. This is necessary for the quiz to load.
  * * @param {import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js").User|null} user - The current authenticated user object or null.
  */
-function onAuthChangeCallback(user) {
+const onAuthChangeCallback = (user) => {
     console.log(LOG_TAG, 'Auth state changed. User ID:', user ? user.uid : 'Signed Out');
     // NOTE: Your application needs to call the quiz-engine's load function here.
-}
+    // Example: if (user) quizEngine.loadQuiz();
+};
 
 
 /**
  * Initializes the Auth components and sets up listeners.
  */
-async function initializeAuthPaywall() {
+const initializeAuthPaywall = async () => {
     try {
         const auth = getAuthInstance();
         
@@ -61,31 +62,28 @@ async function initializeAuthPaywall() {
     } catch (error) {
         console.error(LOG_TAG, 'Failed to initialize Auth Paywall:', error);
     }
-}
+};
 
 
 /**
  * Checks for a pending redirect result on page load.
- * This function MUST be called once on application startup to resolve sign-ins 
- * completed via the signInWithRedirect fallback.
  */
-function getGoogleRedirectResult() { // REMOVED: 'export' keyword
+const getGoogleRedirectResult = () => {
     try {
         const auth = getAuthInstance();
-        // Return the promise so we can use 'await' on it in initializeAuthPaywall()
         return firebaseGetRedirectResult(auth);
     } catch (error) {
         console.error(LOG_TAG, 'Failed to get auth instance for redirect check:', error);
         return Promise.reject(error);
     }
-}
+};
 
 /**
  * Primary function to initiate Google Sign-In. Implements the essential 
  * Popup-to-Redirect fallback to handle COOP and cancellation errors 
  * common in iFrames and restrictive hosting environments like GitHub Pages.
  */
-function signInWithGoogle() { // REMOVED: 'export' keyword
+const signInWithGoogle = () => {
     const auth = getAuthInstance();
 
     console.log(LOG_TAG, 'Initiating Google sign-in (Popup attempt)...');
@@ -106,11 +104,10 @@ function signInWithGoogle() { // REMOVED: 'export' keyword
                 console.warn(LOG_TAG, `Popup failed (Code: ${error.code}). Initiating signInWithRedirect fallback.`);
                 
                 // This starts the redirect process. The page will reload.
-                // Execution stops here.
                 return signInWithRedirect(auth, googleProvider)
                     .catch(redirectError => {
                         console.error(LOG_TAG, 'FATAL ERROR: signInWithRedirect also failed:', redirectError);
-                        throw redirectError; // Re-throw fatal errors
+                        throw redirectError;
                     });
             } else {
                 // Log and throw other, non-COOP related errors (e.g., network failure).
@@ -118,7 +115,7 @@ function signInWithGoogle() { // REMOVED: 'export' keyword
                 throw error;
             }
         });
-}
+};
 
-// Export the necessary functions. This is the ONLY place where functions are exported.
+// This is the ONLY place where functions are exported.
 export { signInWithGoogle, getGoogleRedirectResult, initializeAuthPaywall };
