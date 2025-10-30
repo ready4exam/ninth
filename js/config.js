@@ -2,7 +2,7 @@
 // Centralized configuration and initialization for all services (Firebase/Firestore/Auth and Supabase).
 
 // --- Mandatory Global Variables ---
-// These are placeholders for security variables provided by the environment.
+// These must be set in a <script> tag BEFORE this module loads.
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
@@ -14,7 +14,7 @@ import {
     signInWithCustomToken, 
     onAuthStateChanged, 
     signOut as firebaseSignOut
-    // FIX: Removed 'setLogLevel' which is not a named export from this module.
+    // setLogLevel is removed (Fixes SyntaxError)
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
@@ -34,7 +34,6 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 /**
  * Initializes all core services (Firebase and Supabase).
- * NOTE: This function is exported as 'initializeServices'.
  */
 export async function initializeServices() {
     if (isInitialized) {
@@ -48,7 +47,7 @@ export async function initializeServices() {
         console.log("[CONFIG] Firebase app initialized.");
     } else {
         console.error("[CONFIG ERROR] firebaseConfig is empty. Cannot initialize Firebase.");
-        throw new Error("Missing Firebase configuration.");
+        throw new Error("Missing Firebase configuration."); // <--- Your Fatal Error Point
     }
 
     // 2. Initialize Firebase Services
@@ -64,7 +63,7 @@ export async function initializeServices() {
         console.warn("[CONFIG WARNING] Supabase URL or Key missing. Supabase client not initialized.");
     }
     
-    // 4. Initial Authentication (Ensures a user ID is available for Firestore)
+    // 4. Initial Authentication
     try {
         if (initialAuthToken) {
             await signInWithCustomToken(auth, initialAuthToken);
@@ -91,16 +90,6 @@ export function getInitializedClients() {
         throw new Error("Core services must be initialized first.");
     }
     return { supabase, db, auth };
-}
-
-/**
- * Retrieves the Firebase Auth instance.
- */
-export function getAuthInstance() {
-    if (!isInitialized) {
-        throw new Error("Core services must be initialized first.");
-    }
-    return auth;
 }
 
 /**
