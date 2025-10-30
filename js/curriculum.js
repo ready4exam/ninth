@@ -1,4 +1,6 @@
-export default {
+// js/curriculum.js
+
+const curriculum = {
   "9": {
     "Science": {
       "Physics": [
@@ -52,29 +54,23 @@ export default {
       ]
     },
     "Mathematics": [
-        { "id": "number_systems", "title": "Chapter 1: Number Systems" },
-        { "id": "polynomials", "title": "Chapter 2: Polynomials" },
-        { "id": "coordinate_geometry", "title": "Chapter 3: Coordinate Geometry" },
-        { "id": "linear_equations_in_two_variables", "title": "Chapter 4: Linear Equations in Two Variables" },
-        { "id": "introduction_to_euclids_geometry", "title": "Chapter 5: Introduction to Euclid’s Geometry" },
-        { "id": "lines_and_angles", "title": "Chapter 6: Lines and Angles" },
-        { "id": "triangles", "title": "Chapter 7: Triangles" },
-        { "id": "quadrilaterals", "title": "Chapter 8: Quadrilaterals" },
-        { "id": "areas_of_parallelograms_and_triangles", "title": "Chapter 9: Areas of Parallelograms and Triangles" },
-        { "id": "circles", "title": "Chapter 10: Circles" },
-        { "id": "constructions", "title": "Chapter 11: Constructions" },
-        { "id": "herons_formula", "title": "Chapter 12: Heron's Formula" },
-        { "id": "surface_areas_and_volumes", "title": "Chapter 13: Surface Areas and Volumes" },
-        { "id": "statistics", "title": "Chapter 14: Statistics" },
-        { "id": "probability", "title": "Chapter 15: Probability" }
-    ],
-    "Hindi": [
-        { "id": "placeholder_hindi_a", "title": "Hindi A: Placeholder Chapter" },
-        { "id": "placeholder_hindi_b", "title": "Hindi B: Placeholder Chapter" }
-    ],
-    "English": [
-        { "id": "placeholder_beehive", "title": "Beehive: Placeholder Chapter" },
-        { "id": "placeholder_moments", "title": "Moments: Placeholder Chapter" }
+      { "id": "number_systems", "title": "Chapter 1: Number Systems" },
+      { "id": "polynomials", "title": "Chapter 2: Polynomials" },
+      { "id": "coordinate_geometry", "title": "Chapter 3: Coordinate Geometry" },
+      { "id": "linear_equations_in_two_variables", "title": "Chapter 4: Linear Equations in Two Variables" },
+      { "id": "introduction_to_euclids_geometry", "title": "Chapter 5: Introduction to Euclid’s Geometry" },
+      { "id": "lines_and_angles", "title": "Chapter 6: Lines and Angles" },
+      { "id": "triangles", "title": "Chapter 7: Triangles" },
+      { "id": "quadrilaterals", "title": "Chapter 8: Quadrilaterals" },
+      { "id": "areas_of_parallelograms_and_triangles", "title": "Chapter 9: Areas of Parallelograms and Triangles" },
+      { "id": "circles", "title": "Chapter 10: Circles" },
+      { "id": "constructions", "title": "Chapter 11: Constructions" },
+      { "id": "herons_formula", "title": "Chapter 12: Heron's Formula" },
+      { "id": "surface_areas_and_volumes", "title": "Chapter 13: Surface Areas and Volumes" },
+      { "id": "statistics", "title": "Chapter 14: Statistics" },
+      { "id": "probability", "title": "Chapter 15: Probability" }
     ]
   }
-}
+};
+
+export default curriculum;
