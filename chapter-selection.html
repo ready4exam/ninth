@@ -43,6 +43,10 @@
         .difficulty-btn.selected {
             @apply ring-4 ring-cbse-blue/50;
         }
+        /* Style for sub-subject cards */
+        .sub-subject-btn.selected {
+            @apply border-4 border-cbse-blue ring-2 ring-cbse-blue/30;
+        }
     </style>
 </head>
 <body class="bg-cbse-light min-h-screen flex flex-col">
@@ -181,6 +185,7 @@
 
         function handleSubSubjectSelection(subSubjectId, buttonElement) {
             selectedSubSubject = subSubjectId;
+            
             // Deselect all sub-subject buttons
             document.querySelectorAll('.sub-subject-btn').forEach(btn => {
                 btn.classList.remove('selected');
@@ -191,8 +196,8 @@
             // Render the chapters for the selected sub-subject
             renderChapters(currentClass, currentSubject, selectedSubSubject);
             
-            // Show chapter selection, hide sub-subject selection
-            subjectSelectionContainerEl.classList.add('hidden'); // Hide the main sub-subject container
+            // Hide the sub-subject container and show the chapter selection
+            subjectSelectionContainerEl.classList.add('hidden'); 
             chapterSelectionContainerEl.classList.remove('hidden');
             
             // Reset topic and difficulty
@@ -206,18 +211,18 @@
         function renderSubSubjects(classId, subject) {
             subSubjectListEl.innerHTML = ''; // Clear previous content
             
-            const subSubjects = curriculumData[classId]?.[subject];
+            const subjectData = curriculumData[classId]?.[subject];
 
-            if (subSubjects && !Array.isArray(subSubjects)) {
-                // If subSubjects is an object (Science/Social Science), render sub-subject cards
-                const subSubjectNames = Object.keys(subSubjects);
+            if (subjectData && !Array.isArray(subjectData)) {
+                // Case 1: Subject has sub-subjects (e.g., Science)
+                const subSubjectNames = Object.keys(subjectData);
                 
                 subSubjectNames.forEach(subSubName => {
                     const card = document.createElement('div');
                     card.className = 'sub-subject-btn card flex flex-col justify-between cursor-pointer transition-all duration-200 hover:border-cbse-blue';
                     card.setAttribute('data-sub-subject', subSubName);
                     
-                    const chaptersCount = subSubjects[subSubName].length;
+                    const chaptersCount = subjectData[subSubName].length;
                     
                     card.innerHTML = `
                         <h4 class="text-xl font-bold text-heading mb-2">${subSubName.replace(/_/g, ' ')}</h4>
@@ -237,13 +242,16 @@
                 chapterSelectionContainerEl.classList.add('hidden');
                 difficultySelectionContainerEl.classList.add('hidden');
 
-            } else if (subSubjects && Array.isArray(subSubjects)) {
-                // If subSubjects is an array (Mathematics/English), render chapters directly
-                selectedSubSubject = ''; // No sub-subject
+            } else if (subjectData && Array.isArray(subjectData)) {
+                // Case 2: Subject is a direct array of chapters (e.g., Mathematics)
+                selectedSubSubject = null; // No sub-subject
                 subjectSelectionContainerEl.classList.add('hidden');
-                renderChapters(classId, subject, '');
+                
+                // *** FIX APPLIED HERE: Direct call to renderChapters with correct context ***
+                renderChapters(classId, subject, selectedSubSubject);
+
             } else {
-                 // No data found
+                 // Case 3: No data found
                 pageTitleEl.textContent = `Error: Curriculum Not Found for ${subject}`;
                 subjectSelectionContainerEl.innerHTML = `<p class="text-red-500">No chapters/sub-subjects found for this subject.</p>`;
                 chapterSelectionContainerEl.classList.add('hidden');
@@ -257,10 +265,11 @@
             let chapters = [];
 
             if (subSubject) {
+                // Get chapters from the nested sub-subject object
                 chapters = curriculumData[classId]?.[subject]?.[subSubject] || [];
                 pageTitleEl.textContent = `${subSubject.replace(/_/g, ' ')} Chapters`;
             } else {
-                 // For subjects like Math/Hindi which don't have sub-subjects
+                 // Get chapters directly from the subject array
                  chapters = curriculumData[classId]?.[subject] || [];
                  pageTitleEl.textContent = `${subject.replace(/_/g, ' ')} Chapters`;
             }
@@ -302,9 +311,9 @@
                 errorMessageEl.classList.remove('hidden');
             }
         }
-
-        // --- INITIALIZATION ---
-        document.addEventListener('DOMContentLoaded', () => {
+        
+        // **NEW** Initialization function for clean execution
+        function initPage() {
             lucide.createIcons();
             
             const params = new URLSearchParams(window.location.search);
@@ -313,6 +322,7 @@
             
             // Check if currentClass/currentSubject is valid before proceeding
             if (currentClass in curriculumData && currentSubject in curriculumData[currentClass]) {
+                 // This function handles the decision to render sub-subjects OR chapters directly
                  renderSubSubjects(currentClass, currentSubject);
             } else {
                 pageTitleEl.textContent = "Error: Invalid Subject/Class";
@@ -328,7 +338,10 @@
             });
 
             startQuizBtn.addEventListener('click', handleStartQuiz);
-        });
+        }
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', initPage);
     </script>
 </body>
 </html>
