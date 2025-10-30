@@ -2,7 +2,6 @@
 // Centralized configuration and initialization for all services (Firebase/Firestore/Auth and Supabase).
 
 // --- Mandatory Global Variables ---
-// __firebase_config and __initial_auth_token are provided by the hosting environment.
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
@@ -19,8 +18,6 @@ import {
 import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // --- Supabase Imports ---
-// Assumes Supabase config is passed via global variables or is hardcoded if not provided by the environment.
-// For this project, we assume the Supabase client is also provided or initialized here.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.44.4/+esm';
 
 // --- Internal State ---
@@ -30,13 +27,12 @@ let auth = null;
 let supabase = null;
 let isInitialized = false;
 
-// --- Supabase Config (Placeholder - Replace with actual credentials if needed) ---
+// --- Supabase Config (Placeholder) ---
 const SUPABASE_URL = 'https://your-supabase-url.supabase.co'; 
 const SUPABASE_ANON_KEY = 'your-anon-key'; 
 
 /**
  * Initializes all core services (Firebase and Supabase).
- * Must be called once before using any services.
  */
 export async function initializeServices() {
     if (isInitialized) {
@@ -54,12 +50,11 @@ export async function initializeServices() {
     auth = getAuth(firebaseApp);
     db = getFirestore(firebaseApp);
     
-    // Enable debug logging as per project plan
     setLogLevel('debug');
     
     // 2. Initialize Supabase Client
     if (SUPABASE_URL === 'https://your-supabase-url.supabase.co') {
-        console.error("[CONFIG ERROR] Supabase URL is a placeholder. Data fetching will fail.");
+        console.error("[CONFIG ERROR] Supabase URL is a placeholder. Data fetching will likely fail.");
     }
     supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
@@ -69,7 +64,6 @@ export async function initializeServices() {
             await signInWithCustomToken(auth, initialAuthToken);
             console.log("[CONFIG] Signed in with custom token.");
         } else {
-            // Sign in anonymously if no custom token is provided
             await signInAnonymously(auth);
             console.log("[CONFIG] Signed in anonymously.");
         }
@@ -83,7 +77,6 @@ export async function initializeServices() {
 
 /**
  * Retrieves the initialized Supabase and Firestore clients.
- * @returns {{supabase: Object, db: Object}} The initialized client objects.
  */
 export function getInitializedClients() {
     if (!isInitialized) {
@@ -95,7 +88,6 @@ export function getInitializedClients() {
 
 /**
  * Retrieves the Firebase Auth instance.
- * @returns {Object} The Firebase Auth instance.
  */
 export function getAuthInstance() {
     if (!isInitialized) {
@@ -107,8 +99,7 @@ export function getAuthInstance() {
 
 /**
  * Retrieves the currently authenticated Firebase user.
- * This is the function that was missing!
- * @returns {Object | null} The current user object, or null if logged out.
+ * *** THIS IS THE REQUIRED EXPORT ***
  */
 export function getAuthUser() {
     if (!auth) return null;
