@@ -4,53 +4,50 @@ const QUIZZES_TABLE = 'quizzes';
 
 /**
  * Fetches the required mix of questions (10 MCQ, 5 AR, 5 Case) from the unified 'quizzes' table.
- * @param {string} topicSlug - The topic identifier (e.g., 'gravitation').
+ * * CORRECT FIX APPLIED: Based on the provided schema, the topic column is named 'topic_slug'. 
+ * * The query has been updated to use the correct column name.
+ * @param {string} topicSlug - The topic identifier (e.g., 'motion').
  * @param {string} difficulty - The difficulty level (e.g., 'medium').
  * @returns {Promise<Array>} - A promise that resolves to an array of raw question objects.
  */
 export async function fetchQuestions(topicSlug, difficulty) {
     let allQuestions = [];
     
-    // Define the question types and limits to fetch
-    const questionsToFetch = [
-        { type: 'mcq', limit: 10 },
-        { type: 'assertion_reasoning', limit: 5 },
-        { type: 'case_study', limit: 5 },
-    ];
-
     try {
         // Safely retrieve the Supabase client
         const { supabase } = getInitializedClients(); 
 
         if (!supabase) {
             console.error("[API FATAL] Supabase client is not initialized.");
+            // Throw a generic error to the UI
             throw new Error("Data service not ready. Please try refreshing."); 
         }
         
-        console.log(`[API] Fetching questions from table: ${QUIZZES_TABLE} for topic: '${topicSlug}' and difficulty: ${difficulty}`);
+        console.log(`[API] Fetching questions from table: ${QUIZZES_TABLE} for topic_slug: '${topicSlug}' and difficulty: ${difficulty}`);
+
+        const questionsToFetch = [
+            { type: 'mcq', limit: 10 },
+            { type: 'assertion_reasoning', limit: 5 },
+            { type: 'case_study', limit: 5 },
+        ];
 
         // Use Promise.all to fetch all types concurrently for speed
         const fetchPromises = questionsToFetch.map(async ({ type, limit }) => {
-            
-            let query = supabase
+            // Build the query
+            const query = supabase
                 .from(QUIZZES_TABLE)
-                .select('*');
-            
-            // FINAL ATTEMPT FIX: We are using 'topic' instead of 'topic_slug' 
-            // because the Supabase error message consistently referred to a missing 'quizzes.topic' column.
-            query = query.eq('topic', topicSlug); 
-            
-            // Other filters
-            query = query
+                .select('*')
+                // **CORRECT FIX: Filtering by the actual database column: 'topic_slug'**
+                .eq('topic_slug', topicSlug)
                 .eq('difficulty', difficulty)
-                .eq('question_type', type) 
+                .eq('question_type', type)
                 .limit(limit)
                 .order('id', { ascending: true }); // Ensure predictable ordering
 
             const { data, error } = await query;
-
+            
             if (error) {
-                // Log the error but don't stop the application
+                // Log the specific error message from Supabase
                 console.error(`Supabase Query Error for ${type}:`, error.message);
                 return []; // Return empty array on error to allow other types to load
             }
@@ -63,10 +60,9 @@ export async function fetchQuestions(topicSlug, difficulty) {
 
         // Check if we successfully got any questions at all
         if (allQuestions.length === 0) {
-            // Note: I changed this back to a console.warn instead of throwing an error 
-            // to prevent the app from crashing if no data is present for that specific query.
             console.warn(`[API WARNING] No questions found for topic '${topicSlug}' at difficulty '${difficulty}'. Returning empty array.`);
-            return [];
+            // Throw a new Error if absolutely no questions are found.
+            throw new Error(`No questions found for topic '${topicSlug}' at difficulty '${difficulty}'. Check database content.`);
         }
 
         // Shuffle the combined array for a non-sequential quiz experience
