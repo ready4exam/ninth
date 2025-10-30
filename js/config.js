@@ -10,11 +10,9 @@ const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { 
     getAuth, 
-    signInAnonymously, 
     signInWithCustomToken, 
     onAuthStateChanged, 
     signOut as firebaseSignOut
-    // FIX: setLogLevel is removed from the modular imports to prevent Uncaught SyntaxError
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
@@ -28,9 +26,10 @@ let auth = null;
 let supabase = null;
 let isInitialized = false;
 
-// --- Supabase Config (Placeholder - REPLACE THESE) ---
-const SUPABASE_URL = 'https://your-supabase-url.supabase.co'; 
-const SUPABASE_ANON_KEY = 'your-anon-key'; 
+// --- Supabase Config (LIVE CREDENTIALS) ---
+// Keys updated based on user input
+const SUPABASE_URL = 'https://gkyvojcmqsgdynmitcuf.supabase.co'; 
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdreXZvamNtcXNnZHlubWl0Y3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3NDQ0OTcsImV4cCI6MjA3NjMyMDQ5N30.5dn5HbXxQ5sYNECS9o3VxVeyL6I6Z2Yf-nmPwztx1hE'; 
 
 /**
  * Initializes all core services (Firebase and Supabase).
@@ -53,27 +52,21 @@ export async function initializeServices() {
     console.log("[CONFIG] Firebase app, Auth, and Firestore initialized.");
 
     // 2. Initialize Supabase Client
-    if (SUPABASE_URL === 'https://your-supabase-url.supabase.co') {
-        console.warn("[CONFIG WARNING] Supabase URL is a placeholder. Data fetching will likely fail.");
-    }
     supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     console.log("[CONFIG] Supabase client initialized.");
 
     
-    // 3. Initial Authentication (Secures userId for Firestore)
+    // 3. Initial Authentication (Only checks for custom token, forces user to log in otherwise)
+    // NOTE: signInAnonymously has been removed to enforce Google Login.
     try {
         if (initialAuthToken) {
             await signInWithCustomToken(auth, initialAuthToken);
             console.log("[CONFIG] Signed in with custom token.");
-        } else {
-            // This is the line that requires Anonymous Auth to be enabled in Firebase console
-            await signInAnonymously(auth); 
-            console.log("[CONFIG] Signed in anonymously.");
-        }
+        } 
     } catch (error) {
-        // This is the error that triggers the "Failed to establish initial authentication session."
-        console.error("[CONFIG ERROR] Initial authentication failed:", error);
-        throw new Error("Failed to establish initial authentication session."); 
+        // If custom token fails, we log a warning and let the rest of the app continue 
+        // with a null user, forcing Google Sign-In.
+        console.warn("[CONFIG WARNING] Custom token sign-in failed. Relying on Google Sign-In.", error);
     }
 
     isInitialized = true;
