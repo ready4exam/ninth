@@ -1,7 +1,10 @@
 // js/quiz-engine.js
-import { initializeServices, getAuthUser } from './config.js'; // FIX: Renamed import to initializeServices
+
+// Import all required dependencies from other modules
+// NOTE: initServices is renamed initializeServices in config.js (correct import)
+import { initializeServices, getAuthUser } from './config.js'; 
 import { fetchQuestions, saveResult } from './api.js';
-import * as UI from './ui-renderer.js';
+import * as UI from './ui-renderer.js'; // Imports all functions as UI.functionName (FIX: ensures UI.showStatus is available)
 import { checkAccess, initializeAuthListener, signInWithGoogle, signOut } from './auth-paywall.js'; 
 
 // --- Global State ---
@@ -35,7 +38,7 @@ function parseUrlParameters() {
     
     // Enforce the requirement: only run the quiz if the topic is 'motion'
     if (quizState.topicSlug !== 'motion') {
-         UI.updateStatus(`
+         UI.showStatus(`
             <span class="text-red-500">Error: Invalid Topic.</span> 
             This quiz engine is currently configured ONLY for the **Motion** topic. Found: ${quizState.topicSlug}
         `);
@@ -96,7 +99,6 @@ async function handleSubmit() {
     
     quizState.questions.forEach(q => {
         const userAnswer = quizState.userAnswers[q.id];
-        // NOTE: Answer keys are expected to be provided in the fetched data.
         if (userAnswer === q.correct_answer) {
             quizState.score++;
         }
@@ -113,10 +115,15 @@ async function handleSubmit() {
         user_answers: quizState.userAnswers,
     };
     
-    await saveResult(resultData);
+    // Ensure the user is logged in before trying to save
+    const user = getAuthUser();
+    if (user && !user.isAnonymous) {
+        await saveResult(resultData);
+    }
 
-    // Render feedback on all questions
-    UI.renderAllQuestionsForReview(quizState.questions, quizState.userAnswers);
+    // Render feedback on all questions (by showing the first question for review)
+    quizState.currentQuestionIndex = 0; // Reset to the first question for review
+    renderQuestion(); 
     
     // Show results screen
     UI.showResults(quizState.score, quizState.questions.length);
@@ -124,7 +131,7 @@ async function handleSubmit() {
     // Re-attach listeners for review navigation
     UI.attachReviewListeners(handleNavigation);
     
-    // Hide navigation buttons once submitted, or keep them for review
+    // Update navigation buttons for the review state
     UI.updateNavigation(quizState.currentQuestionIndex, quizState.questions.length, true);
 }
 
@@ -140,7 +147,7 @@ async function loadQuiz() {
         quizState.questions = questions;
 
         if (questions.length === 0) {
-            UI.updateStatus("<span class=\"text-red-600\">Error:</span> No questions found for this topic/difficulty.", "text-red-600");
+            UI.showStatus("<span class=\"text-red-600\">Error:</span> No questions found for this topic/difficulty.", "text-red-600");
             return;
         }
 
@@ -159,7 +166,7 @@ async function loadQuiz() {
 
     } catch (error) {
         console.error("[ENGINE ERROR] Failed to load quiz:", error);
-        UI.updateStatus(`<span class="text-red-600">ERROR:</span> Could not load quiz questions. ${error.message}`, "text-red-600");
+        UI.showStatus(`<span class="text-red-600">ERROR:</span> Could not load quiz questions. ${error.message}`, "text-red-600");
     }
 }
 
@@ -172,16 +179,20 @@ async function onAuthChange(user) {
         // 1. User is authenticated, check payment/access status
         UI.showStatus(`Checking access for user: ${user.email || 'Anonymous'}...`, "text-blue-600");
         const hasAccess = await checkAccess(quizState.topicSlug);
+        
+        // Update the header auth UI based on the user object
+        UI.updateAuthUI(user);
 
         if (hasAccess) {
             await loadQuiz();
         } else {
-            // Access denied due to paywall (if checkAccess was active)
+            // Access denied due to paywall
             UI.updatePaywallContent(quizState.topicSlug);
             UI.showView('paywall-screen');
         }
     } else {
         // 2. User is logged out / anonymous
+        UI.updateAuthUI(null); // Update to show login button
         UI.showStatus("Please sign in to access premium quizzes.", "text-yellow-600");
         
         // Check access for anonymous user (will likely fail unless topic is free)
@@ -203,44 +214,47 @@ async function onAuthChange(user) {
  */
 async function initQuizEngine() {
     try {
-        UI.initializeElements(); // Get all DOM elements first
+        // FIX: Ensure UI is initialized first before calling any other UI function
+        UI.initializeElements(); 
+        
+        // 1. Parse URL parameters to set up the quiz context
         parseUrlParameters();
         
-        // 1. Initialize services (Firebase/Supabase)
+        // 2. Initialize services (Firebase/Supabase)
         UI.showStatus("Initializing core services...", "text-blue-600");
-        await initializeServices(); // Correctly calls initializeServices
+        await initializeServices(); 
         
-        // 2. Initialize the Auth Listener (kicks off the whole flow via onAuthChange)
+        // 3. Initialize the Auth Listener (kicks off the whole flow via onAuthChange)
         initializeAuthListener(onAuthChange); 
         
-        // 3. Attach common event listeners
-        const elements = UI.getElements();
-
-        // Navigation buttons
-        const prevButton = document.getElementById('prev-btn');
-        const nextButton = document.getElementById('next-btn');
-
-        if (prevButton) prevButton.addEventListener('click', () => handleNavigation(-1));
-        if (nextButton) nextButton.addEventListener('click', () => handleNavigation(1));
+        // 4. Attach common event listeners
+        // Delegated click listener to handle all buttons (static and dynamic)
+        document.addEventListener('click', (e) => {
+            const elements = UI.getElements();
+            if (e.target.id === 'login-btn' || e.target.id === 'paywall-login-btn') {
+                signInWithGoogle();
+            } else if (e.target.id === 'logout-nav-btn') {
+                signOut();
+            } else if (e.target === elements.prevButton) {
+                handleNavigation(-1);
+            } else if (e.target === elements.nextButton) {
+                handleNavigation(1);
+            } else if (e.target === elements.submitButton) {
+                handleSubmit();
+            }
+        });
         
-        // Submit button
-        if (elements.submitButton) elements.submitButton.addEventListener('click', handleSubmit);
-        
-        // Auth buttons
-        if (elements.loginButton) elements.loginButton.addEventListener('click', signInWithGoogle); // Use imported signInWithGoogle
-        if (elements.logoutNavBtn) elements.logoutNavBtn.addEventListener('click', signOut); // Use imported signOut
-        
-        // Review button
+        // Event listener for the final 'Finish Review' button
         const reviewCompleteBtn = document.getElementById('review-complete-btn');
         if (reviewCompleteBtn) reviewCompleteBtn.addEventListener('click', () => {
-             // Reloads the index page or whatever the final destination is
+             // Navigate back to the index page
              window.location.href = "index.html";
         });
         
     } catch (error) {
         console.error("[ENGINE FATAL] Initialization failed:", error);
-        // Display the error thrown by parseUrlParameters or initServices
-        UI.updateStatus(`
+        // FIX: The error here was calling UI.updateStatus. It must be UI.showStatus.
+        UI.showStatus(`
             <span class="text-red-600">CRITICAL ERROR: Initialization Failed.</span> 
             <p class="mt-2">Reason: ${error.message}</p>
         `);
