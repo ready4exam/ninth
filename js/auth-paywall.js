@@ -5,7 +5,8 @@ import {
     getRedirectResult as firebaseGetRedirectResult,
     signInWithPopup,
     signInWithRedirect,
-    onAuthStateChanged
+    onAuthStateChanged,
+    signOut as firebaseSignOut // Import the modular signOut function
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
 
@@ -133,5 +134,18 @@ const signInWithGoogle = () => {
         });
 };
 
+/**
+ * Signs the user out of Firebase.
+ */
+const signOutUser = () => {
+    const auth = getAuthInstance();
+    console.log(LOG_TAG, 'Signing user out.');
+    return firebaseSignOut(auth)
+        .catch(error => {
+            console.error(LOG_TAG, 'Sign out failed:', error);
+        });
+};
+
 // This is the ONLY place where functions are exported.
-export { signInWithGoogle, getGoogleRedirectResult, initializeAuthListener, checkAccess };
+// Added signOutUser to force a complete module refresh.
+export { signInWithGoogle, getGoogleRedirectResult, initializeAuthListener, checkAccess, signOutUser };
