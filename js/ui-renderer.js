@@ -1,16 +1,12 @@
 // js/ui-renderer.js
 import { cleanKatexMarkers } from './utils.js';
 
-// --- DOM Element Map (For efficient access) ---
 let elements = {};
 let isInitialized = false;
 
-/**
- * Initializes and caches DOM elements.
- */
+// --- DOM Initialization ---
 export function initializeElements() {
     if (isInitialized) return;
-
     elements = {
         mainContainer: document.getElementById('main-container'),
         quizTitle: document.getElementById('quiz-title'),
@@ -31,13 +27,9 @@ export function initializeElements() {
             'quiz-content': document.getElementById('quiz-content'),
             'results-screen': document.getElementById('results-screen'),
             'paywall-screen': document.getElementById('paywall-screen'),
+            'review-screen': document.getElementById('review-screen')
         }
     };
-
-    if (!elements.mainContainer) {
-        console.warn("[UI RENDERER] Main container not found. Check HTML structure.");
-    }
-
     isInitialized = true;
     console.log("[UI RENDERER] Elements initialized.");
 }
@@ -47,7 +39,7 @@ export function getElements() {
     return elements;
 }
 
-// --- Status and View Management ---
+// --- Status and Header ---
 export function showStatus(message, className = "text-gray-600") {
     const el = getElements().statusMessage;
     if (el) {
@@ -62,169 +54,142 @@ export function hideStatus() {
     if (el) el.classList.add('hidden');
 }
 
-export function showView(viewName) {
-    const views = getElements().viewContainers;
-    Object.keys(views).forEach(key => views[key]?.classList.add('hidden'));
-    views[viewName]?.classList.remove('hidden');
+export function updateHeader(topic, difficulty) {
+    const e = getElements();
+    if (e.quizTitle) e.quizTitle.textContent = topic.replace(/_/g, ' ').toUpperCase();
+    if (e.quizDifficulty) e.quizDifficulty.textContent = `Difficulty: ${difficulty}`;
 }
 
-export function updateHeader(topic, difficulty) {
-    const el = getElements();
-    if (el.quizTitle) el.quizTitle.textContent = topic.replace(/_/g, ' ').toUpperCase();
-    if (el.quizDifficulty)
-        el.quizDifficulty.textContent = `Difficulty: ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`;
+export function showView(viewName) {
+    const views = getElements().viewContainers;
+    Object.keys(views).forEach(v => views[v]?.classList.add('hidden'));
+    if (views[viewName]) views[viewName].classList.remove('hidden');
 }
 
 // --- Question Rendering ---
 export function renderQuestion(question, questionNumber, selectedAnswer, isSubmitted) {
-    const el = getElements();
-    if (!el.questionList) return;
+    const e = getElements();
+    if (!e.questionList) return;
 
-    // 🧼 Clean text and options
-    const questionText = cleanKatexMarkers(question.text || question.question_text);
-    const options = question.options || {};
+    const cleanText = cleanKatexMarkers(question.text);
+    const explanation = cleanKatexMarkers(question.explanation || '');
 
-    el.questionList.innerHTML = `
+    const showExplanation =
+        isSubmitted &&
+        (question.question_type === 'ar' || question.question_type === 'case') &&
+        explanation.trim().length > 0;
+
+    e.questionList.innerHTML = `
         <div class="space-y-6">
-            <p class="text-xl font-bold text-heading">Q${questionNumber}: ${questionText}</p>
+            <p class="text-xl font-bold text-heading">Q${questionNumber}: ${cleanText}</p>
             <div id="options-container" class="space-y-3">
                 ${['A', 'B', 'C', 'D'].map(optionKey => {
-                    const optionText = cleanKatexMarkers(options[optionKey] || '');
+                    const optionText = cleanKatexMarkers(question.options[optionKey]);
                     const isSelected = selectedAnswer === optionKey;
                     const isCorrect = isSubmitted && (optionKey === question.correct_answer);
-                    const isIncorrect = isSubmitted && isSelected && (optionKey !== question.correct_answer);
-
+                    const isIncorrect = isSubmitted && isSelected && !isCorrect;
                     let labelClass = 'option-label';
                     if (isCorrect) labelClass += ' correct border-green-600 bg-green-100';
                     else if (isIncorrect) labelClass += ' incorrect border-red-600 bg-red-100';
-                    else if (isSelected && !isSubmitted)
-                        labelClass = 'option-label border-cbse-blue bg-blue-50/50 shadow-md';
+                    else if (isSelected) labelClass += ' border-cbse-blue bg-blue-50/50 shadow-md';
 
                     return `
                         <label>
-                            <input type="radio" name="q-${question.id}" value="${optionKey}" class="hidden"
+                            <input type="radio" name="q-${question.id}" value="${optionKey}" class="hidden" 
                                 ${isSelected ? 'checked' : ''} ${isSubmitted ? 'disabled' : ''}>
                             <div class="${labelClass}">
-                                <span class="w-6 h-6 text-center font-bold mr-4 ${isSelected && !isSubmitted ? 'text-cbse-blue' : 'text-gray-600'}">${optionKey}.</span>
+                                <span class="w-6 h-6 text-center font-bold mr-4">${optionKey}.</span>
                                 <p class="flex-grow">${optionText}</p>
-                                ${isSubmitted && isCorrect ? '<span class="text-green-600 font-bold ml-4">Correct</span>' : ''}
-                                ${isSubmitted && isIncorrect ? '<span class="text-red-600 font-bold ml-4">Your Answer</span>' : ''}
+                                ${isSubmitted && isCorrect ? '<span class="text-green-600 font-bold ml-4">✔</span>' : ''}
+                                ${isSubmitted && isIncorrect ? '<span class="text-red-600 font-bold ml-4">✖</span>' : ''}
                             </div>
-                        </label>
-                    `;
+                        </label>`;
                 }).join('')}
             </div>
-
-            ${
-                (question.question_type === 'ar' || question.question_type === 'case') && isSubmitted
-                    ? `
-                <div class="explanation bg-blue-50 border-l-4 border-blue-400 p-3 mt-4">
-                    <strong>Explanation:</strong>
-                    <p>${cleanKatexMarkers(question.explanation || question.scenario_reason_test || '')}</p>
-                </div>
-              `
-                    : ''
-            }
+            ${showExplanation ? `
+                <div class="mt-4 p-3 border-l-4 border-blue-400 bg-blue-50 text-gray-700 rounded">
+                    <p class="font-semibold text-blue-700">Explanation:</p>
+                    <p>${explanation}</p>
+                </div>` : ''}
         </div>
     `;
 }
 
-// --- Review and Navigation ---
+// --- Review Mode ---
 export function renderAllQuestionsForReview(questions, userAnswers) {
+    const e = getElements();
     showView('quiz-content');
+
+    if (!e.questionList) return;
+    e.questionList.innerHTML = questions.map((q, index) => {
+        const selected = userAnswers[q.id];
+        const cleanText = cleanKatexMarkers(q.text);
+        const explanation = cleanKatexMarkers(q.explanation || '');
+        const showExplanation = (q.question_type === 'ar' || q.question_type === 'case') && explanation.trim();
+
+        return `
+            <div class="p-6 mb-6 border rounded-xl bg-white shadow-sm">
+                <p class="font-bold text-lg mb-3">Q${index + 1}: ${cleanText}</p>
+                <div class="space-y-2">
+                    ${['A', 'B', 'C', 'D'].map(opt => {
+                        const text = cleanKatexMarkers(q.options[opt]);
+                        const isCorrect = opt === q.correct_answer;
+                        const isSelected = selected === opt;
+                        let optClass = 'p-2 rounded border';
+                        if (isCorrect) optClass += ' border-green-600 bg-green-100';
+                        else if (isSelected) optClass += ' border-red-600 bg-red-100';
+                        else optClass += ' border-gray-300';
+                        return `<div class="${optClass}"><strong>${opt}.</strong> ${text}</div>`;
+                    }).join('')}
+                </div>
+                ${showExplanation ? `
+                    <div class="mt-3 p-3 border-l-4 border-blue-400 bg-blue-50 rounded">
+                        <p class="font-semibold text-blue-700">Explanation:</p>
+                        <p>${explanation}</p>
+                    </div>` : ''}
+            </div>`;
+    }).join('');
 }
 
-export function updateNavigation(currentIndex, totalQuestions, isSubmitted) {
-    const el = getElements();
-    [el.prevButton, el.nextButton, el.submitButton].forEach(btn => btn?.classList.add('hidden'));
-
+// --- Navigation ---
+export function updateNavigation(currentIndex, total, isSubmitted) {
+    const e = getElements();
+    [e.prevButton, e.nextButton, e.submitButton, e.reviewCompleteBtn].forEach(btn => {
+        if (btn) btn.classList.add('hidden');
+    });
     if (isSubmitted) {
-        if (el.prevButton && currentIndex > 0) el.prevButton.classList.remove('hidden');
-        if (el.nextButton && currentIndex < totalQuestions - 1) el.nextButton.classList.remove('hidden');
-        if (el.reviewCompleteBtn) el.reviewCompleteBtn.classList.remove('hidden');
+        e.reviewCompleteBtn?.classList.remove('hidden');
     } else {
-        if (el.prevButton && currentIndex > 0) el.prevButton.classList.remove('hidden');
-        if (el.nextButton && currentIndex < totalQuestions - 1) el.nextButton.classList.remove('hidden');
-        if (el.submitButton && currentIndex === totalQuestions - 1) el.submitButton.classList.remove('hidden');
+        if (e.prevButton && currentIndex > 0) e.prevButton.classList.remove('hidden');
+        if (e.nextButton && currentIndex < total - 1) e.nextButton.classList.remove('hidden');
+        if (e.submitButton && currentIndex === total - 1) e.submitButton.classList.remove('hidden');
     }
 }
 
-// --- Answer and Review Listeners ---
-export function attachAnswerListeners(handler) {
-    const el = getElements();
-    el.questionList?.addEventListener('change', e => {
-        const radio = e.target;
-        if (radio.type === 'radio' && radio.name.startsWith('q-')) {
-            const questionId = radio.name.substring(2);
-            handler(questionId, radio.value);
-        }
-    });
-}
-
-export function attachReviewListeners(handler) {
-    console.log("[UI RENDERER] Review navigation controls confirmed ready.");
+// --- Auth UI ---
+export function updateAuthUI(user) {
+    const e = getElements();
+    if (!e.authNav) return;
+    e.authNav.innerHTML = '';
+    if (user) {
+        const name = user.displayName || user.email || 'User';
+        e.authNav.innerHTML = `
+            <span class="text-white text-sm mr-4 hidden sm:inline">Hi, ${name.split(' ')[0]}</span>
+            <button id="logout-nav-btn" class="px-4 py-2 text-sm font-semibold rounded-lg bg-accent-gold text-cbse-blue hover:bg-yellow-400">Sign Out</button>
+        `;
+        e.logoutNavBtn = document.getElementById('logout-nav-btn');
+    } else {
+        e.authNav.innerHTML = `
+            <button id="login-btn" class="px-4 py-2 text-sm font-semibold rounded-lg bg-white text-cbse-blue hover:bg-gray-100">
+                Sign In (Google)
+            </button>`;
+        e.loginButton = document.getElementById('login-btn');
+    }
 }
 
 // --- Results ---
 export function showResults(score, total) {
-    const el = getElements();
-    if (el.scoreDisplay) el.scoreDisplay.textContent = `${score} / ${total}`;
+    const e = getElements();
+    if (e.scoreDisplay) e.scoreDisplay.textContent = `${score} / ${total}`;
     showView('results-screen');
-}
-
-// --- Auth / Paywall UI ---
-export function updateAuthUI(user) {
-    const el = getElements();
-    if (!el.authNav) return;
-
-    el.authNav.innerHTML = '';
-
-    if (user) {
-        let displayName = user.displayName || user.email || 'User';
-        if (user.isAnonymous) displayName = `Anonymous: ${user.uid.substring(0, 4)}...`;
-
-        el.authNav.innerHTML = `
-            <span class="text-white text-sm mr-4 hidden sm:inline">Welcome, ${displayName.split(' ')[0]}</span>
-            <button id="logout-nav-btn" class="px-4 py-2 text-sm font-semibold rounded-lg bg-accent-gold text-cbse-blue hover:bg-yellow-400 transition">
-                Sign Out
-            </button>
-        `;
-        el.logoutNavBtn = document.getElementById('logout-nav-btn');
-        el.loginButton = null;
-    } else {
-        el.authNav.innerHTML = `
-            <button id="login-btn" class="px-4 py-2 text-sm font-semibold rounded-lg bg-white text-cbse-blue hover:bg-gray-100 transition">
-                Sign In (Google)
-            </button>
-        `;
-        el.loginButton = document.getElementById('login-btn');
-        el.logoutNavBtn = null;
-    }
-}
-
-export function updatePaywallContent(topic) {
-    const el = getElements();
-    if (!el.paywallContent) return;
-
-    el.paywallContent.innerHTML = `
-        <div class="p-8 text-center space-y-4 bg-gray-50 rounded-xl shadow-inner">
-            <svg class="w-12 h-12 text-yellow-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            <h2 class="text-2xl font-bold text-gray-800">Access Restricted</h2>
-            <p class="text-gray-600">The <strong>${topic.toUpperCase().replace(/_/g, ' ')}</strong> quiz is part of our premium content. Please sign in to access.</p>
-            <button id="paywall-login-btn" class="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition">
-                Sign In to Unlock
-            </button>
-            <p class="text-sm text-gray-500">Access is currently available to authenticated users only.</p>
-        </div>
-    `;
-
-    const btn = document.getElementById('paywall-login-btn');
-    if (btn) {
-        btn.addEventListener('click', () => {
-            document.getElementById('login-btn')?.click();
-        });
-    }
 }
