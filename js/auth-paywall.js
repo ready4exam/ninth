@@ -5,6 +5,7 @@ import {
     getRedirectResult as firebaseGetRedirectResult,
     signInWithPopup,
     signInWithRedirect,
+    onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
 
@@ -31,6 +32,41 @@ function getAuthInstance() {
 }
 
 /**
+ * Placeholder for the function in quiz-engine.js that should run when 
+ * the authentication state changes. This is necessary for the quiz to load.
+ * * @param {import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js").User|null} user - The current authenticated user object or null.
+ */
+function onAuthChangeCallback(user) {
+    console.log(LOG_TAG, 'Auth state changed. User ID:', user ? user.uid : 'Signed Out');
+    // NOTE: Your application needs to call the quiz-engine's load function here.
+}
+
+
+/**
+ * Initializes the Auth components and sets up listeners.
+ * This function is defined WITHOUT the 'export' keyword to prevent
+ * the duplicate export error, as it is exported at the end of the module.
+ */
+async function initializeAuthPaywall() {
+    try {
+        const auth = getAuthInstance();
+        
+        // 1. Set up the primary auth state listener.
+        onAuthStateChanged(auth, onAuthChangeCallback);
+        console.log(LOG_TAG, 'Auth state listener established.');
+
+        // 2. IMPORTANT: Check for pending redirect result. 
+        // This resolves the user sign-in if the previous attempt ended in a redirect (the fallback).
+        await getGoogleRedirectResult(); 
+
+        console.log(LOG_TAG, 'Redirect result check completed.');
+    } catch (error) {
+        console.error(LOG_TAG, 'Failed to initialize Auth Paywall:', error);
+    }
+}
+
+
+/**
  * Checks for a pending redirect result on page load.
  * This function MUST be called once on application startup to resolve sign-ins 
  * completed via the signInWithRedirect fallback.
@@ -38,6 +74,7 @@ function getAuthInstance() {
 export function getGoogleRedirectResult() {
     try {
         const auth = getAuthInstance();
+        // Return the promise so we can use 'await' on it in initializeAuthPaywall()
         return firebaseGetRedirectResult(auth);
     } catch (error) {
         console.error(LOG_TAG, 'Failed to get auth instance for redirect check:', error);
@@ -85,5 +122,5 @@ export function signInWithGoogle() {
         });
 }
 
-// Export only the two required functions for a minimal Google Sign-On module.
-export { signInWithGoogle, getGoogleRedirectResult };
+// Export the necessary functions. This is where initializeAuthPaywall is exported.
+export { signInWithGoogle, getGoogleRedirectResult, initializeAuthPaywall };
