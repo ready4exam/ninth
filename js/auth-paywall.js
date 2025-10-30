@@ -1,25 +1,29 @@
 // js/auth-paywall.js
 
-import { getAuthInstance, getAuthUser, signOutUser } from './config.js';
+// FIX: getAuthInstance is not a named export. We use getInitializedClients to get the 'auth' object.
+import { getInitializedClients, getAuthUser, signOutUser } from './config.js'; 
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import * as API from './api.js';
 
 // --- Internal State ---
 const googleProvider = new GoogleAuthProvider();
-let auth = null;
+let auth = null; // Will store the Firebase Auth object
 
 /**
- * Initializes the Firebase Auth listener. This function is the entry point
- * for the application's user flow after core services are initialized.
- * @param {Function} callback - The function (e.g., onAuthChange from quiz-engine.js) 
- * to call whenever the auth state changes.
+ * Initializes the Firebase Auth listener. 
  */
 export function initializeAuthListener(callback) {
-    auth = getAuthInstance();
+    // FIX: Retrieve the auth object from the initialized clients
+    auth = getInitializedClients().auth; 
+
+    if (!auth) {
+        console.error("[AUTH] Firebase Auth not available. Listener cannot be initialized.");
+        return;
+    }
+
     // This listener immediately checks the current state and then listens for future changes.
     onAuthStateChanged(auth, (user) => {
         // user is null if no one is signed in (or signed out).
-        // The callback (onAuthChange) handles what to do next.
         callback(user); 
     });
     console.log("[AUTH] Auth state listener initialized.");
@@ -34,13 +38,10 @@ export async function signInWithGoogle() {
         return;
     }
     try {
-        // This opens a Google sign-in popup
         await signInWithPopup(auth, googleProvider);
         console.log("[AUTH] Successfully signed in with Google.");
-        // The onAuthStateChanged listener will handle the UI update via its callback.
     } catch (error) {
         console.error("[AUTH ERROR] Google sign-in failed:", error);
-        // Handle popup closed, user cancelled, or other errors gracefully
     }
 }
 
@@ -48,10 +49,14 @@ export async function signInWithGoogle() {
  * Signs the current user out of Firebase.
  */
 export async function signOut() {
+    if (!auth) {
+        console.error("[AUTH ERROR] Auth service not initialized.");
+        return;
+    }
     try {
-        await signOutUser(auth);
+        // Use the exported signOutUser function from config.js
+        await signOutUser(auth); 
         console.log("[AUTH] User signed out.");
-        // The onAuthStateChanged listener will handle the UI update via its callback.
     } catch (error) {
         console.error("[AUTH ERROR] Sign-out failed:", error);
     }
@@ -60,17 +65,13 @@ export async function signOut() {
 
 /**
  * Checks if the currently authenticated user has access to the specified topic.
- * This is the core paywall logic.
- * @param {string} topicSlug - The topic identifier (e.g., 'motion').
- * @returns {Promise<boolean>} - True if access is granted, false otherwise.
  */
 export async function checkAccess(topicSlug) {
     const user = getAuthUser();
     
     // Rule 1: Must be authenticated
     if (!user) {
-        // Since we removed Anonymous login, any non-user is immediately denied access.
-        console.warn("[PAYWALL] Access denied: User is not authenticated.");
+        console.warn("[PAYWALL] Access denied: User is not authenticated (must use Google Login).");
         return false;
     }
     
@@ -81,8 +82,7 @@ export async function checkAccess(topicSlug) {
         return true;
     }
 
-    // Rule 3: Check API/Firestore for premium access (e.g., subscription status)
-    // NOTE: This assumes API.checkPremiumStatus is implemented in api.js
+    // Rule 3: Check API/Firestore for premium access (assuming API.checkPremiumStatus is implemented)
     try {
         const hasPremium = await API.checkPremiumStatus(user.uid);
         if (hasPremium) {
@@ -90,7 +90,7 @@ export async function checkAccess(topicSlug) {
             return true;
         }
     } catch(error) {
-        console.error("[PAYWALL ERROR] Failed to check premium status:", error);
+        console.error("[PAYWALL ERROR] Failed to check premium status (assuming no premium):", error);
     }
 
     console.warn(`[PAYWALL] Access denied: Topic ${topicSlug} requires premium access.`);
