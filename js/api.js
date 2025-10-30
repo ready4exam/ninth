@@ -1,72 +1,49 @@
 // js/api.js
-import { supabase } from './config.js';
+import { getInitializedClients } from './config.js';
+import * as UI from './ui-renderer.js';
 
-// --- QUESTION FETCHING ---
+// Helper function to get the Supabase client instance
+function getSupabaseClient() {
+    const { supabase } = getInitializedClients();
+    if (!supabase) {
+        // This will only happen if the initialization in config.js failed
+        throw new Error("Supabase client is not initialized. Check Firebase/Supabase setup in config.js.");
+    }
+    return supabase;
+}
 
 /**
- * Fetches questions for a specific topic and difficulty level from Supabase.
- * The topic slug is dynamically used as the table name.
- * * @param {string} topicSlug - The topic (used as the table name, e.g., 'motion').
- * @param {string} difficulty - The difficulty level (e.g., 'simple', 'medium', 'hard').
- * @returns {Promise<Array<Object>>} A promise that resolves to an array of question objects.
+ * Fetches quiz questions based on topic and difficulty from Supabase.
+ * @param {string} topic - The database table/collection name (e.g., 'motion').
+ * @param {string} difficulty - The difficulty level to filter by (e.g., 'simple').
+ * @returns {Promise<Array<Object>>} A promise that resolves to an array of questions.
  */
-export async function fetchQuestions(topicSlug, difficulty) {
-    if (!topicSlug || typeof topicSlug !== 'string') {
-        throw new Error("Invalid topic slug provided for question fetching.");
-    }
+export async function fetchQuestions(topic, difficulty) {
+    const supabase = getSupabaseClient();
     
-    // Convert difficulty to lowercase to match database values consistently
-    const level = (difficulty || '').toLowerCase();
-    
-    // CRITICAL CHANGE: Use the topicSlug as the table name
-    const tableName = topicSlug.toLowerCase();
-    
-    console.log(`[API] Fetching questions from table: ${tableName} with difficulty: ${level}`);
+    // We are using the topic slug as the table name (e.g., 'motion')
+    console.log(`[API] Fetching questions for topic: ${topic}, difficulty: ${difficulty}`);
 
-    // Basic validation to prevent querying arbitrary tables if the topic name is unexpected
-    // For this request, we assume 'motion' is the only valid table for now.
-    // In a real app, you would have a lookup list.
-    if (tableName !== 'motion') {
-         console.warn(`[API] Attempted to query unknown table: ${tableName}. Defaulting to 'motion'.`);
-         // If you have a dedicated table, you can throw an error or default to a main table.
-         // For now, let's proceed with the strict name as requested.
-         // If you had more tables, you'd check against a list: ['motion', 'forces', 'waves', ...]
+    const { data, error } = await supabase
+        .from(topic) 
+        .select('*')
+        .eq('difficulty', difficulty); // Filter by the requested difficulty
+
+    if (error) {
+        console.error("Supabase fetch error:", error);
+        UI.updateStatus(`<span class="text-red-500">Database Error:</span> Could not load quiz questions. (Table: ${topic})`);
+        throw new Error(error.message);
     }
 
-    // --- Supabase Query ---
-    try {
-        let query = supabase
-            .from(tableName) // Use the dynamic topicSlug as the table name
-            .select('*')
-            .order('question_id', { ascending: true }) // Order by question_id or a unique identifier
-            .limit(10); // Limit to 10 questions per quiz run (adjustable)
-
-        // Apply difficulty filter if a valid level is provided
-        if (level && ['simple', 'medium', 'hard'].includes(level)) {
-            query = query.eq('difficulty', level);
-        } else {
-            console.warn(`[API] Invalid difficulty level '${difficulty}' provided. Fetching all difficulties.`);
-        }
-            
-        const { data, error } = await query;
-
-        if (error) {
-            console.error("[API] Supabase Query Error:", error);
-            // Translate the error for the user
-            if (error.code === '42P01' || error.message.includes('relation') && error.message.includes('does not exist')) {
-                 throw new Error(`Quiz data for topic '${tableName}' is missing. Please ensure the table exists.`);
-            }
-            throw new Error(`Failed to fetch quiz questions: ${error.message}`);
-        }
-
-        if (data.length === 0) {
-            throw new Error(`No questions found for ${tableName} at difficulty '${level}'.`);
-        }
-
-        return data;
-        
-    } catch (e) {
-        console.error("[API] Fatal Fetch Error:", e);
-        throw e; // Re-throw the error to be handled by the quiz-engine
+    if (!data || data.length === 0) {
+        const message = `No questions found for topic: ${topic} with difficulty: ${difficulty}.`;
+        console.warn(message);
+        // Do not throw an error, but let the engine know it received empty data
+        UI.updateStatus(`<span class="text-yellow-600">Warning:</span> ${message}`);
     }
+
+    // Sort in memory to avoid needing to create a specific index on 'question_order'
+    data.sort((a, b) => (a.question_order || 0) - (b.question_order || 0));
+
+    return data;
 }
