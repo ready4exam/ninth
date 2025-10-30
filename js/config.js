@@ -1,4 +1,5 @@
-// js/config.js
+// js/config.js (Corrected version)
+
 // Centralized configuration and initialization for all services (Firebase/Firestore/Auth and Supabase).
 
 // --- Mandatory Global Variables ---
@@ -12,8 +13,8 @@ import {
     signInAnonymously, 
     signInWithCustomToken, 
     onAuthStateChanged, 
-    signOut as firebaseSignOut,
-    setLogLevel
+    signOut as firebaseSignOut
+    // setLogLevel REMOVED
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
@@ -34,45 +35,43 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 /**
  * Initializes all core services (Firebase and Supabase).
  */
-export async function initServices() {
-    if (isInitialized) return;
-    
-    console.log("[CONFIG] Initializing core services...");
-    
-    // 1. Firebase Initialization
+export async function initializeServices() {
+    if (isInitialized) {
+        console.warn("[CONFIG] Services already initialized.");
+        return;
+    }
+
+    // 1. Initialize Firebase App
     if (Object.keys(firebaseConfig).length > 0) {
         firebaseApp = initializeApp(firebaseConfig);
-        auth = getAuth(firebaseApp);
-        db = getFirestore(firebaseApp);
-        // Optional: Set log level for debugging
-        // setLogLevel('error'); 
-        console.log("[CONFIG] Firebase initialized.");
+        console.log("[CONFIG] Firebase app initialized.");
     } else {
-        console.warn("[CONFIG WARNING] Firebase config is missing. Authentication/Firestore will not function.");
-        // Throw an error in a production setup
+        console.error("[CONFIG ERROR] firebaseConfig is empty. Cannot initialize Firebase.");
+        throw new Error("Missing Firebase configuration.");
+    }
+
+    // 2. Initialize Firebase Services
+    auth = getAuth(firebaseApp);
+    db = getFirestore(firebaseApp);
+    console.log("[CONFIG] Firebase Auth and Firestore initialized.");
+
+    // 3. Initialize Supabase Client
+    if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+        // Supabase client initialization (Assuming v2 modular style)
+        supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log("[CONFIG] Supabase client initialized.");
+    } else {
+        console.warn("[CONFIG WARNING] Supabase URL or Key missing. Supabase client not initialized.");
     }
     
-    // 2. Supabase Initialization
-    try {
-        supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        console.log("[CONFIG] Supabase initialized.");
-    } catch (e) {
-        console.error("[CONFIG ERROR] Supabase initialization failed:", e);
-    }
-   
-    // 3. Initial Authentication (Secures userId for Firestore)
+    // 4. Initial Authentication (Secures userId for Firestore)
     try {
         if (initialAuthToken) {
             await signInWithCustomToken(auth, initialAuthToken);
             console.log("[CONFIG] Signed in with custom token.");
         } else {
-            // Check if there is already a user (e.g., from a previous session)
-            if (!auth.currentUser) { 
-                await signInAnonymously(auth);
-                console.log("[CONFIG] Signed in anonymously.");
-            } else {
-                 console.log("[CONFIG] Existing user session found.");
-            }
+            await signInAnonymously(auth);
+            console.log("[CONFIG] Signed in anonymously.");
         }
     } catch (error) {
         console.error("[CONFIG ERROR] Initial authentication failed:", error);
