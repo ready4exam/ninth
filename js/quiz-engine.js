@@ -1,10 +1,9 @@
 // js/quiz-engine.js
 
 // Import all required dependencies from other modules
-// NOTE: initServices is renamed initializeServices in config.js (correct import)
 import { initializeServices, getAuthUser } from './config.js'; 
 import { fetchQuestions, saveResult } from './api.js';
-import * as UI from './ui-renderer.js'; // Imports all functions as UI.functionName (FIX: ensures UI.showStatus is available)
+import * as UI from './ui-renderer.js'; // Imports all functions as UI.functionName
 import { checkAccess, initializeAuthListener, signInWithGoogle, signOut } from './auth-paywall.js'; 
 
 // --- Global State ---
@@ -214,7 +213,7 @@ async function onAuthChange(user) {
  */
 async function initQuizEngine() {
     try {
-        // FIX: Ensure UI is initialized first before calling any other UI function
+        // Ensure UI is initialized first before calling any other UI function
         UI.initializeElements(); 
         
         // 1. Parse URL parameters to set up the quiz context
@@ -247,13 +246,12 @@ async function initQuizEngine() {
         // Event listener for the final 'Finish Review' button
         const reviewCompleteBtn = document.getElementById('review-complete-btn');
         if (reviewCompleteBtn) reviewCompleteBtn.addEventListener('click', () => {
-             // Navigate back to the index page
              window.location.href = "index.html";
         });
         
     } catch (error) {
         console.error("[ENGINE FATAL] Initialization failed:", error);
-        // FIX: The error here was calling UI.updateStatus. It must be UI.showStatus.
+        // FIX: The error was here. It must be UI.showStatus, not UI.updateStatus.
         UI.showStatus(`
             <span class="text-red-600">CRITICAL ERROR: Initialization Failed.</span> 
             <p class="mt-2">Reason: ${error.message}</p>
