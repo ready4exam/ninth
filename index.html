@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CBSE Class 9 — Academic Study Portal</title>
+    <title>Ready4Exam CBSE Class 9 — Academic Study Portal</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -33,97 +33,74 @@
         }
         .subject-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            @apply shadow-2xl;
         }
-
         .card-header {
-            @apply flex items-center mb-3;
+            @apply flex items-center space-x-4 mb-4;
         }
-        
-        .card-header i {
-            @apply h-8 w-8 mr-4;
-        }
-
         .card-title {
             @apply text-xl font-extrabold text-heading;
         }
-
         .card-description {
             @apply text-gray-600 text-sm;
         }
-
-        /* Specific card colors (for hover effects/accents) */
-        .subject-card[data-subject="Science"]:hover { border-color: #10b981; }
-        .subject-card[data-subject="Social_Science"]:hover { border-color: #ef4444; }
-        .subject-card[data-subject="Mathematics"]:hover { border-color: #8b5cf6; }
-        
-        /* The buttons inside the cards */
         .card-button {
-            @apply w-full py-2 px-4 rounded-lg font-semibold transition;
+            @apply px-4 py-2 text-sm font-semibold rounded-lg transition duration-150 shadow-md;
         }
-        
-        /* Button colors */
         .card-button.science { @apply bg-green-500 text-white hover:bg-green-600; }
         .card-button.social { @apply bg-red-500 text-white hover:bg-red-600; }
         .card-button.math { @apply bg-purple-500 text-white hover:bg-purple-600; }
-
-        /* The blue banner for the header */
-        .header-bg {
-            background-color: #1a3e6a;
-        }
     </style>
 </head>
 <body class="bg-cbse-light min-h-screen flex flex-col">
 
-    <!-- HEADER -->
-    <header class="header-bg shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-            <h1 class="text-2xl font-extrabold text-white tracking-tight">
-                Ready4Exam
-            </h1>
-            <!-- Placeholder for Auth/Logout Button -->
-            <a href="quiz-engine.html" class="text-sm py-2 px-4 rounded-full bg-accent-gold text-cbse-blue font-semibold transition hover:bg-yellow-400">
-                Practice Now
-            </a>
+    <!-- HEADER: Consistent Branding -->
+    <header class="bg-cbse-blue shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0">
+                    <span class="text-2xl font-bold text-white tracking-wider">Ready4Exam</span>
+                    <span class="text-xs text-accent-gold block -mt-1 opacity-80">A ready4industry initiative</span>
+                </div>
+                <nav class="hidden md:block">
+                    <a href="#" class="text-white hover:text-accent-gold px-3 py-2 rounded-md text-sm font-medium transition duration-150">Home</a>
+                    <a href="#" class="text-white hover:text-accent-gold px-3 py-2 rounded-md text-sm font-medium transition duration-150">Classes</a>
+                </nav>
+                <div id="auth-nav-container" class="flex items-center space-x-2">
+                    <!-- Auth UI will be rendered here by UI-Renderer -->
+                </div>
+            </div>
         </div>
     </header>
 
     <!-- MAIN CONTENT -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex-grow mt-10">
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <h1 class="text-4xl font-extrabold text-heading mb-3">CBSE Class 9 Curriculum</h1>
+        <p class="text-xl text-gray-600 mb-10 border-b pb-4">Select a subject to start your practice quizzes.</p>
 
-        <div class="text-center mb-12">
-            <h2 class="text-4xl md:text-5xl font-extrabold text-heading">
-                CBSE Class 9 Academic Portal
-            </h2>
-            <p class="text-xl text-gray-600 mt-3 max-w-2xl mx-auto">
-                Select a **Subject** below to view available chapters and start your practice session.
-            </p>
-        </div>
-
-        <!-- SUBJECT CARDS GRID -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            
             <!-- 1. Science Card -->
+            <!-- Updated link to pass subject=Science -->
             <a href="chapter-selection.html?subject=Science" class="subject-card" data-subject="Science">
                 <div class="card-header">
                     <i data-lucide="flask-conical" class="text-green-700 h-8 w-8"></i>
-                    <h3 class="card-title">Science</h3>
+                    <h3 class="card-title">Science (Physics, Chemistry, Biology)</h3>
                 </div>
-                <p class="card-description">Covers Physics, Chemistry, and Biology fundamentals, focusing on motion, matter, and cells.</p>
+                <p class="card-description">Comprehensive coverage of Motion, Structure of the Atom, Tissues, and more, as per NCERT/CBSE guidelines.</p>
                 <div class="mt-6 text-center">
                     <button class="card-button science">
                         Start Learning
                     </button>
                 </div>
             </a>
-            
+
             <!-- 2. Social Science Card -->
             <a href="chapter-selection.html?subject=Social_Science" class="subject-card" data-subject="Social_Science">
                 <div class="card-header">
-                    <i data-lucide="book-open-check" class="text-red-700 h-8 w-8"></i>
-                    <h3 class="card-title">Social Science</h3>
+                    <i data-lucide="book-open-text" class="text-red-700 h-8 w-8"></i>
+                    <h3 class="card-title">Social Science (History, Geo, Civics, Eco)</h3>
                 </div>
-                <p class="card-description">Detailed study of History, Civics, Geography, and Economics, including the French Revolution and physical features of India.</p>
+                <p class="card-description">Exploration of the French Revolution, physical features of India, and democratic rights.</p>
                 <div class="mt-6 text-center">
                     <button class="card-button social">
                         Start Learning
@@ -148,10 +125,11 @@
 
     </main>
 
-    <!-- FOOTER -->
+    <!-- FOOTER: Consistent Branding -->
     <footer class="bg-cbse-blue mt-16 py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
-            <small class="text-sm opacity-70 block mt-2">© 2025 Ready4Exam Academic Portal. All Rights Reserved.</small>
+            <p class="text-lg font-semibold mb-1">Ready4Exam</p>
+            <small class="text-sm opacity-70 block">© 2025 Ready4Exam Academic Portal. All Rights Reserved. | A child of ready4industry.</small>
         </div>
     </footer>
 
