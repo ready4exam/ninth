@@ -2,6 +2,8 @@
 // Centralized configuration and initialization for all services (Firebase/Firestore/Auth and Supabase).
 
 // --- Mandatory Global Variables ---
+// These are placeholders that must be defined globally in a script tag BEFORE this module loads,
+// or provided via a secure server environment.
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
@@ -13,7 +15,7 @@ import {
     signInWithCustomToken, 
     onAuthStateChanged, 
     signOut as firebaseSignOut
-    // setLogLevel REMOVED: This function is not a named export from the module.
+    // NOTE: setLogLevel is NOT a named export in this module and must be excluded.
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
@@ -27,9 +29,9 @@ let auth = null;
 let supabase = null;
 let isInitialized = false;
 
-// --- Supabase Config (Placeholder) ---
-const SUPABASE_URL = 'https://gkyvojcmqsgdynmitcuf.supabase.co'; 
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdreXZvamNtcXNnZHlubWl0Y3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3NDQ0OTcsImV4cCI6MjA3NjMyMDQ5N30.5dn5HbXxQ5sYNECS9o3VxVeyL6I6Z2Yf-nmPwztx1hE'; 
+// --- Supabase Config (Placeholder - Replace with real credentials) ---
+const SUPABASE_URL = 'https://your-supabase-url.supabase.co'; 
+const SUPABASE_ANON_KEY = 'your-anon-key'; 
 
 /**
  * Initializes all core services (Firebase and Supabase).
@@ -56,24 +58,27 @@ export async function initializeServices() {
 
     // 3. Initialize Supabase Client
     if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-        // Supabase client initialization (Assuming v2 modular style)
         supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log("[CONFIG] Supabase client initialized.");
     } else {
         console.warn("[CONFIG WARNING] Supabase URL or Key missing. Supabase client not initialized.");
     }
     
-    // 4. Initial Authentication (Secures userId for Firestore)
+    // 4. Initial Authentication (Ensures a user ID is available for Firestore)
     try {
         if (initialAuthToken) {
+            // Attempt to sign in with a provided custom token (e.g., from a secure backend)
             await signInWithCustomToken(auth, initialAuthToken);
             console.log("[CONFIG] Signed in with custom token.");
         } else {
+            // Fallback to anonymous sign-in for unauthenticated sessions
             await signInAnonymously(auth);
             console.log("[CONFIG] Signed in anonymously.");
         }
     } catch (error) {
         console.error("[CONFIG ERROR] Initial authentication failed:", error);
+        // Throwing here will stop the quiz engine initialization
+        throw new Error("Failed to establish initial authentication session."); 
     }
 
     isInitialized = true;
@@ -81,14 +86,13 @@ export async function initializeServices() {
 }
 
 /**
- * Retrieves the initialized Supabase and Firestore clients.
+ * Retrieves the initialized Supabase, Firestore, and Auth clients.
  */
 export function getInitializedClients() {
     if (!isInitialized) {
         console.error("[CONFIG ERROR] Attempted to get clients before initialization.");
         throw new Error("Core services must be initialized first.");
     }
-    // Changed to return both supabase and db as needed by other modules (e.g., api.js)
     return { supabase, db, auth };
 }
 
@@ -97,15 +101,13 @@ export function getInitializedClients() {
  */
 export function getAuthInstance() {
     if (!isInitialized) {
-        console.error("[CONFIG ERROR] Attempted to get auth instance before initialization.");
         throw new Error("Core services must be initialized first.");
     }
     return auth;
 }
 
 /**
- * Retrieves the currently authenticated Firebase user.
- * *** THIS IS THE REQUIRED EXPORT ***
+ * Retrieves the currently authenticated Firebase user object.
  */
 export function getAuthUser() {
     if (!auth) return null;
@@ -113,6 +115,6 @@ export function getAuthUser() {
 }
 
 /**
- * Exposes the Firebase sign-out function.
+ * Exposes the Firebase sign-out function for use in other modules.
  */
 export const signOutUser = firebaseSignOut;
