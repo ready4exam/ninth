@@ -1,19 +1,16 @@
 import { fetchQuestions, saveResult } from './api.js';
-import { initializeAuthListener, checkPaymentStatus, getCurrentUser } from './auth-paywall.js';
+import { initializeAuthListener, checkPaymentStatus, getCurrentUser, signInWithGoogle, signOut } from './auth-paywall.js';
 import { 
     showView, 
     updateStatus, 
     hideStatus, 
-    // Added renderTitles, initBranding, processResultsAndRender, and updateNavigation 
-    // to resolve the earlier module import errors.
-    renderTitles, 
     renderQuestion, 
     updateResultDisplay,
     initBranding,
     processResultsAndRender,
-    updateNavigation, // Ensure this is imported for use in navigation functions
-    updateAuthUI,     // Ensure this is imported for onAuthChange
-    updatePaywallContent // Ensure this is imported for access denial
+    updateNavigation, 
+    updateAuthUI,     
+    updatePaywallContent 
 } from './ui-renderer.js';
 
 // --- Application Constants ---
@@ -48,7 +45,7 @@ function getCurrentAnswerFromDOM() {
 }
 
 /**
- * Updates the visibility of the Prev, Next, and Submit buttons.
+ * Updates the visibility of the Prev, Next, and Submit buttons using the UI renderer.
  */
 function updateNavigationButtons() {
     updateNavigation(currentQuestionIndex, currentQuiz.questions.length, isQuizSubmitted);
@@ -65,7 +62,6 @@ function navigateToQuestion(index) {
     const currentAnswer = getCurrentAnswerFromDOM();
     if (currentAnswer !== null) {
         currentQuiz.userAnswers[currentQuestionIndex] = currentAnswer;
-        console.log(`[STATE] Saved answer for Q${currentQuestionIndex}: ${currentAnswer}`);
     }
 
     // 2. Validate new index
@@ -81,6 +77,7 @@ function navigateToQuestion(index) {
     const question = currentQuiz.questions[currentQuestionIndex];
     const userAnswer = currentQuiz.userAnswers[currentQuestionIndex] || null;
 
+    // The renderQuestion function signature is now question, index, total, userAnswer, isSubmitted
     renderQuestion(question, currentQuestionIndex, currentQuiz.questions.length, userAnswer, isQuizSubmitted);
 
     // 4. Update navigation buttons visibility
@@ -98,16 +95,7 @@ function handlePrevious() {
  * Handles navigation to the next question.
  */
 function handleNext() {
-    // If we are on the last question, we treat 'Next' as saving the answer before submission
-    if (currentQuestionIndex === currentQuiz.questions.length - 1 && !isQuizSubmitted) {
-        const currentAnswer = getCurrentAnswerFromDOM();
-        if (currentAnswer !== null) {
-            currentQuiz.userAnswers[currentQuestionIndex] = currentAnswer;
-        }
-        handleSubmit();
-    } else {
-        navigateToQuestion(currentQuestionIndex + 1);
-    }
+    navigateToQuestion(currentQuestionIndex + 1);
 }
 
 
@@ -126,6 +114,7 @@ async function handleSubmit() {
 
     // 2. Process results, calculate score
     const total = currentQuiz.questions.length;
+    // processResultsAndRender returns the score now
     const score = processResultsAndRender(currentQuiz.questions, currentQuiz.userAnswers);
 
     // 3. Update the results display
@@ -146,6 +135,7 @@ async function handleSubmit() {
             timestamp: new Date().toISOString()
         };
         try {
+            // saveResult is an async function
             await saveResult(quizResult);
             console.log("[QUIZ] Result saved successfully.");
         } catch (error) {
@@ -197,30 +187,15 @@ async function loadQuiz() {
 
 
 /**
- * Callback function run every time the Firebase Auth state changes.
- * @param {Object|null} user - The authenticated user object or null.
- */
-function onAuthChange(user) {
-    console.log("[AUTH] State changed. User:", user ? 'Authenticated' : 'Logged Out');
-
-    // Update UI for the header (logout button)
-    updateAuthUI(user);
-
-    // If a user logs in (user is not null) AND we are currently showing the paywall, 
-    // re-check access and load the quiz.
-    if (user && document.getElementById('paywall-screen').classList.contains('hidden') === false) {
-        checkAccessAndLoad();
-    }
-}
-
-/**
  * Checks payment status and proceeds to load quiz if access is granted.
  * Used after auth changes or initial load.
  */
 async function checkAccessAndLoad() {
+    // Show loading status while we wait for the check
     showView('loading-status');
-    updateStatus('Checking access and subscription status...');
+    updateStatus('Checking authentication status...');
 
+    // AWAIT the async checkPaymentStatus
     const hasAccess = await checkPaymentStatus();
     hideStatus();
 
@@ -236,6 +211,42 @@ async function checkAccessAndLoad() {
 }
 
 
+/**
+ * Callback function run every time the Firebase Auth state changes.
+ * @param {Object|null} user - The authenticated user object or null.
+ */
+function onAuthChange(user) {
+    console.log("[AUTH] State changed. User:", user ? 'Authenticated' : 'Logged Out');
+
+    // The main entry point. This runs on initial load AND any login/logout event.
+    // It handles the access check and content loading/paywall display.
+    checkAccessAndLoad();
+}
+
+/**
+ * Attaches event listeners for authentication actions (login/logout).
+ */
+function setupAuthListeners() {
+    // Find the login button in the paywall screen and attach the sign-in function
+    document.getElementById('login-button')?.addEventListener('click', async () => {
+        try {
+            await signInWithGoogle();
+        } catch (e) {
+            console.error("Login failed:", e);
+        }
+    });
+
+    // Find the logout button in the header and attach the sign-out function
+    document.getElementById('logout-nav-btn')?.addEventListener('click', async () => {
+        try {
+            await signOut();
+        } catch (e) {
+            console.error("Logout failed:", e);
+        }
+    });
+}
+
+
 // --- Main Initialization ---
 document.addEventListener('DOMContentLoaded', async () => {
     // 1. Parse URL parameters to set context
@@ -246,16 +257,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentQuiz.difficulty = params.get('difficulty') || 'medium'; 
 
     // 2. Display Branding and Tagline immediately
-    // Note: initBranding now takes the individual properties needed to render the titles.
+    // initBranding (from ui-renderer.js) now handles title/difficulty display
     initBranding(currentQuiz.topic, currentQuiz.difficulty, currentQuiz.subject); 
     
     // 3. Initialize Auth listener
+    // The onAuthChange function handles the first access check and subsequent content loading
     initializeAuthListener(onAuthChange); 
     
-    // 4. Initial access check (This will run once after the auth listener setup)
-    checkAccessAndLoad();
-    
-    // --- Event Listeners ---
+    // 4. Setup navigation and auth button listeners
+    setupAuthListeners();
+
+    // --- Event Listeners for Quiz Navigation ---
     document.getElementById('prev-btn')?.addEventListener('click', handlePrevious);
     document.getElementById('next-btn')?.addEventListener('click', handleNext);
     document.getElementById('submit-button')?.addEventListener('click', handleSubmit);
