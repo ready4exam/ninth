@@ -4,7 +4,6 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Select Chapter & Difficulty</title>
-    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -31,323 +30,295 @@
         .cbse-blue { background-color: #1a3e6a; }
         .cbse-light { background-color: #f5f7fa; }
         .header-bg { background-color: #1a3e6a; } /* Using cbse-blue for consistency */
-        .card { @apply bg-white p-5 rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl; }
+        .card { @apply bg-white p-6 rounded-xl shadow-lg border border-gray-200; }
+        .topic-btn {
+            @apply flex items-center justify-between p-4 bg-white border border-gray-300 rounded-lg shadow-sm cursor-pointer hover:bg-cbse-light transition-all duration-200;
+        }
+        .topic-btn.selected {
+            @apply border-cbse-blue bg-blue-50/50 shadow-md;
+        }
         .difficulty-btn {
-            @apply px-6 py-3 rounded-xl font-bold border-2 transition-all duration-200 shadow-md;
+            @apply px-5 py-3 rounded-xl font-semibold transition-colors duration-200 border-2;
         }
-        .difficulty-btn:hover {
-            @apply scale-[1.02];
-        }
-        .difficulty-btn.simple { @apply bg-green-50 border-green-400 text-green-700; }
-        .difficulty-btn.medium { @apply bg-yellow-50 border-yellow-400 text-yellow-700; }
-        .difficulty-btn.advance { @apply bg-red-50 border-red-400 text-red-700; }
-
         .difficulty-btn.selected {
-            @apply ring-4 ring-offset-2 ring-cbse-blue border-cbse-blue shadow-2xl;
-        }
-        .chapter-card.selected {
-            @apply ring-2 ring-cbse-blue bg-blue-50/50 shadow-inner;
+            @apply ring-4 ring-cbse-blue/50;
         }
     </style>
 </head>
 <body class="bg-cbse-light min-h-screen flex flex-col">
 
-    <!-- HEADER: Consistent Branding -->
     <header class="bg-cbse-blue shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <div class="flex-shrink-0">
-                    <span class="text-2xl font-bold text-white tracking-wider">Ready4Exam</span>
-                    <span class="text-xs text-accent-gold block -mt-1 opacity-80">A ready4industry initiative</span>
-                </div>
-                <nav class="hidden md:block">
-                    <a href="index.html" class="text-white hover:text-accent-gold px-3 py-2 rounded-md text-sm font-medium transition duration-150">Class 9 Home</a>
-                </nav>
-                <div id="auth-nav-container" class="flex items-center space-x-2">
-                    <!-- Auth UI will be rendered here by UI-Renderer -->
-                </div>
-            </div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-extrabold text-accent-gold tracking-wider">
+                Ready4<span class="text-white">Exam</span> Portal
+            </h1>
+             <nav id="auth-nav-container">
+                <button id="login-btn" class="px-4 py-2 text-sm font-semibold rounded-lg bg-white text-cbse-blue hover:bg-gray-100 transition">
+                    Sign In
+                </button>
+            </nav>
         </div>
     </header>
 
-    <!-- MAIN CONTENT -->
     <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div class="bg-white p-8 rounded-xl shadow-2xl">
-            <h1 id="main-title" class="text-3xl font-extrabold text-heading mb-2">Select Subject & Chapter</h1>
-            <p id="sub-title" class="text-lg text-gray-600 mb-8">Class 9 / <span id="subject-name">...</span></p>
+        <div class="max-w-4xl mx-auto">
+            <h2 id="page-title" class="text-3xl font-extrabold text-heading mb-6 text-center">
+                Select Chapter & Difficulty
+            </h2>
 
-            <!-- 1. Sub-Subject Selection (For Science) -->
-            <div id="sub-subject-selection" class="mb-10 hidden">
-                <h2 class="text-2xl font-bold text-cbse-blue mb-4 flex items-center"><i data-lucide="layers" class="h-6 w-6 mr-2"></i> Choose Stream</h2>
-                <div id="sub-subject-cards" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- Sub-Subject cards will be rendered here -->
-                </div>
+            <div id="subject-selection-container" class="space-y-6 mb-8">
+                <h3 class="text-2xl font-bold text-gray-800 border-b pb-2">1. Select Sub-Subject (if applicable)</h3>
+                <div id="sub-subject-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    </div>
             </div>
 
-            <!-- 2. Chapter Selection -->
-            <div id="chapter-selection-area" class="mb-10">
-                <h2 class="text-2xl font-bold text-cbse-blue mb-4 flex items-center"><i data-lucide="bookmark" class="h-6 w-6 mr-2"></i> Choose Chapter</h2>
-                <div id="chapter-cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <!-- Chapter cards will be rendered here -->
-                    <div class="col-span-full text-gray-500 italic" id="chapter-placeholder">Select a stream above or check parameters.</div>
-                </div>
+            <div id="chapter-selection-container" class="space-y-6 mb-8 hidden">
+                <h3 class="text-2xl font-bold text-gray-800 border-b pb-2">2. Select a Chapter/Topic</h3>
+                <div id="topic-list" class="grid grid-cols-1 gap-4">
+                    </div>
             </div>
 
-            <!-- 3. Difficulty Selection -->
-            <div id="difficulty-selection-area" class="mt-12 p-6 bg-cbse-light rounded-xl border border-gray-200">
-                <h2 class="text-2xl font-bold text-heading mb-4 flex items-center"><i data-lucide="flame" class="h-6 w-6 mr-2 text-accent-gold"></i> Select Difficulty</h2>
-                <div id="difficulty-selection" class="flex flex-wrap justify-center md:justify-start gap-4">
-                    <button class="difficulty-btn simple" data-difficulty="simple">Simple (Level 1)</button>
-                    <button class="difficulty-btn medium" data-difficulty="medium">Medium (Level 2)</button>
-                    <button class="difficulty-btn advance" data-difficulty="advance">Advance (Level 3)</button>
-                </div>
-                
-                <p id="error-message" class="text-red-500 mt-4 text-center font-medium hidden">
-                    Please select both a Chapter and a Difficulty level to start the quiz.
-                </p>
-
-                <div class="mt-8 text-center">
-                    <button id="start-quiz-btn" class="px-10 py-4 bg-cbse-blue text-white rounded-xl font-extrabold text-xl opacity-50 cursor-not-allowed transition duration-300 shadow-lg" disabled>
-                        Start Quiz
+            <div id="difficulty-selection-container" class="space-y-6 mb-10 hidden">
+                <h3 class="text-2xl font-bold text-gray-800 border-b pb-2">3. Select Quiz Difficulty</h3>
+                <div id="difficulty-selection" class="flex flex-wrap justify-center gap-4">
+                    <button data-difficulty="simple" class="difficulty-btn bg-green-500 text-white hover:bg-green-600 border-green-500">
+                        Simple (Easy)
+                    </button>
+                    <button data-difficulty="medium" class="difficulty-btn bg-yellow-500 text-white hover:bg-yellow-600 border-yellow-500">
+                        Medium
+                    </button>
+                    <button data-difficulty="advanced" class="difficulty-btn bg-red-500 text-white hover:bg-red-600 border-red-500">
+                        Advanced (Hard)
                     </button>
                 </div>
             </div>
+            
+            <p id="error-message" class="text-red-500 font-semibold text-center hidden mb-6">
+                Please select both a Topic and a Difficulty level to start the quiz.
+            </p>
 
+            <div class="text-center">
+                 <button id="start-quiz-btn" class="px-10 py-4 bg-cbse-blue text-white rounded-xl font-bold text-lg hover:bg-blue-700 transition shadow-xl disabled:opacity-50" disabled>
+                    Start Quiz
+                </button>
+            </div>
         </div>
     </main>
 
-    <!-- FOOTER: Consistent Branding -->
     <footer class="bg-cbse-blue mt-16 py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
-            <p class="text-lg font-semibold mb-1">Ready4Exam</p>
-            <small class="text-sm opacity-70 block">© 2025 Ready4Exam Academic Portal. All Rights Reserved. | A child of ready4industry.</small>
+            <small class="text-sm opacity-70 block mt-2">© 2025 Ready4Exam Academic Portal. All Rights Reserved.</small>
         </div>
     </footer>
 
-    <!-- Script Imports -->
-    <script type="module" src="./curriculum.js"></script>
+    <script type="module" src="./js/curriculum.js"></script>
     <script type="module">
         import curriculumData from './curriculum.js';
-        
-        // State variables
-        let selectedTopic = null;
-        let selectedDifficulty = null;
-        let selectedSubSubject = null; // For subjects like Science, Social_Science
-        
-        // DOM Elements
-        const chapterCardsEl = document.getElementById('chapter-cards');
-        const chapterPlaceholderEl = document.getElementById('chapter-placeholder');
+
+        // --- DOM Elements ---
+        const pageTitleEl = document.getElementById('page-title');
+        const subSubjectListEl = document.getElementById('sub-subject-list');
+        const chapterSelectionContainerEl = document.getElementById('chapter-selection-container');
+        const topicListEl = document.getElementById('topic-list');
+        const difficultySelectionContainerEl = document.getElementById('difficulty-selection-container');
         const difficultySelectionEl = document.getElementById('difficulty-selection');
-        const subSubjectSelectionEl = document.getElementById('sub-subject-selection');
-        const subSubjectCardsEl = document.getElementById('sub-subject-cards');
         const startQuizBtn = document.getElementById('start-quiz-btn');
         const errorMessageEl = document.getElementById('error-message');
-        const subjectNameEl = document.getElementById('subject-name');
+        const subjectSelectionContainerEl = document.getElementById('subject-selection-container');
 
-        const CLASS_ID = '9'; // Focusing on class 9 for the pilot
+        // --- Global State ---
+        let selectedTopic = null;
+        let selectedDifficulty = null;
+        let selectedSubSubject = null;
+        let currentClass = '9'; // Fixed for the pilot
+        let currentSubject = ''; 
 
-        function updateStartButtonState() {
-            const isReady = selectedTopic && selectedDifficulty;
-            startQuizBtn.disabled = !isReady;
-            startQuizBtn.classList.toggle('opacity-100', isReady);
-            startQuizBtn.classList.toggle('opacity-50', !isReady);
-            startQuizBtn.classList.toggle('cursor-not-allowed', !isReady);
-            errorMessageEl.classList.add('hidden'); // Clear error on state change
-        }
+        // --- Core Logic ---
 
-        function handleChapterSelection(topicId, topicTitle, clickedElement) {
+        function handleTopicSelection(topicId, buttonElement) {
             selectedTopic = topicId;
-
-            // Remove 'selected' class from all chapter cards
-            chapterCardsEl.querySelectorAll('.card').forEach(card => {
-                card.classList.remove('selected');
-            });
-
-            // Add 'selected' class to the clicked element
-            clickedElement.classList.add('selected');
-            
-            updateStartButtonState();
-        }
-
-        function handleDifficultySelection(difficulty, clickedButton) {
-            selectedDifficulty = difficulty;
-
-            // Remove 'selected' class from all difficulty buttons
-            difficultySelectionEl.querySelectorAll('.difficulty-btn').forEach(btn => {
+            // Deselect all topic buttons
+            document.querySelectorAll('.topic-btn').forEach(btn => {
                 btn.classList.remove('selected');
             });
-
-            // Add 'selected' class to the clicked button
-            clickedButton.classList.add('selected');
+            // Select the clicked button
+            buttonElement.classList.add('selected');
             
-            updateStartButtonState();
-        }
-
-        function handleSubSubjectSelection(subSubject, clickedElement) {
-             selectedSubSubject = subSubject;
-
-             // Remove 'selected' class from all sub-subject cards
-             subSubjectCardsEl.querySelectorAll('.card').forEach(card => {
-                 card.classList.remove('selected');
-             });
-
-             // Add 'selected' class to the clicked element
-             clickedElement.classList.add('selected');
-
-             // Render the chapters for the newly selected sub-subject
-             renderChapters();
-             
-             // Reset chapter and difficulty selection
-             selectedTopic = null;
-             selectedDifficulty = null;
-             chapterPlaceholderEl.classList.add('hidden');
-             difficultySelectionEl.querySelectorAll('.difficulty-btn').forEach(btn => btn.classList.remove('selected'));
-             updateStartButtonState();
-        }
-
-
-        function renderSubSubjectCards(subject, subSubjects) {
-            subSubjectSelectionEl.classList.remove('hidden');
-            subSubjectCardsEl.innerHTML = ''; // Clear previous content
-
-            Object.keys(subSubjects).forEach(subSubjectKey => {
-                // Determine icon based on sub-subject
-                let iconName = 'book';
-                if (subSubjectKey === 'Physics') iconName = 'atom';
-                if (subSubjectKey === 'Chemistry') iconName = 'flask-conical';
-                if (subSubjectKey === 'Biology') iconName = 'dna';
-
-                const cardHtml = `
-                    <div class="card cursor-pointer sub-subject-card border-2 border-transparent hover:border-cbse-blue" 
-                         data-sub-subject="${subSubjectKey}">
-                        <div class="flex items-center space-x-3 mb-2">
-                            <i data-lucide="${iconName}" class="h-6 w-6 text-cbse-blue"></i>
-                            <h3 class="text-xl font-extrabold text-heading">${subSubjectKey}</h3>
-                        </div>
-                        <p class="text-sm text-gray-500">Total chapters: ${subSubjects[subSubjectKey].length}</p>
-                    </div>
-                `;
-                subSubjectCardsEl.insertAdjacentHTML('beforeend', cardHtml);
-            });
-
-            // Attach event listeners to new sub-subject cards
-            subSubjectCardsEl.querySelectorAll('.sub-subject-card').forEach(card => {
-                card.addEventListener('click', (e) => {
-                    handleSubSubjectSelection(card.dataset.subSubject, card);
-                });
-            });
-
-            lucide.createIcons(); // Re-render Lucide icons
-        }
-
-        function renderChapters() {
-            const params = new URLSearchParams(window.location.search);
-            const subject = params.get('subject');
-
-            subjectNameEl.textContent = subject ? subject.replace(/_/g, ' ') : 'N/A';
-            document.getElementById('main-title').textContent = `Class 9 - ${subjectNameEl.textContent} Quiz Drill`;
-
-
-            const classData = curriculumData[CLASS_ID];
-            if (!classData || !subject || !classData[subject]) {
-                chapterCardsEl.innerHTML = `<p class="col-span-full text-red-500">Error: Curriculum data not found for Class ${CLASS_ID} / ${subject}.</p>`;
-                return;
+            // Show difficulty selection and enable the quiz button
+            difficultySelectionContainerEl.classList.remove('hidden');
+            if (selectedDifficulty) {
+                startQuizBtn.disabled = false;
             }
-            
-            let chapters = [];
-            let currentSubjectData = classData[subject];
+            errorMessageEl.classList.add('hidden');
+        }
 
-            if (subject === 'Science' || subject === 'Social_Science') {
-                // If it's a composite subject, we need to show sub-subjects first
-                if (!selectedSubSubject) {
-                    // If no sub-subject is selected, render the sub-subject cards
-                    renderSubSubjectCards(subject, currentSubjectData);
-                    // Hide chapter area until a sub-subject is selected
-                    chapterCardsEl.innerHTML = `<p class="col-span-full text-gray-500 italic">Please select a stream (e.g., Physics) above to see the chapters.</p>`;
-                    return; 
+        function handleDifficultySelection(difficulty, buttonElement) {
+            selectedDifficulty = difficulty;
+            // Deselect all difficulty buttons
+            difficultySelectionEl.querySelectorAll('.difficulty-btn').forEach(btn => {
+                btn.classList.remove('selected', 'bg-cbse-blue', 'text-white', 'border-cbse-blue');
+                // Re-apply original color classes for unselected state
+                const difficultyType = btn.dataset.difficulty;
+                if (difficultyType === 'simple') {
+                    btn.classList.add('bg-green-500', 'text-white', 'hover:bg-green-600', 'border-green-500');
+                } else if (difficultyType === 'medium') {
+                    btn.classList.add('bg-yellow-500', 'text-white', 'hover:bg-yellow-600', 'border-yellow-500');
+                } else if (difficultyType === 'advanced') {
+                    btn.classList.add('bg-red-500', 'text-white', 'hover:bg-red-600', 'border-red-500');
                 }
+            });
+            
+            // Select the clicked button and apply consistent style
+            buttonElement.classList.add('selected', 'bg-cbse-blue', 'text-white', 'border-cbse-blue');
+            buttonElement.classList.remove('bg-green-500', 'bg-yellow-500', 'bg-red-500', 'hover:bg-green-600', 'hover:bg-yellow-600', 'hover:bg-red-600'); // Remove specific color classes
+            
+            // Enable the quiz button
+            if (selectedTopic) {
+                startQuizBtn.disabled = false;
+            }
+            errorMessageEl.classList.add('hidden');
+        }
+
+        function handleSubSubjectSelection(subSubjectId, buttonElement) {
+            selectedSubSubject = subSubjectId;
+            // Deselect all sub-subject buttons
+            document.querySelectorAll('.sub-subject-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            // Select the clicked button
+            buttonElement.classList.add('selected');
+            
+            // Render the chapters for the selected sub-subject
+            renderChapters(currentClass, currentSubject, selectedSubSubject);
+            
+            // Show chapter selection, hide sub-subject selection
+            subjectSelectionContainerEl.classList.add('hidden'); // Hide the main sub-subject container
+            chapterSelectionContainerEl.classList.remove('hidden');
+            
+            // Reset topic and difficulty
+            selectedTopic = null;
+            selectedDifficulty = null;
+            startQuizBtn.disabled = true;
+            difficultySelectionContainerEl.classList.add('hidden');
+            errorMessageEl.classList.add('hidden');
+        }
+
+        function renderSubSubjects(classId, subject) {
+            subSubjectListEl.innerHTML = ''; // Clear previous content
+            
+            const subSubjects = curriculumData[classId]?.[subject];
+
+            if (subSubjects && !Array.isArray(subSubjects)) {
+                // If subSubjects is an object (Science/Social Science), render sub-subject cards
+                const subSubjectNames = Object.keys(subSubjects);
                 
-                // If a sub-subject is selected, use its chapters
-                chapters = currentSubjectData[selectedSubSubject] || [];
-            } else {
-                // For non-composite subjects (like Mathematics)
-                chapters = currentSubjectData;
-            }
-
-            // At this point, sub-subject selection area might be hidden for non-composite subjects
-            if (subject !== 'Science' && subject !== 'Social_Science') {
-                subSubjectSelectionEl.classList.add('hidden');
-            }
-
-
-            chapterCardsEl.innerHTML = ''; // Clear previous content
-
-            if (chapters.length === 0) {
-                 chapterCardsEl.innerHTML = `<p class="col-span-full text-gray-500 italic">No chapters defined for ${subject} ${selectedSubSubject ? ' - ' + selectedSubSubject : ''}.</p>`;
-                 return;
-            }
-
-            chapters.forEach(chapter => {
-                const cardHtml = `
-                    <div class="card cursor-pointer chapter-card border-2 border-transparent hover:border-cbse-blue" 
-                         data-topic-id="${chapter.id}" data-topic-title="${chapter.title}">
-                        <h3 class="text-lg font-bold text-cbse-blue">${chapter.title}</h3>
-                        <p class="text-sm text-gray-500 mt-1">Ready for quiz drill.</p>
-                        <i data-lucide="chevron-right" class="h-5 w-5 absolute top-5 right-5 text-gray-400"></i>
-                    </div>
-                `;
-                chapterCardsEl.insertAdjacentHTML('beforeend', cardHtml);
-            });
-
-            // Attach event listeners to new chapter cards
-            chapterCardsEl.querySelectorAll('.chapter-card').forEach(card => {
-                card.addEventListener('click', (e) => {
-                    handleChapterSelection(card.dataset.topicId, card.dataset.topicTitle, card);
+                subSubjectNames.forEach(subSubName => {
+                    const card = document.createElement('div');
+                    card.className = 'sub-subject-btn card flex flex-col justify-between cursor-pointer transition-all duration-200 hover:border-cbse-blue';
+                    card.setAttribute('data-sub-subject', subSubName);
+                    
+                    const chaptersCount = subSubjects[subSubName].length;
+                    
+                    card.innerHTML = `
+                        <h4 class="text-xl font-bold text-heading mb-2">${subSubName.replace(/_/g, ' ')}</h4>
+                        <p class="text-sm text-gray-600">${chaptersCount} Chapters available.</p>
+                    `;
+                    
+                    card.addEventListener('click', (e) => {
+                        handleSubSubjectSelection(subSubName, e.currentTarget);
+                    });
+                    
+                    subSubjectListEl.appendChild(card);
                 });
-            });
 
-            lucide.createIcons(); // Re-render Lucide icons
+                // Update title to prompt sub-subject selection
+                pageTitleEl.textContent = `${currentSubject.replace(/_/g, ' ')} - Select Sub-Subject`;
+                subjectSelectionContainerEl.classList.remove('hidden');
+                chapterSelectionContainerEl.classList.add('hidden');
+                difficultySelectionContainerEl.classList.add('hidden');
+
+            } else if (subSubjects && Array.isArray(subSubjects)) {
+                // If subSubjects is an array (Mathematics/English), render chapters directly
+                selectedSubSubject = ''; // No sub-subject
+                subjectSelectionContainerEl.classList.add('hidden');
+                renderChapters(classId, subject, '');
+            } else {
+                 // No data found
+                pageTitleEl.textContent = `Error: Curriculum Not Found for ${subject}`;
+                subjectSelectionContainerEl.innerHTML = `<p class="text-red-500">No chapters/sub-subjects found for this subject.</p>`;
+                chapterSelectionContainerEl.classList.add('hidden');
+                difficultySelectionContainerEl.classList.add('hidden');
+            }
+        }
+
+        function renderChapters(classId, subject, subSubject) {
+            topicListEl.innerHTML = ''; // Clear previous chapters
+
+            let chapters = [];
+
+            if (subSubject) {
+                chapters = curriculumData[classId]?.[subject]?.[subSubject] || [];
+                pageTitleEl.textContent = `${subSubject.replace(/_/g, ' ')} Chapters`;
+            } else {
+                 // For subjects like Math/Hindi which don't have sub-subjects
+                 chapters = curriculumData[classId]?.[subject] || [];
+                 pageTitleEl.textContent = `${subject.replace(/_/g, ' ')} Chapters`;
+            }
+            
+            if (chapters.length > 0) {
+                chapters.forEach(chapter => {
+                    const button = document.createElement('button');
+                    button.className = 'topic-btn';
+                    button.setAttribute('data-topic-id', chapter.id);
+                    button.innerHTML = `
+                        <span class="text-left font-semibold text-gray-800">${chapter.title}</span>
+                        <i data-lucide="chevron-right" class="w-5 h-5 text-cbse-blue"></i>
+                    `;
+                    button.addEventListener('click', (e) => {
+                        handleTopicSelection(chapter.id, e.currentTarget);
+                    });
+                    topicListEl.appendChild(button);
+                });
+                chapterSelectionContainerEl.classList.remove('hidden');
+            } else {
+                topicListEl.innerHTML = `<p class="text-center text-gray-500">No chapters available for this section yet.</p>`;
+                chapterSelectionContainerEl.classList.remove('hidden'); // Still show container with message
+            }
+             // Re-initialize Lucide icons for newly created elements
+            lucide.createIcons();
         }
 
         function handleStartQuiz() {
             if (selectedTopic && selectedDifficulty) {
-                const params = new URLSearchParams(window.location.search);
-                const subject = params.get('subject') || '';
-                
-                // Class and Subject are required
-                if (!subject) {
-                     errorMessageEl.textContent = 'A subject is required to start the quiz.';
-                     errorMessageEl.classList.remove('hidden');
-                     return;
-                }
-
                 // Pass the necessary parameters to the quiz engine
-                let url = `quiz-engine.html?class=${CLASS_ID}&subject=${subject}&topic=${selectedTopic}&difficulty=${selectedDifficulty}`;
+                let url = `quiz-engine.html?class=${currentClass}&subject=${currentSubject}&topic=${selectedTopic}&difficulty=${selectedDifficulty}`;
                 
-                // Only include sub_subject if it was selected (i.e., for Science/Social Science)
                 if (selectedSubSubject) {
                     url += `&sub_subject=${selectedSubSubject}`;
                 }
                 
-                // NOTE: Enforcing Motion topic for pilot, as per user request.
-                if (selectedTopic !== 'motion') {
-                    errorMessageEl.textContent = 'Pilot is restricted to the "Motion" chapter only. Please select Motion.';
-                    errorMessageEl.classList.remove('hidden');
-                    return;
-                }
-                
                 window.location.href = url;
             } else {
-                errorMessageEl.textContent = 'Please select both a Chapter and a Difficulty level to start the quiz.';
                 errorMessageEl.classList.remove('hidden');
             }
         }
 
-        // --- INITIALIZATION ---\n
+        // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
-            renderChapters(); // Renders sub-subjects or chapters based on URL
             
+            const params = new URLSearchParams(window.location.search);
+            currentSubject = params.get('subject') || 'Science';
+            currentClass = params.get('class') || '9';
+            
+            // Check if currentClass/currentSubject is valid before proceeding
+            if (currentClass in curriculumData && currentSubject in curriculumData[currentClass]) {
+                 renderSubSubjects(currentClass, currentSubject);
+            } else {
+                pageTitleEl.textContent = "Error: Invalid Subject/Class";
+                subjectSelectionContainerEl.innerHTML = `<p class="text-red-500">The requested subject or class could not be found in the curriculum data.</p>`;
+            }
+
             // Attach event listeners to difficulty buttons
             difficultySelectionEl.querySelectorAll('.difficulty-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
@@ -357,14 +328,6 @@
             });
 
             startQuizBtn.addEventListener('click', handleStartQuiz);
-            
-            // Initial check for required parameters
-            const params = new URLSearchParams(window.location.search);
-            if (params.get('subject') === 'Science' && !selectedSubSubject) {
-                // If on Science page, wait for sub-subject selection
-                chapterPlaceholderEl.textContent = 'Please select a stream (Physics, Chemistry, or Biology) above.';
-            }
-
         });
     </script>
 </body>
