@@ -37,6 +37,7 @@ function parseUrlParameters() {
     
     // Enforce the requirement: only run the quiz if the topic is 'motion'
     if (quizState.topicSlug !== 'motion') {
+         // Fix: Uses UI.showStatus here
          UI.showStatus(`
             <span class="text-red-500">Error: Invalid Topic.</span> 
             This quiz engine is currently configured ONLY for the **Motion** topic. Found: ${quizState.topicSlug}
@@ -251,7 +252,7 @@ async function initQuizEngine() {
         
     } catch (error) {
         console.error("[ENGINE FATAL] Initialization failed:", error);
-        // FIX: The error was here. It must be UI.showStatus, not UI.updateStatus.
+        // FIX: This line is changed from UI.updateStatus to UI.showStatus
         UI.showStatus(`
             <span class="text-red-600">CRITICAL ERROR: Initialization Failed.</span> 
             <p class="mt-2">Reason: ${error.message}</p>
