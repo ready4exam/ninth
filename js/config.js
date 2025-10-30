@@ -1,5 +1,4 @@
-// js/config.js (Corrected version)
-
+// js/config.js
 // Centralized configuration and initialization for all services (Firebase/Firestore/Auth and Supabase).
 
 // --- Mandatory Global Variables ---
@@ -14,7 +13,7 @@ import {
     signInWithCustomToken, 
     onAuthStateChanged, 
     signOut as firebaseSignOut
-    // setLogLevel REMOVED
+    // setLogLevel REMOVED: This function is not a named export from the module.
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
@@ -89,7 +88,19 @@ export function getInitializedClients() {
         console.error("[CONFIG ERROR] Attempted to get clients before initialization.");
         throw new Error("Core services must be initialized first.");
     }
+    // Changed to return both supabase and db as needed by other modules (e.g., api.js)
     return { supabase, db, auth };
+}
+
+/**
+ * Retrieves the Firebase Auth instance.
+ */
+export function getAuthInstance() {
+    if (!isInitialized) {
+        console.error("[CONFIG ERROR] Attempted to get auth instance before initialization.");
+        throw new Error("Core services must be initialized first.");
+    }
+    return auth;
 }
 
 /**
