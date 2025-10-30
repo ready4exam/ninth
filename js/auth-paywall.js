@@ -60,8 +60,9 @@ const checkAccess = () => {
 
 /**
  * Initializes the Auth components and sets up listeners.
+ * RENAMED to initializeAuthListener to fix dependency error in quiz-engine.js
  */
-const initializeAuthPaywall = async () => {
+const initializeAuthListener = async () => {
     try {
         const auth = getAuthInstance();
         
@@ -133,4 +134,4 @@ const signInWithGoogle = () => {
 };
 
 // This is the ONLY place where functions are exported.
-export { signInWithGoogle, getGoogleRedirectResult, initializeAuthPaywall, checkAccess };
+export { signInWithGoogle, getGoogleRedirectResult, initializeAuthListener, checkAccess };
