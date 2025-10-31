@@ -32,7 +32,7 @@ function getTableName(topic) {
     "matter_pure": "matter_pure",                        // Chapter 2
     "is_matter_around_us_pure": "matter_pure",
     "atom_molecules": "atom_molecules",                  // Chapter 3
-    "atoms_and_molecules": "atom_molecules",
+    "atoms_and_molecules": "atoms_molecules",
     "structure_atom": "structure_atom",                  // Chapter 4
     "structure_of_the_atom": "structure_atom",
   };
