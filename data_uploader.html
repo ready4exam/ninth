@@ -3,16 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ready4Exam | CSV Upload Tool</title>
+  <title>Ready4Exam | CSV Paste & Upload</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100 text-gray-800">
   <div class="max-w-3xl mx-auto my-10 bg-white shadow-xl rounded-2xl p-6">
-    <h1 class="text-3xl font-bold text-center text-indigo-600 mb-6">📘 Ready4Exam CSV Upload Tool</h1>
+    <h1 class="text-3xl font-bold text-center text-indigo-600 mb-6">
+      📘 Ready4Exam CSV Upload Tool
+    </h1>
 
-    <!-- Subject Selection -->
+    <!-- Subject -->
     <div class="mb-4">
       <label class="block text-gray-700 font-semibold mb-2">Subject</label>
       <select id="subjectSelect" class="w-full border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-400">
@@ -23,11 +24,11 @@
       </select>
     </div>
 
-    <!-- Chapter / Table Selection -->
+    <!-- Chapter -->
     <div class="mb-6">
       <label class="block text-gray-700 font-semibold mb-2">Chapter / Table</label>
       <select id="chapterSelect" class="w-full border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-400">
-        <!-- Science Chapters -->
+        <!-- Science -->
         <optgroup label="Science">
           <option value="fundamental_unit">The Fundamental Unit of Life</option>
           <option value="tissue">Tissues</option>
@@ -36,14 +37,14 @@
           <option value="cell_structure">Cell Structure and Functions</option>
         </optgroup>
 
-        <!-- Mathematics Chapters -->
+        <!-- Mathematics -->
         <optgroup label="Mathematics">
           <option value="number_systems">Number Systems</option>
           <option value="polynomials">Polynomials</option>
           <option value="coordinate_geometry">Coordinate Geometry</option>
         </optgroup>
 
-        <!-- Social Science Chapters -->
+        <!-- Social Science -->
         <optgroup label="Social Science">
           <option value="french_revolution">The French Revolution</option>
           <option value="natural_vegetation">Natural Vegetation and Wildlife</option>
@@ -52,29 +53,34 @@
       </select>
     </div>
 
-    <!-- CSV Upload -->
+    <!-- CSV Paste Area -->
     <div class="mb-4">
-      <label class="block text-gray-700 font-semibold mb-2">Upload CSV</label>
-      <input type="file" id="csvFile" accept=".csv" class="w-full border rounded-lg p-2" />
+      <label class="block text-gray-700 font-semibold mb-2">Paste CSV Data Here</label>
+      <textarea id="csvInput" rows="12"
+        class="w-full border rounded-lg p-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        placeholder="Paste your CSV content here (including header line)..."></textarea>
     </div>
 
-    <button id="uploadBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg font-semibold">
-      Parse CSV & Insert into Supabase
+    <!-- Upload Button -->
+    <button id="uploadBtn"
+      class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg font-semibold">
+      🚀 Upload to Supabase
     </button>
 
+    <!-- Log Output -->
     <pre id="log" class="bg-gray-100 mt-6 p-4 rounded-lg h-64 overflow-y-auto text-sm text-gray-700 border"></pre>
   </div>
 
   <script>
-    // Initialize Supabase
-    const SUPABASE_URL = "https://https://gkyvojcmqsgdynmitcuf.supabase.co";
+    // 🧠 Supabase Setup
+    const SUPABASE_URL = "https://gkyvojcmqsgdynmitcuf.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdreXZvamNtcXNnZHlubWl0Y3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3NDQ0OTcsImV4cCI6MjA3NjMyMDQ5N30.5dn5HbXxQ5sYNECS9o3VxVeyL6I6Z2Yf-nmPwztx1hE";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const uploadBtn = document.getElementById('uploadBtn');
-    const csvFileInput = document.getElementById('csvFile');
-    const logEl = document.getElementById('log');
+    const csvInput = document.getElementById('csvInput');
     const chapterSelect = document.getElementById('chapterSelect');
+    const logEl = document.getElementById('log');
 
     const DB_COLUMNS = [
       'difficulty',
@@ -88,58 +94,58 @@
       'correct_answer_key'
     ];
 
-    const log = msg => {
+    const log = (msg) => {
       console.log(msg);
       logEl.textContent += msg + "\n";
     };
 
     function parseCSV(csvText) {
-      // Normalize BOM + line endings
-      csvText = csvText.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
-      const { data } = Papa.parse(csvText.trim(), { header: true, skipEmptyLines: true });
+      // Clean BOM, normalize newlines
+      csvText = csvText.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').trim();
 
-      if (!data.length) throw new Error("CSV file appears empty.");
-
-      // Validate header
-      const header = Object.keys(data[0]).map(h => h.trim().toLowerCase());
+      const lines = csvText.split('\n').filter(l => l.trim());
+      const header = lines[0].split(',').map(h => h.trim().replace(/['"]+/g, '').toLowerCase());
       const expected = DB_COLUMNS.map(c => c.toLowerCase());
       const headerOk = expected.every(col => header.includes(col));
 
       if (!headerOk) {
-        throw new Error(
-          `Header mismatch. Expected: ${expected.join(', ')}\nFound: ${header.join(', ')}`
-        );
+        throw new Error(`Header mismatch.\nExpected: ${expected.join(', ')}\nFound: ${header.join(', ')}`);
       }
-      return data;
+
+      const rows = lines.slice(1).map(line => {
+        const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+        const row = {};
+        expected.forEach((col, idx) => {
+          row[col] = values[idx] || '';
+        });
+        return row;
+      });
+
+      return rows;
     }
 
     uploadBtn.addEventListener('click', async () => {
-      const file = csvFileInput.files[0];
-      if (!file) return alert("Please select a CSV file first.");
+      const csvText = csvInput.value.trim();
+      const tableName = chapterSelect.value.trim().toLowerCase();
 
-      const tableName = chapterSelect.value.trim();
-      if (!tableName) return alert("Please select a chapter/table first.");
+      if (!csvText) return alert("Please paste CSV data first.");
+      if (!tableName) return alert("Please select a chapter (table).");
 
       logEl.textContent = "";
-      log(`📂 Reading file: ${file.name}`);
+      log(`📋 Parsing CSV for table "${tableName}"...`);
 
-      const reader = new FileReader();
-      reader.onload = async e => {
-        try {
-          const csvText = e.target.result;
-          const rows = parseCSV(csvText);
-          log(`✅ Parsed ${rows.length} rows. Inserting into table "${tableName}"...`);
+      try {
+        const rows = parseCSV(csvText);
+        log(`✅ Parsed ${rows.length} rows. Uploading to Supabase...`);
 
-          const { data, error } = await supabaseClient.from(tableName).insert(rows);
-          if (error) throw error;
+        const { data, error } = await supabaseClient.from(tableName).insert(rows);
+        if (error) throw error;
 
-          log(`🎉 Successfully inserted ${rows.length} rows into "${tableName}".`);
-        } catch (err) {
-          console.error(err);
-          log(`❌ Error: ${err.message}`);
-        }
-      };
-      reader.readAsText(file);
+        log(`🎉 Successfully inserted ${rows.length} rows into "${tableName}".`);
+      } catch (err) {
+        log(`❌ Error: ${err.message}`);
+        console.error(err);
+      }
     });
   </script>
 </body>
