@@ -7,11 +7,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     
-   <script>
-    const SUPABASE_URL = "https://gkyvojcmqsgdynmitcuf.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdreXZvamNtcXNnZHlubWl0Y3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3NDQ0OTcsImV4cCI6MjA3NjMyMDQ5N30.5dn5HbXxQ5sYNECS9o3VxVeyL6I6Z2Yf-nmPwztx1hE";
-    // NOTE: If you are using this method, the warning comment in the HTML is now irrelevant.
-</script>
+    <!-- 
+        *** CONFIGURATION REQUIRED ***
+        The Supabase credentials are now loaded from the external file ./js/config.js.
+        Ensure that file exists and correctly defines SUPABASE_URL and SUPABASE_ANON_KEY.
+    -->
+    <script src="./js/config.js"></script>
     
     <script>
         tailwind.config = {
@@ -36,13 +37,17 @@
             **Step 2:** Paste the Gemini-generated CSV and click upload.
         </p>
 
+        <!-- Input Fields -->
         <div class="space-y-4 mb-6">
+            <!-- 1. Subject Selector -->
             <div>
                 <label for="subject-select" class="block text-sm font-medium text-gray-700">1. Select Subject</label>
                 <select id="subject-select" onchange="handleSubjectChange()" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-accent-green focus:border-accent-green">
-                    </select>
+                    <!-- Subjects will be populated here -->
+                </select>
             </div>
 
+            <!-- 2. Chapter Selector (Dependent on Subject) -->
             <div>
                 <label for="table-name-select" class="block text-sm font-medium text-gray-700">2. Select Chapter / Table Name</label>
                 <select id="table-name-select" onchange="updateTableNameDisplay()" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-accent-green focus:border-accent-green" disabled>
@@ -50,28 +55,33 @@
                 </select>
             </div>
             
+            <!-- NEW: Read-Only Table Name Display for Copying -->
             <div>
                 <label for="current-table-name" class="block text-sm font-medium text-gray-700">Selected Supabase Table Name (Copy this into your prompt)</label>
                 <input type="text" id="current-table-name" readonly placeholder="Table name will appear here after selecting a chapter..." 
-                        class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm bg-gray-100 text-primary-blue font-mono cursor-copy">
+                       class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm bg-gray-100 text-primary-blue font-mono cursor-copy">
             </div>
 
+            <!-- 3. CSV Input -->
             <div>
                 <label for="csv-input" class="block text-sm font-medium text-gray-700">3. Paste Gemini CSV Output Here (Including Header)</label>
                 <textarea id="csv-input" rows="10" placeholder="Paste your 60-question CSV output from Gemini here..." class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-accent-green focus:border-accent-green"></textarea>
             </div>
         </div>
 
+        <!-- Conversion Button -->
         <button id="automate-button" onclick="startAutomation()"
                 class="w-full px-6 py-3 text-lg font-bold text-white bg-accent-green rounded-lg shadow-md hover:bg-green-700 transition duration-150">
-            4. Create Table, Parse CSV & Insert Data
+            4. Parse CSV & Insert Data into Supabase
         </button>
 
+        <!-- Messages & Log Area -->
         <div id="status-log" class="mt-8 space-y-2">
             <h2 class="text-xl font-semibold text-gray-700 mb-3">Process Log:</h2>
             <p id="log-initial" class="text-gray-500">Ready to start...</p>
         </div>
         
+        <!-- Configuration Warning -->
         <div id="config-error" class="hidden error-message mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
             **Configuration Error 🛑** Supabase credentials (`SUPABASE_URL`, `SUPABASE_ANON_KEY`) were not found. Please ensure the file **./js/config.js** exists and contains the correct definitions.
         </div>
@@ -158,20 +168,6 @@
             'question_text', 'scenario_reason_text', 'option_a', 'option_b', 'option_c', 'option_d'
         ];
 
-        // SQL template for table creation (excluding id and created_at)
-        const BASE_TABLE_SCHEMA = `
-            difficulty text not null,
-            question_type text not null,
-            question_text text not null,
-            scenario_reason_text text null,
-            option_a text not null,
-            option_b text not null,
-            option_c text not null,
-            option_d text not null,
-            correct_answer_key text not null
-        `;
-
-
         let supabaseClient;
         let button;
         let log;
@@ -192,8 +188,11 @@
             return cleaned.replace(/\s\s+/g, ' ').trim();
         }
 
-        // --- Dropdown Management Functions (Unchanged) ---
+        // --- Dropdown Management Functions ---
         
+        /**
+         * Updates the read-only input field with the currently selected table name.
+         */
         function updateTableNameDisplay() {
             const tableSelect = document.getElementById('table-name-select');
             const tableInput = document.getElementById('current-table-name');
@@ -207,9 +206,12 @@
         }
 
 
+        /**
+         * Populates the main Subject dropdown.
+         */
         function populateSubjectSelect() {
             const select = document.getElementById('subject-select');
-            select.innerHTML = ''; 
+            select.innerHTML = ''; // Clear existing options
             
             const defaultOption = document.createElement('option');
             defaultOption.value = "";
@@ -218,20 +220,25 @@
             defaultOption.selected = true;
             select.appendChild(defaultOption);
 
+            // Populate with keys from the syllabus data
             Object.keys(NCERT_SYLLABUS).forEach(subjectKey => {
                 const option = document.createElement('option');
                 option.value = subjectKey;
+                // Capitalize the first letter for display
                 option.textContent = subjectKey.charAt(0).toUpperCase() + subjectKey.slice(1).replace('_', ' '); 
                 select.appendChild(option);
             });
         }
         
+        /**
+         * Populates the Chapter dropdown based on the selected Subject.
+         */
         function handleSubjectChange() {
             const subjectSelect = document.getElementById('subject-select');
             const chapterSelect = document.getElementById('table-name-select');
             const selectedSubject = subjectSelect.value;
 
-            chapterSelect.innerHTML = ''; 
+            chapterSelect.innerHTML = ''; // Clear existing chapters
             chapterSelect.disabled = true;
 
             const defaultOption = document.createElement('option');
@@ -252,16 +259,18 @@
                 chapterSelect.disabled = false;
             }
             
+            // Crucial: Clear the table name display field on subject change
             updateTableNameDisplay();
         }
 
 
-        // --- Initialization and Logging (Unchanged) ---
+        // --- Initialization and Logging ---
 
         function init() {
             log = document.getElementById('status-log');
             button = document.getElementById('automate-button');
             
+            // Populate both dropdown menus
             populateSubjectSelect();
             handleSubjectChange(); // Initialize the chapter dropdown state
 
@@ -277,8 +286,6 @@
             
             // Initialize Supabase Client
             try {
-                // NOTE: Using a service role key here would allow table creation without a custom Postgres function.
-                // Since only anon key is available, we'll assume a custom function is used.
                 supabaseClient = supabase.createClient(
                     window.SUPABASE_URL,
                     window.SUPABASE_ANON_KEY
@@ -310,7 +317,7 @@
             button.textContent = text;
         }
         
-        // --- Robust CSV Parsing Logic (Unchanged) ---
+        // --- Robust CSV Parsing Logic (Kept consistent with previous fixes) ---
 
         const CSV_REGEX = /(?!\s*$",)(?!\s*$)\s*(?:(?:"((?:[^"]|"")*)")|([^",]*))\s*(?:,|$)/g;
 
@@ -352,49 +359,17 @@
 
                 const fields = line.match(CSV_REGEX);
 
-                // Check for exact column count
-                // The regex might return an extra empty match if the line ends with a comma, 
-                // so a robust check is crucial. We expect exactly DB_COLUMNS.length fields.
-                let parsedFields = [];
-                if (fields) {
-                    // This robust regex captures an empty string for the last field if missing, 
-                    // so we need to process the matches.
-                    for (let f = 0; f < fields.length; f++) {
-                        // The regex should capture all fields correctly. We assume here it returns 
-                        // one match per column as designed.
-                        const field = fields[f];
-                        let value = field.match(/"((?:[^"]|"")*)"|([^",]*)/)?.[1] || field.match(/"((?:[^"]|"")*)"|([^",]*)/)?.[2];
-                        value = value ? value.trim().replace(/^"|"$/g, '').replace(/""/g, '"') : "";
-                        
-                        // Stop if we exceed the expected column count
-                        if (parsedFields.length >= DB_COLUMNS.length) break;
-                        
-                        // We need to match the logic exactly. The original code was using fields[j]
-                        // which assumes the regex returns only the field value. Let's rely on a simpler split 
-                        // for the count check, then use the robust parse below.
-                        // Re-running a simple split check for safety:
-                        const simpleSplit = line.split(',');
-                        if (simpleSplit.length !== DB_COLUMNS.length) {
-                             logMessage(`Skipping row ${i + 1} due to incorrect column count (${simpleSplit.length} found, expected ${DB_COLUMNS.length}). Line data: ${line.substring(0, 50)}...`, 'warning');
-                             continue;
-                        }
-                        
-                        // Reset parsing logic to match the existing robust field extraction from the loop:
-                        parsedFields.push(field); 
-                    }
+                if (!fields || fields.length !== DB_COLUMNS.length) {
+                    logMessage(`Skipping row ${i + 1} due to incorrect column count (${fields ? fields.length : 0} found, expected ${DB_COLUMNS.length}). Line data: ${line.substring(0, 50)}...`, 'warning');
+                    continue;
                 }
-                
-                if (parsedFields.length !== DB_COLUMNS.length) {
-                    continue; // Skip if parsing failed on the robust check as well
-                }
-
 
                 let rowData = {};
                 rowData[timestampCol] = new Date().toISOString();
 
                 for (let j = 0; j < DB_COLUMNS.length; j++) {
                     const colName = DB_COLUMNS[j];
-                    const field = parsedFields[j]; // Use parsedFields now
+                    const field = fields[j];
 
                     let value = field.match(/"((?:[^"]|"")*)"|([^",]*)/)?.[1] || field.match(/"((?:[^"]|"")*)"|([^",]*)/)?.[2];
                     
@@ -428,6 +403,8 @@
         async function insertDataIntoSupabase(tableName, data) {
             logMessage(`Attempting to insert ${data.length} records into table **${tableName}**...`);
             
+            // NOTE: The table must already exist in Supabase and have RLS policies set up
+            // to allow anonymous or authenticated inserts, as this client is using the anon key.
             const { data: insertedData, error } = await supabaseClient
                 .from(tableName)
                 .insert(data)
@@ -443,84 +420,7 @@
             return insertedData;
         }
 
-
-        // --- NEW: Supabase Table Creation Logic ---
-
-        /**
-         * Sends an RPC call to a Supabase Function (e.g., 'create_quiz_table') 
-         * to execute the dynamic DDL, which cannot be done directly via the client 
-         * without using a service role key.
-         * * NOTE: This requires the existence of a Supabase Postgres function named
-         * `create_quiz_table` that accepts the table name and the schema (as text)
-         * and executes the DDL using `EXECUTE`.
-         */
-        async function createTableWithRLS(tableName) {
-            logMessage(`Attempting to create table **${tableName}** with RLS policies...`);
-
-            // The DDL to create the table and policies
-            const ddlScript = `
-                -- Create table
-                CREATE TABLE public."${tableName}" (
-                    id bigint generated by default as identity not null,
-                    created_at timestamp with time zone null default timezone ('utc'::text, now()),
-                    ${BASE_TABLE_SCHEMA},
-                    constraint "${tableName}_pkey" primary key (id)
-                ) TABLESPACE pg_default;
-
-                -- Enable RLS
-                ALTER TABLE public."${tableName}" ENABLE ROW LEVEL SECURITY;
-
-                -- Policy 1: Enable insert for authenticated users
-                CREATE POLICY "Enable insert for authenticated users"
-                    ON public."${tableName}"
-                    AS PERMISSIVE FOR INSERT
-                    TO authenticated
-                    WITH CHECK (true);
-
-                -- Policy 2: Enable read access for all users
-                CREATE POLICY "Enable read access for all users"
-                    ON public."${tableName}"
-                    AS PERMISSIVE FOR SELECT
-                    TO public
-                    USING (true);
-            `;
-            
-            /**
-             * WARNING: Supabase does not allow dynamic table creation (DDL) using the 
-             * standard client (anon or auth keys) for security reasons.
-             * To make this work, you must create a Postgres function in your Supabase
-             * dashboard (e.g., named 'execute_ddl') with the SECURITY DEFINER property
-             * and grant usage to the 'authenticated' or 'anon' role.
-             * * Example PostgreSQL Function (Must be created in Supabase SQL Editor):
-             * * CREATE OR REPLACE FUNCTION execute_ddl(ddl_script text)
-             * RETURNS void 
-             * LANGUAGE plpgsql
-             * SECURITY DEFINER -- Crucial: runs as a superuser to execute DDL
-             * AS $$
-             * BEGIN
-             * EXECUTE ddl_script;
-             * END
-             * $$;
-             * * GRANT EXECUTE ON FUNCTION execute_ddl(text) TO authenticated;
-             */
-            
-            // Execute the DDL script via the RPC function
-            const { data, error } = await supabaseClient.rpc('execute_ddl', { ddl_script: ddlScript });
-            
-            if (error) {
-                if (error.code === '42P07' && error.message.includes('already exists')) {
-                    logMessage(`Table **${tableName}** already exists. Skipping creation and proceeding to insertion.`, 'warning');
-                    return true; // Table exists, consider it a success
-                }
-                logMessage(`Creation failed: Check if the 'execute_ddl' function is correctly set up in Supabase.`, 'error');
-                throw new Error(`Supabase DDL Error (Code ${error.code}): ${error.message}`);
-            }
-
-            logMessage(`Table **${tableName}** created and RLS policies applied successfully.`, 'success');
-            return true;
-        }
-
-        // --- Main Automation Workflow (Modified) ---
+        // --- Main Automation Workflow ---
 
         async function startAutomation() {
             if (!supabaseClient) {
@@ -540,39 +440,29 @@
                 return;
             }
             if (!csvInput) {
-                // Allow proceeding if the user wants to check table status/creation without a CSV
-                logMessage('Warning: No CSV data pasted. Proceeding to table creation check only.', 'warning');
+                logMessage('Please paste the CSV data into the text area.', 'error');
+                return;
             }
 
-            setButtonState(true, `Processing: Creating/Checking table '${tableName}'...`);
+            setButtonState(true, `Processing: Parsing CSV for table '${tableName}'...`);
             
             try {
-                // 1. Create/Check Supabase Table and RLS
-                await createTableWithRLS(tableName);
-                
-                // If CSV is empty, we stop here as requested, confirming table creation.
-                if (!csvInput) {
-                    logMessage(`Table **${tableName}** successfully created/confirmed. Upload a CSV to insert data.`, 'success');
-                    setButtonState(false, 'Table Ready. Upload CSV to Insert Data');
-                    return;
-                }
-
-                // 2. Parse CSV Data (Only if CSV is present)
-                setButtonState(true, `Processing: Parsing CSV for table '${tableName}'...`);
+                // 1. Parse CSV Data
                 const quizData = parseCSV(csvInput);
                 
                 if (!quizData || quizData.length === 0) {
                     throw new Error("No valid data rows were parsed from the CSV.");
                 }
+                logMessage(`Content Parsed: Ready to insert **${quizData.length}** records into table **${tableName}**.`, 'success');
 
-                // 3. Insert Data into Supabase
-                setButtonState(true, `Processing: Inserting ${quizData.length} records into table '${tableName}'...`);
+                // 2. Insert Data into Supabase
+                setButtonState(true, `Processing: Inserting into Supabase table '${tableName}'...`);
                 const insertedRecords = await insertDataIntoSupabase(tableName, quizData);
                 
-                // 4. Complete
-                logMessage(`**Data successfully inserted!** **${insertedRecords.length}** records added to table **${tableName}**.`, 'success');
+                // 3. Complete
+                logMessage(`2. Data successfully inserted! **${insertedRecords.length}** records added to table **${tableName}**.`, 'success');
                 logMessage('Automation Complete. You can now process another CSV.', 'success');
-                setButtonState(false, 'Process Another CSV');
+                setButtonState(false, 'Upload Another CSV');
 
             } catch (error) {
                 logMessage(`Automation Failed: ${error.message}`, 'error');
