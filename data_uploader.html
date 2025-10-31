@@ -79,8 +79,354 @@
     // If you prefer to set credentials here, set them to the window object.
     // Example (uncomment and replace with your keys) OR set them in a separate script before this file:
     //
+     window.SUPABASE_URL = "https://gkyvojcmqsgdynmitcuf.supabase.co";
+     window.SUPABASE_ANON_KEY = "<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CSV Quiz Processor & Uploader — Ready4Exam</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: { 'primary-blue': '#1a3e6a', 'accent-green': '#059669' }
+        }
+      }
+    };
+  </script>
+
+  <!-- Load Supabase client (UMD) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js"></script>
+
+  <style>
+    body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-6">
+
+  <div class="max-w-4xl mx-auto bg-white p-6 md:p-10 rounded-xl shadow-2xl border-t-8 border-primary-blue">
+    <h1 class="text-3xl font-extrabold text-primary-blue mb-2">CSV Quiz Processor & Uploader</h1>
+    <p class="text-gray-600 mb-6">Step 1: Choose Subject & Chapter. Step 2: Paste the Gemini-generated CSV (include header). Step 3: Parse & upload.</p>
+
+    <div class="space-y-4 mb-6">
+      <div>
+        <label class="block text-sm font-medium text-gray-700">1. Select Subject</label>
+        <select id="subject-select" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm"></select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">2. Select Chapter / Table Name</label>
+        <select id="table-name-select" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm" disabled>
+          <option value="">--- Select a Subject First ---</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Selected Supabase Table Name</label>
+        <input id="current-table-name" readonly class="mt-1 block w-full p-3 bg-gray-100 border border-gray-300 rounded-lg font-mono text-sm" placeholder="Table name will appear here" />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">3. Paste Gemini CSV Output (including header)</label>
+        <textarea id="csv-input" rows="10" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm" placeholder="Paste CSV here..."></textarea>
+      </div>
+    </div>
+
+    <div class="flex gap-3 items-center">
+      <button id="automate-button" class="flex-1 px-6 py-3 bg-accent-green text-white font-bold rounded-lg shadow hover:bg-green-700">Parse CSV & Insert into Supabase</button>
+      <button id="clear-button" class="px-4 py-3 bg-gray-200 rounded-lg hover:bg-gray-300">Clear</button>
+    </div>
+
+    <div id="status-log" class="mt-8">
+      <h2 class="text-xl font-semibold text-gray-700 mb-3">Process Log</h2>
+      <div id="log-entries" class="space-y-2">
+        <p id="log-initial" class="text-gray-500">Ready to start...</p>
+      </div>
+    </div>
+
+    <div id="config-error" class="hidden mt-6 p-4 bg-red-50 border border-red-200 rounded text-red-700">
+      Configuration missing: set <code>window.SUPABASE_URL</code> and <code>window.SUPABASE_ANON_KEY</code> before using this page.
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    // ---------- CONFIG ----------
+    // If you prefer to set credentials here, set them to the window object.
+    // Example (uncomment and replace with your keys) OR set them in a separate script before this file:
+    //
     // window.SUPABASE_URL = "https://gkyvojcmqsgdynmitcuf.supabase.co";
     // window.SUPABASE_ANON_KEY = "eyJhbGciOiJ...";
+
+    // --- NCERT SYLLABUS (Subject -> chapters with table name as 'value') ---
+    const NCERT_SYLLABUS = {
+      science: [
+        { name: "Motion", value: "motion" },
+        { name: "Force and Laws of Motion", value: "force" },
+        { name: "Gravitation", value: "gravitation" },
+        { name: "Work and Energy", value: "work_energy" },
+        { name: "Sound", value: "sound" },
+        { name: "Matter in Our Surroundings", value: "matter_surroundings" },
+        { name: "Is Matter Around Us Pure", value: "matter_pure" },
+        { name: "Atoms and Molecules", value: "atom_molecules" },
+        { name: "Structure of the Atom", value: "structure_atom" }
+      ],
+      social_science: [
+        { name: "The French Revolution", value: "french_revolution" },
+        { name: "India - Size and Location", value: "india_size" }
+      ],
+      maths: [
+        { name: "Number Systems", value: "number_systems" },
+        { name: "Polynomials", value: "polynomials" }
+      ]
+    };
+
+    // DB columns expected in CSV (header order). Adjust if your CSV header differs.
+    const DB_COLUMNS = [
+      'difficulty', 'question_type', 'question_text',
+      'scenario_reason_text', 'option_a', 'option_b', 'option_c', 'option_d',
+      'correct_answer_key'
+    ];
+
+    const LATEX_CLEANUP_COLUMNS = [
+      'question_text','scenario_reason_text','option_a','option_b','option_c','option_d'
+    ];
+
+    // ---------- DOM ----------
+    const subjectSelect = document.getElementById('subject-select');
+    const chapterSelect = document.getElementById('table-name-select');
+    const tableNameInput = document.getElementById('current-table-name');
+    const csvInput = document.getElementById('csv-input');
+    const automateButton = document.getElementById('automate-button');
+    const clearButton = document.getElementById('clear-button');
+    const logEntries = document.getElementById('log-entries');
+    const configError = document.getElementById('config-error');
+
+    let supabaseClient = null;
+
+    // ---------- Utilities ----------
+    function log(message, level = 'info') {
+      const p = document.createElement('div');
+      p.className = 'p-2 rounded';
+      if (level === 'info') p.classList.add('bg-gray-100','text-gray-700');
+      if (level === 'success') p.classList.add('bg-green-100','text-accent-green','font-semibold');
+      if (level === 'error') p.classList.add('bg-red-100','text-red-700','font-semibold');
+      if (level === 'warn') p.classList.add('bg-yellow-100','text-yellow-700');
+      p.innerHTML = `<small class="opacity-60">${new Date().toLocaleTimeString()}</small> — ${message}`;
+      logEntries.insertBefore(p, logEntries.children[1] || null);
+    }
+
+    function setButtonState(disabled, text) {
+      automateButton.disabled = disabled;
+      automateButton.textContent = text;
+      automateButton.classList.toggle('opacity-50', disabled);
+    }
+
+    function cleanLatex(input) {
+      if (input === null || typeof input !== 'string') return input;
+      let s = input.replace(/\$|\\\(|\\\)|\\\[|\\\]|{|}/g, '');
+      s = s.replace(/\\(text|mathbf|mathrm|unit|cdot|times|approx|sim|perp|parallel)\s*\{([^}]*)\}/g, '$2');
+      s = s.replace(/\\[a-zA-Z]+/g, ' ');
+      return s.replace(/\s\s+/g, ' ').trim();
+    }
+
+    // CSV parsing (reasonable robustness)
+    const CSV_FIELD_REGEX = /(?:\"((?:[^"]|"")*)\")|([^,]+)/g;
+
+    function parseCSV(csvString) {
+      const cleaned = csvString.trim().replace(/^\uFEFF/, '');
+      const lines = cleaned.split(/\r?\n/).filter(l => l.trim().length > 0);
+      if (lines.length < 2) throw new Error('CSV must include header and at least one data row.');
+
+      const header = lines[0].split(',').map(h => h.trim().replace(/['"]+/g,'').toLowerCase());
+      const expected = DB_COLUMNS.map(c => c.toLowerCase());
+      // allow header columns to contain expected columns (not necessarily exact order)
+      const headerOk = expected.every((col, idx) => header[idx] && header[idx].includes(col));
+      if (!headerOk) {
+        throw new Error(`Header mismatch. Expected: ${DB_COLUMNS.join(', ')}. Found: ${header.join(', ')}`);
+      }
+
+      const rows = [];
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        // Basic split that respects quoted fields:
+        const fields = [];
+        let match;
+        const re = /(?:"((?:[^"]|"")*)"|([^,]*))(?:,|$)/g;
+        while ((match = re.exec(line)) !== null) {
+          const val = match[1] !== undefined ? match[1].replace(/""/g,'"') : match[2];
+          fields.push(val === undefined ? '' : val);
+        }
+        if (fields.length < DB_COLUMNS.length) {
+          log(`Skipping row ${i+1}: expected ${DB_COLUMNS.length} columns but found ${fields.length}`, 'warn');
+          continue;
+        }
+        // Build row object
+        const obj = { created_at: new Date().toISOString() };
+        for (let j=0;j<DB_COLUMNS.length;j++){
+          let v = fields[j] ?? '';
+          v = v.trim();
+          if (!v || v.toLowerCase()==='nan' || v.toLowerCase()==='null') v = null;
+          if (v !== null && LATEX_CLEANUP_COLUMNS.includes(DB_COLUMNS[j])) v = cleanLatex(v);
+          obj[DB_COLUMNS[j]] = v;
+        }
+        rows.push(obj);
+      }
+      if (rows.length === 0) throw new Error('No valid rows parsed from CSV.');
+      return rows;
+    }
+
+    // ---------- Supabase insert ----------
+    async function insertDataIntoSupabase(table, rows) {
+      const { data, error } = await supabaseClient
+        .from(table)
+        .insert(rows)
+        .select();
+
+      if (error) {
+        // RLS or permission hint
+        if (/permission denied|violates row-level security|RLS/i.test(error.message)) {
+          throw new Error(`Supabase insertion error: ${error.message}. Check table RLS/policies for anon role.`);
+        }
+        throw new Error(`Supabase insertion error: ${error.message}`);
+      }
+      return data;
+    }
+
+    // ---------- UI helpers ----------
+    function populateSubjects() {
+      subjectSelect.innerHTML = '';
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = '--- Select Subject ---';
+      placeholder.selected = true;
+      placeholder.disabled = true;
+      subjectSelect.appendChild(placeholder);
+
+      Object.keys(NCERT_SYLLABUS).forEach(key => {
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = key.replace('_',' ').replace(/\b\w/g, c=>c.toUpperCase());
+        subjectSelect.appendChild(opt);
+      });
+    }
+
+    function populateChaptersFor(subjectKey) {
+      chapterSelect.innerHTML = '';
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = subjectKey ? '--- Select Chapter ---' : '--- Select a Subject First ---';
+      placeholder.selected = true;
+      placeholder.disabled = true;
+      chapterSelect.appendChild(placeholder);
+
+      if (subjectKey && NCERT_SYLLABUS[subjectKey]) {
+        NCERT_SYLLABUS[subjectKey].forEach(ch => {
+          const opt = document.createElement('option');
+          opt.value = ch.value;
+          opt.textContent = `${ch.name} (table: ${ch.value})`;
+          chapterSelect.appendChild(opt);
+        });
+        chapterSelect.disabled = false;
+      } else {
+        chapterSelect.disabled = true;
+      }
+      tableNameInput.value = '';
+    }
+
+    // ---------- Main workflow ----------
+    async function startAutomation() {
+      if (!supabaseClient) {
+        log('Supabase client not initialized.', 'error');
+        return;
+      }
+
+      const subj = subjectSelect.value;
+      const tableName = chapterSelect.value;
+      const csv = csvInput.value.trim();
+
+      if (!subj || !tableName) {
+        log('Please select both subject and chapter/table name.', 'error');
+        return;
+      }
+      if (!csv) {
+        log('Please paste CSV data before processing.', 'error');
+        return;
+      }
+
+      try {
+        setButtonState(true, 'Parsing CSV — please wait...');
+        log('Parsing CSV input...', 'info');
+        const rows = parseCSV(csv);
+        log(`Parsed ${rows.length} rows. Preparing to insert into '${tableName}'`, 'info');
+
+        setButtonState(true, `Inserting into ${tableName}...`);
+        const inserted = await insertDataIntoSupabase(tableName, rows);
+        log(`Success: ${inserted.length} records inserted into '${tableName}'`, 'success');
+        setButtonState(false, 'Parse CSV & Insert into Supabase');
+
+      } catch (err) {
+        log(`Automation failed: ${err.message}`, 'error');
+        setButtonState(false, 'Parse CSV & Insert into Supabase');
+      }
+    }
+
+    // ---------- Init ----------
+    function init() {
+      populateSubjects();
+      populateChaptersFor(); // initialize
+
+      // Wire events
+      subjectSelect.addEventListener('change', () => {
+        populateChaptersFor(subjectSelect.value);
+      });
+
+      chapterSelect.addEventListener('change', () => {
+        tableNameInput.value = chapterSelect.value || '';
+      });
+
+      automateButton.addEventListener('click', startAutomation);
+      clearButton.addEventListener('click', () => {
+        csvInput.value = '';
+        log('Cleared CSV input box.', 'info');
+      });
+
+      // Check config (allow credentials provided before this script)
+      if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
+        // If you want to embed credentials here, uncomment at top OR set them via a <script> before this file
+        configError.classList.remove('hidden');
+        log('Supabase credentials missing. Set window.SUPABASE_URL and window.SUPABASE_ANON_KEY.', 'error');
+        automateButton.disabled = true;
+        return;
+      }
+
+      try {
+        supabaseClient = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+        configError.classList.add('hidden');
+        log('Supabase client initialized. Ready to process CSV.', 'success');
+      } catch (e) {
+        log(`Failed to initialize Supabase: ${e.message}`, 'error');
+        automateButton.disabled = true;
+      }
+    }
+
+    // Launch
+    document.addEventListener('DOMContentLoaded', init);
+
+    // Expose minimal helpers for debugging if needed
+    window.startAutomation = startAutomation;
+    window.parseCSV = parseCSV;
+  })();
+  </script>
+</body>
+</html>
+";
 
     // --- NCERT SYLLABUS (Subject -> chapters with table name as 'value') ---
     const NCERT_SYLLABUS = {
