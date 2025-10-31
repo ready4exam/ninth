@@ -1,178 +1,332 @@
-// js/auth-paywall.js
-// -----------------------------------------------------------------------------
-// Handles Google Sign-In, Auth State, and Paywall Control
-// -----------------------------------------------------------------------------
+// js/ui-renderer.js
+import { cleanKatexMarkers } from "./utils.js";
 
-import { getInitializedClients } from "./config.js";
-import {
-  GoogleAuthProvider,
-  getRedirectResult as firebaseGetRedirectResult,
-  signInWithPopup,
-  signInWithRedirect,
-  onAuthStateChanged,
-  signOut as firebaseSignOut,
-  setPersistence,
-  browserLocalPersistence,
-} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+let els = {};
+let isInit = false;
 
-import * as UI from "./ui-renderer.js";
-
-const LOG_TAG = "[AUTH-PAYWALL]";
-let authInstance = null;
-let externalOnAuthChange = null;
-let isSigningIn = false;
-
-// -----------------------------------------------------------------------------
-// Google Auth Provider Setup
-// -----------------------------------------------------------------------------
-const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: "select_account" });
-
-if (window.__firebase_config) {
-  try {
-    const cfg = JSON.parse(window.__firebase_config);
-    if (cfg.clientId) googleProvider.clientId = cfg.clientId;
-  } catch (err) {
-    console.warn(LOG_TAG, "Could not parse clientId from config.", err);
-  }
+function normalizeReasonText(txt) {
+  if (!txt) return "";
+  return txt.replace(/^\s*(Reasoning|Reason|Context)\s*(\(R\))?\s*:\s*/i, "").trim();
 }
 
-// -----------------------------------------------------------------------------
-// Auth Client Getter
-// -----------------------------------------------------------------------------
-function getAuthInstance() {
-  if (!authInstance) {
-    try {
-      const { auth } = getInitializedClients();
-      if (!auth) throw new Error("Auth client not present");
-      authInstance = auth;
-    } catch (e) {
-      console.error(LOG_TAG, "Auth instance not available. Ensure config.initializeServices() ran.", e);
-      throw e;
+/* -----------------------------------
+   ELEMENT INITIALIZATION
+----------------------------------- */
+export function initializeElements() {
+  if (isInit) return;
+
+  els = {
+    title: document.getElementById("quiz-page-title"),
+    diffBadge: document.getElementById("difficulty-display"),
+    status: document.getElementById("status-message"),
+    list: document.getElementById("question-list"),
+    counter: document.getElementById("question-counter"),
+    prevButton: document.getElementById("prev-btn"),
+    nextButton: document.getElementById("next-btn"),
+    submitButton: document.getElementById("submit-btn"),
+    reviewScreen: document.getElementById("results-screen"),
+    score: document.getElementById("score-display"),
+    authNav: document.getElementById("auth-nav-container"),
+    paywallScreen: document.getElementById("paywall-screen"),
+    paywallContent: document.getElementById("paywall-content"),
+    quizContent: document.getElementById("quiz-content"),
+    reviewContainer: document.getElementById("review-container"),
+  };
+
+  if (!els.reviewContainer) {
+    const rc = document.createElement("div");
+    rc.id = "review-container";
+    rc.className = "w-full max-w-3xl text-left mb-8";
+    const resultsSection = document.getElementById("results-screen");
+    if (resultsSection) {
+      resultsSection.insertBefore(rc, resultsSection.querySelector(".flex") || null);
     }
+    els.reviewContainer = document.getElementById("review-container");
   }
-  return authInstance;
+
+  isInit = true;
+  console.log("[UI] Elements initialized.");
 }
 
-// -----------------------------------------------------------------------------
-// Internal Auth State Handler
-// -----------------------------------------------------------------------------
-function internalAuthChangeHandler(user) {
-  console.log(LOG_TAG, "Auth state changed →", user ? user.uid : "Signed Out");
-  if (typeof externalOnAuthChange === "function") {
-    try {
-      externalOnAuthChange(user);
-    } catch (e) {
-      console.error(LOG_TAG, "External onAuthChange callback error:", e);
+export function getElements() {
+  if (!isInit) initializeElements();
+  return els;
+}
+
+/* -----------------------------------
+   STATUS + HEADER
+----------------------------------- */
+export function showStatus(msg, cls = "text-gray-700") {
+  initializeElements();
+  if (!els.status) return;
+  els.status.innerHTML = msg;
+  els.status.className = `p-3 text-center font-semibold ${cls}`;
+  els.status.classList.remove("hidden");
+}
+export function hideStatus() {
+  initializeElements();
+  if (els.status) els.status.classList.add("hidden");
+}
+export function updateHeader(topic, diff) {
+  initializeElements();
+  if (els.title) {
+    const text =
+      typeof topic === "string" && topic.length
+        ? `${topic.replace(/_/g, " ").toUpperCase()} Quiz`
+        : "Ready4Exam Quiz";
+    els.title.textContent = text;
+  }
+  if (els.diffBadge) els.diffBadge.textContent = `Difficulty: ${diff || "--"}`;
+}
+
+/* -----------------------------------
+   AUTH LOADING OVERLAY
+----------------------------------- */
+export function showAuthLoading(message = "Signing you in — please wait...") {
+  initializeElements();
+  let overlay = document.getElementById("auth-loading-overlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "auth-loading-overlay";
+    overlay.className =
+      "fixed inset-0 bg-white/80 flex items-center justify-center z-50";
+    overlay.innerHTML = `
+      <div class="p-6 rounded-lg shadow-lg text-center max-w-lg bg-white">
+        <div class="text-2xl font-bold mb-2">Signing in</div>
+        <div class="text-sm text-gray-700 mb-4">${message}</div>
+        <div class="w-12 h-12 mx-auto mb-1">
+          <svg class="animate-spin w-12 h-12 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+          </svg>
+        </div>
+        <div class="text-xs text-gray-500 mt-2">
+          If the flow doesn't continue, check your popup or redirect settings.
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  } else {
+    const msgEl = overlay.querySelector(".text-sm.text-gray-700");
+    if (msgEl) msgEl.textContent = message;
+    overlay.classList.remove("hidden");
+  }
+}
+export function hideAuthLoading() {
+  const overlay = document.getElementById("auth-loading-overlay");
+  if (overlay) overlay.remove();
+}
+
+/* -----------------------------------
+   VIEW CONTROL
+----------------------------------- */
+export function showView(viewName) {
+  initializeElements();
+  const views = {
+    "quiz-content": els.quizContent,
+    "results-screen": els.reviewScreen,
+    "paywall-screen": els.paywallScreen,
+  };
+  Object.values(views).forEach((v) => v && v.classList.add("hidden"));
+  if (views[viewName]) views[viewName].classList.remove("hidden");
+}
+
+/* -----------------------------------
+   RENDER QUESTION
+----------------------------------- */
+export function renderQuestion(q, idxOneBased, selected, submitted) {
+  initializeElements();
+  if (!els.list) return;
+
+  const type = (q.question_type || "").toLowerCase();
+  const qText = cleanKatexMarkers(q.text || "");
+  let reasonRaw = q.explanation || q.scenario_reason || "";
+  const reason = normalizeReasonText(cleanKatexMarkers(reasonRaw));
+
+  let label = "";
+  if (type === "ar") label = "Reasoning (R)";
+  else if (type === "case") label = "Context";
+
+  const reasonHtml =
+    (type === "ar" || type === "case") && reason && !submitted
+      ? `<p class="text-gray-700 mt-2 mb-3">${label}: ${reason}</p>`
+      : "";
+
+  const submittedExplanationHtml =
+    submitted && (type === "ar" || type === "case") && reason
+      ? `<div class="mt-3 p-3 bg-gray-50 rounded text-gray-700 border border-gray-100"><b>${label}:</b> ${reason}</div>`
+      : "";
+
+  const optionsHtml = ["A", "B", "C", "D"]
+    .map((opt) => {
+      const txt = cleanKatexMarkers(q.options?.[opt] || "");
+      const isSel = selected === opt;
+      const isCorrect =
+        submitted && (q.correct_answer || "").toUpperCase() === opt;
+      const isWrong = submitted && isSel && !isCorrect;
+
+      let cls =
+        "option-label flex items-start p-3 border-2 rounded-lg cursor-pointer transition";
+      if (isCorrect) cls += " border-green-600 bg-green-50";
+      else if (isWrong) cls += " border-red-600 bg-red-50";
+      else if (isSel) cls += " border-blue-500 bg-blue-50";
+
+      return `
+        <label class="block">
+          <input type="radio" name="q-${q.id}" value="${opt}" class="hidden" ${
+        isSel ? "checked" : ""
+      } ${submitted ? "disabled" : ""}>
+          <div class="${cls}">
+            <span class="font-bold mr-3">${opt}.</span>
+            <span class="text-gray-800">${txt}</span>
+          </div>
+        </label>`;
+    })
+    .join("");
+
+  els.list.innerHTML = `
+    <div class="space-y-6">
+      <p class="text-lg font-bold text-gray-800">Q${idxOneBased}: ${qText}</p>
+      ${reasonHtml}
+      <div class="space-y-3">${optionsHtml}</div>
+      ${submittedExplanationHtml}
+    </div>`;
+
+  if (els.counter) {
+    const total = els._total || "--";
+    els.counter.textContent = `${idxOneBased} / ${total}`;
+  }
+}
+
+/* -----------------------------------
+   ANSWER LISTENERS
+----------------------------------- */
+export function attachAnswerListeners(handler) {
+  initializeElements();
+  if (!els.list) return;
+  if (els._listener) els.list.removeEventListener("change", els._listener);
+  const listener = (e) => {
+    if (e.target && e.target.type === "radio" && e.target.name.startsWith("q-")) {
+      const qid = e.target.name.substring(2);
+      handler(qid, e.target.value);
     }
-  }
+  };
+  els.list.addEventListener("change", listener);
+  els._listener = listener;
 }
 
-// -----------------------------------------------------------------------------
-// Initialize Auth Listener
-// -----------------------------------------------------------------------------
-export async function initializeAuthListener(onAuthChangeCallback = null) {
-  const auth = getAuthInstance();
+/* -----------------------------------
+   NAVIGATION + COUNTER
+----------------------------------- */
+export function updateNavigation(currentIndexZeroBased, totalQuestions, submitted) {
+  initializeElements();
+  els._total = totalQuestions;
+  const show = (btn, cond) => btn && btn.classList.toggle("hidden", !cond);
+  show(els.prevButton, currentIndexZeroBased > 0);
+  show(els.nextButton, currentIndexZeroBased < totalQuestions - 1);
+  show(els.submitButton, !submitted && currentIndexZeroBased === totalQuestions - 1);
+  if (els.counter)
+    els.counter.textContent = `${currentIndexZeroBased + 1} / ${totalQuestions}`;
+}
 
-  // persist session
-  await setPersistence(auth, browserLocalPersistence);
+/* -----------------------------------
+   RESULTS + REVIEW
+----------------------------------- */
+export function showResults(score, total) {
+  initializeElements();
+  if (els.score) els.score.textContent = `${score} / ${total}`;
+  showView("results-screen");
+}
 
-  // try restore redirect result
-  try {
-    const redirectResult = await firebaseGetRedirectResult(auth);
-    if (redirectResult?.user) {
-      console.log(LOG_TAG, "Restored user via redirect:", redirectResult.user.uid);
-    } else {
-      console.log(LOG_TAG, "No redirect result to restore.");
+export function renderAllQuestionsForReview(questions, userAnswers = {}) {
+  initializeElements();
+  if (!els.reviewContainer) return;
+
+  const html = questions
+    .map((q, i) => {
+      const txt = cleanKatexMarkers(q.text || "");
+      const reason = normalizeReasonText(cleanKatexMarkers(q.explanation || ""));
+      const label =
+        (q.question_type || "").toLowerCase() === "case"
+          ? "Context"
+          : "Reasoning (R)";
+      const ua = userAnswers[q.id] || "-";
+      const ca = q.correct_answer || "-";
+      const correct = ua && ua.toUpperCase() === ca.toUpperCase();
+      return `
+        <div class="mb-6 p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
+          <p class="font-bold text-lg mb-1">Q${i + 1}: ${txt}</p>
+          ${reason ? `<p class="text-gray-700 mb-2">${label}: ${reason}</p>` : ""}
+          <p>Your Answer: <span class="${
+            correct ? "text-green-600 font-semibold" : "text-red-600 font-semibold"
+          }">${ua}</span></p>
+          <p>Correct Answer: <b class="text-green-700">${ca}</b></p>
+        </div>`;
+    })
+    .join("");
+
+  els.reviewContainer.innerHTML = html;
+
+  const retryBlock = document.createElement("div");
+  retryBlock.className = "text-center mt-8 space-y-4";
+  retryBlock.innerHTML = `
+    <h3 class="text-lg font-semibold mb-3">Try Again or Explore</h3>
+    <div class="flex justify-center gap-3 flex-wrap">
+      <button data-diff="simple" class="px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700">Simple (Easy)</button>
+      <button data-diff="medium" class="px-5 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">Medium</button>
+      <button data-diff="advanced" class="px-5 py-2 bg-red-600 text-white rounded hover:bg-red-700">Advanced (Hard)</button>
+    </div>
+    <button id="back-to-chapters-btn" class="mt-4 px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700">Go Back to Chapter Selection</button>
+  `;
+  els.reviewContainer.appendChild(retryBlock);
+
+  retryBlock.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-diff]");
+    if (btn) {
+      const params = new URLSearchParams(window.location.search);
+      params.set("difficulty", btn.dataset.diff);
+      window.location.href = `quiz-engine.html?${params.toString()}`;
     }
-  } catch (error) {
-    console.warn(LOG_TAG, "Redirect result error:", error.message || error);
-  }
-
-  if (onAuthChangeCallback && typeof onAuthChangeCallback === "function") {
-    externalOnAuthChange = onAuthChangeCallback;
-  }
-
-  onAuthStateChanged(auth, internalAuthChangeHandler);
-  console.log(LOG_TAG, "Auth listener initialized.");
-}
-
-// -----------------------------------------------------------------------------
-// Google Sign-In Flow
-// -----------------------------------------------------------------------------
-export async function signInWithGoogle() {
-  const auth = getAuthInstance();
-  if (isSigningIn) return;
-  isSigningIn = true;
-
-  // Professional overlay during sign-in
-  try {
-    UI.showAuthLoading("Opening Google Sign-In — choose your account.");
-
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      console.log(LOG_TAG, "Popup sign-in success:", result.user?.uid);
-      UI.hideAuthLoading();
-
-      // ✅ Hide paywall and show quiz after sign-in
-      const paywall = document.getElementById("paywall-screen");
-      const quizContent = document.getElementById("quiz-content");
-      if (paywall) paywall.classList.add("hidden");
-      if (quizContent) quizContent.classList.remove("hidden");
-
-      // Notify quiz-engine listener that user is signed in
-      document.dispatchEvent(new CustomEvent("userSignedIn", { detail: result.user }));
-
-      return result;
-    } catch (popupError) {
-      const popupFailureCodes = [
-        "auth/popup-blocked",
-        "auth/cancelled-popup-request",
-        "auth/web-storage-unsupported",
-      ];
-      if (popupFailureCodes.includes(popupError.code)) {
-        console.warn(LOG_TAG, "Popup blocked → falling back to redirect.");
-        await signInWithRedirect(auth, googleProvider);
-      } else {
-        console.error(LOG_TAG, "Popup error:", popupError);
-        UI.hideAuthLoading();
-        throw popupError;
-      }
+    if (e.target.id === "back-to-chapters-btn") {
+      window.location.href = "chapter-selection.html";
     }
-  } finally {
-    isSigningIn = false;
+  });
+
+  showView("results-screen");
+}
+
+/* -----------------------------------
+   AUTH UI
+----------------------------------- */
+export function updateAuthUI(user) {
+  initializeElements();
+  if (!els.authNav) return;
+
+  if (user) {
+    const name =
+      user.displayName?.split(" ")[0] || user.email?.split("@")[0] || "User";
+    els.authNav.innerHTML = `
+      <span class="text-sm mr-2 text-gray-700">Hi, ${name}</span>
+      <button id="logout-nav-btn" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Sign Out</button>`;
+  } else {
+    els.authNav.innerHTML = `
+      <button id="login-btn" class="px-4 py-2 bg-white text-cbse-blue rounded hover:bg-gray-100">Sign In (Google)</button>`;
   }
 }
 
-// -----------------------------------------------------------------------------
-// Sign-Out Flow
-// -----------------------------------------------------------------------------
-export async function signOut() {
-  const auth = getAuthInstance();
-  try {
-    await firebaseSignOut(auth);
-    console.log(LOG_TAG, "User signed out successfully.");
-
-    // Show paywall again when signed out
-    const paywall = document.getElementById("paywall-screen");
-    const quizContent = document.getElementById("quiz-content");
-    if (paywall) paywall.classList.remove("hidden");
-    if (quizContent) quizContent.classList.add("hidden");
-  } catch (error) {
-    console.error(LOG_TAG, "Sign-out failed:", error);
-    throw error;
-  }
-}
-
-export const signOutUser = signOut;
-
-// -----------------------------------------------------------------------------
-// Access Check
-// -----------------------------------------------------------------------------
-export function checkAccess() {
-  try {
-    return !!getAuthInstance().currentUser;
-  } catch {
-    return false;
-  }
+/* -----------------------------------
+   PAYWALL
+----------------------------------- */
+export function updatePaywallContent(topic) {
+  initializeElements();
+  if (!els.paywallContent) return;
+  els.paywallContent.innerHTML = `
+    <div class="flex flex-col items-center justify-center text-center h-full p-8 bg-yellow-50 border-l-4 border-yellow-500 rounded">
+      <h2 class="text-xl font-bold mb-2">Access Restricted</h2>
+      <p class="text-gray-700 mb-4">
+        This quiz on <b>${topic.replace(/_/g, " ").toUpperCase()}</b> is for signed-in users only.
+      </p>
+      <button id="paywall-login-btn" class="mt-2 px-6 py-3 bg-green-600 text-white rounded hover:bg-green-700">
+        Sign In to Unlock
+      </button>
+    </div>`;
 }
