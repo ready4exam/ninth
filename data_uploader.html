@@ -1,369 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>CSV Quiz Processor & Uploader — Ready4Exam</title>
-
-    <script src="https://cdn.tailwindcss.com"></script>
-
-    <script>
-        // Tailwind configuration for custom colors and font
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'] },
-                    colors: { 'primary-blue': '#1a3e6a', 'accent-green': '#059669' }
-                }
-            }
-        };
-    </script>
-
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js"></script>
-
-    <style>
-        body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ready4Exam CSV Quiz Processor & Uploader</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 min-h-screen p-6">
+<body class="bg-gray-50 min-h-screen flex flex-col items-center justify-center p-6">
 
-    <div class="max-w-4xl mx-auto bg-white p-6 md:p-10 rounded-xl shadow-2xl border-t-8 border-primary-blue">
-        <h1 class="text-3xl font-extrabold text-primary-blue mb-2">CSV Quiz Processor & Uploader</h1>
-        <p class="text-gray-600 mb-6">Step 1: Choose Subject & Chapter. Step 2: Paste the Gemini-generated CSV (include header). Step 3: Parse & upload.</p>
+  <div class="w-full max-w-3xl bg-white shadow-lg rounded-2xl p-8">
+    <h1 class="text-3xl font-bold text-center mb-2 text-indigo-700">Ready4Exam CSV Quiz Processor</h1>
+    <p class="text-gray-500 text-center mb-6">Paste Gemini CSV output below and upload to Supabase.</p>
 
-        <div class="space-y-4 mb-6">
-            <div>
-                <label class="block text-sm font-medium text-gray-700">1. Select Subject</label>
-                <select id="subject-select" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm"></select>
-            </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div>
+        <label class="block text-gray-700 font-semibold mb-2">Subject</label>
+        <select id="subjectSelect" class="w-full border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+          <option value="science">Science</option>
+          <option value="mathematics">Mathematics</option>
+          <option value="social_science">Social Science</option>
+        </select>
+      </div>
 
-            <div>
-                <label class="block text-sm font-medium text-gray-700">2. Select Chapter / Table Name</label>
-                <select id="table-name-select" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm" disabled>
-                    <option value="">--- Select a Subject First ---</option>
-                </select>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Selected Supabase Table Name</label>
-                <input id="current-table-name" readonly class="mt-1 block w-full p-3 bg-gray-100 border border-gray-300 rounded-lg font-mono text-sm" placeholder="Table name will appear here" />
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700">3. Paste Gemini CSV Output (including header)</label>
-                <textarea id="csv-input" rows="10" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm" placeholder="Paste CSV here..."></textarea>
-            </div>
-        </div>
-
-        <div class="flex gap-3 items-center">
-            <button id="automate-button" class="flex-1 px-6 py-3 bg-accent-green text-white font-bold rounded-lg shadow hover:bg-green-700">Parse CSV & Insert into Supabase</button>
-            <button id="clear-button" class="px-4 py-3 bg-gray-200 rounded-lg hover:bg-gray-300">Clear</button>
-        </div>
-
-        <div id="status-log" class="mt-8">
-            <h2 class="text-xl font-semibold text-gray-700 mb-3">Process Log</h2>
-            <div id="log-entries" class="space-y-2">
-                <p id="log-initial" class="text-gray-500">Ready to start...</p>
-            </div>
-        </div>
-
-        <div id="config-error" class="hidden mt-6 p-4 bg-red-50 border border-red-200 rounded text-red-700">
-            Configuration missing: set <code>window.SUPABASE_URL</code> and <code>window.SUPABASE_ANON_KEY</code> before using this page.
-        </div>
+      <div>
+        <label class="block text-gray-700 font-semibold mb-2">Chapter / Table</label>
+        <select id="chapterSelect" class="w-full border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+          <option value="fundamental_unit">The Fundamental Unit of Life</option>
+          <option value="matter_in_surroundings">Matter in Our Surroundings</option>
+          <option value="cell_structure">Cell Structure and Functions</option>
+        </select>
+      </div>
     </div>
 
-    <script>
-    (function () {
-        // ⚠️ ---------- CONFIGURATION REQUIRED ---------- ⚠️
-        // Set your actual Supabase URL and Anon Key here, or in a script block BEFORE this one.
-        window.SUPABASE_URL = "https://gkyvojcmqsgdynmitcuf.supabase.co"; // REPLACE WITH YOUR PROJECT URL
-        window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdreXZvamNtcXNnZHlubWl0Y3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3NDQ0OTcsImV4cCI6MjA3NjMyMDQ5N30.5dn5HbXxQ5sYNECS9o3VxVeyL6I6Z2Yf-nmPwztx1hE"; // REPLACE WITH YOUR ANON KEY
+    <textarea id="csvInput"
+      class="w-full h-60 border rounded-lg p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+      placeholder="Paste your Gemini CSV output here..."></textarea>
 
-        // --- NCERT SYLLABUS (Subject -> chapters with table name as 'value') ---
-        const NCERT_SYLLABUS = {
-            science: [
-                { name: "Motion", value: "motion" },
-                { name: "Force and Laws of Motion", value: "force" },
-                { name: "Gravitation", value: "gravitation" },
-                { name: "Work and Energy", value: "work_energy" },
-                { name: "Sound", value: "sound" },
-                { name: "Matter in Our Surroundings", value: "matter_surroundings" },
-                { name: "Is Matter Around Us Pure", value: "matter_pure" },
-                { name: "Atoms and Molecules", value: "atom_molecules" },
-                { name: "Structure of the Atom", value: "structure_atom" },
-                { name: "The Fundamental Unit of Life", value: "fundamental_unit" },
-                { name: "Improvement in Food Resources", value: "food_resources" },
-                { name: "Tissues", value: "tissues" }
-            ],
-            social_science: [
-                { name: "The French Revolution", value: "french_revolution" },
-                { name: "India - Size and Location", value: "india_size" }
-            ],
-            maths: [
-                { name: "Number Systems", value: "number_systems" },
-                { name: "Polynomials", value: "polynomials" }
-            ]
-        };
+    <button id="processBtn"
+      class="w-full bg-indigo-600 text-white font-semibold py-2 rounded-lg hover:bg-indigo-700 transition-all">
+      Parse CSV & Insert into Supabase
+    </button>
 
-        // DB columns expected in CSV (header order). Adjust if your CSV header differs.
-        const DB_COLUMNS = [
-            'difficulty', 'question_type', 'question_text',
-            'scenario_reason_text', 'option_a', 'option_b', 'option_c', 'option_d',
-            'correct_answer_key'
-        ];
+    <pre id="logArea" class="mt-6 bg-gray-900 text-green-400 text-sm p-4 rounded-lg overflow-y-auto h-48"></pre>
+  </div>
 
-        const LATEX_CLEANUP_COLUMNS = [
-            'question_text','scenario_reason_text','option_a','option_b','option_c','option_d'
-        ];
+  <script>
+    // ---------------- CONFIG ----------------
+    const SUPABASE_URL = "https://gkyvojcmqsgdynmitcuf.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdreXZvamNtcXNnZHlubWl0Y3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3NDQ0OTcsImV4cCI6MjA3NjMyMDQ5N30.5dn5HbXxQ5sYNECS9o3VxVeyL6I6Z2Yf-nmPwztx1hE"; // replace this
+    const DB_COLUMNS = [
+      'difficulty', 'question_type', 'question_text', 'scenario_reason_text',
+      'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer_key'
+    ];
 
-        // ---------- DOM Elements ----------
-        const subjectSelect = document.getElementById('subject-select');
-        const chapterSelect = document.getElementById('table-name-select');
-        const tableNameInput = document.getElementById('current-table-name');
-        const csvInput = document.getElementById('csv-input');
-        const automateButton = document.getElementById('automate-button');
-        const clearButton = document.getElementById('clear-button');
-        const logEntries = document.getElementById('log-entries');
-        const configError = document.getElementById('config-error');
+    // ---------------- INIT ----------------
+    const log = (msg) => {
+      console.log(msg);
+      const logArea = document.getElementById("logArea");
+      logArea.textContent += msg + "\n";
+      logArea.scrollTop = logArea.scrollHeight;
+    };
 
-        let supabaseClient = null;
+    let supabaseClient;
+    try {
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      log("✅ Supabase client initialized successfully.");
+    } catch (err) {
+      log("❌ Supabase initialization failed: " + err.message);
+    }
 
-        // ---------- Utilities ----------
-        /** Appends a message to the status log. */
-        function log(message, level = 'info') {
-            const p = document.createElement('div');
-            p.className = 'p-2 rounded';
-            if (level === 'info') p.classList.add('bg-gray-100','text-gray-700');
-            if (level === 'success') p.classList.add('bg-green-100','text-accent-green','font-semibold');
-            if (level === 'error') p.classList.add('bg-red-100','text-red-700','font-semibold');
-            if (level === 'warn') p.classList.add('bg-yellow-100','text-yellow-700');
-            p.innerHTML = `<small class="opacity-60">${new Date().toLocaleTimeString()}</small> — ${message}`;
-            // Insert new log entry right after the header/initial log
-            logEntries.insertBefore(p, logEntries.children[1] || null); 
-        }
+    // ---------------- CSV PARSER ----------------
+    function parseCSV(csvText) {
+      // Normalize and clean up
+      let cleanText = csvText.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").trim();
 
-        /** Sets the state and text of the main processing button. */
-        function setButtonState(disabled, text) {
-            automateButton.disabled = disabled;
-            automateButton.textContent = text;
-            automateButton.classList.toggle('opacity-50', disabled);
-        }
+      const lines = cleanText.split("\n").filter(line => line.trim().length > 0);
+      const header = lines[0].split(",").map(h => h.trim().replace(/['"]+/g, "").toLowerCase());
 
-        /** Removes common LaTeX delimiters from strings. */
-        function cleanLatex(input) {
-            if (input === null || typeof input !== 'string') return input;
-            let s = input.replace(/\$|\\\(|\\\)|\\\[|\\\]|{|}/g, '');
-            // Clean common LaTeX commands like \text{}, \mathbf{}, etc.
-            s = s.replace(/\\(text|mathbf|mathrm|unit|cdot|times|approx|sim|perp|parallel)\s*\{([^}]*)\}/g, '$2');
-            // Remove any remaining backslash-word combinations
-            s = s.replace(/\\[a-zA-Z]+/g, ' ');
-            return s.replace(/\s\s+/g, ' ').trim(); // Collapse multiple spaces
-        }
+      const expected = DB_COLUMNS.map(c => c.toLowerCase());
+      const headerOk = expected.every(col => header.includes(col));
 
-        /** Parses a CSV string into an array of objects. */
-        function parseCSV(csvString) {
-            const cleaned = csvString.trim().replace(/^\uFEFF/, '');
-            
-            // The split is now more reliable due to pre-cleaning in startAutomation
-            const lines = cleaned.split(/\r?\n/).filter(l => l.trim().length > 0);
-            if (lines.length < 2) throw new Error('CSV must include header and at least one data row.');
+      if (!headerOk) {
+        throw new Error(`Header mismatch.\nExpected: ${expected.join(", ")}\nFound: ${header.join(", ")}`);
+      }
 
-            const header = lines[0].split(',').map(h => h.trim().replace(/['"]+/g,'').toLowerCase());
-            const expected = DB_COLUMNS.map(c => c.toLowerCase());
-            
-            // Basic check: ensure the first few header columns contain the expected column names
-            const headerOk = expected.every((col, idx) => header[idx] && header[idx].includes(col));
-            if (!headerOk) {
-                throw new Error(`Header mismatch. Expected header pattern: ${DB_COLUMNS.join(', ')}. Found: ${header.join(', ')}`);
-            }
+      const rows = lines.slice(1).map(line => {
+        const cols = line.split(",").map(c => c.trim().replace(/^"|"$/g, ""));
+        const row = {};
+        header.forEach((key, i) => { row[key] = cols[i] || ""; });
+        return row;
+      });
 
-            const rows = [];
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i];
-                // Regex to handle quoted fields and commas within them
-                const fields = [];
-                let match;
-                const re = /(?:"((?:[^"]|"")*)"|([^,]*))(?:,|$)/g;
-                while ((match = re.exec(line)) !== null) {
-                    const val = match[1] !== undefined ? match[1].replace(/""/g,'"') : match[2];
-                    fields.push(val === undefined ? '' : val);
-                }
-                
-                // We ensure we have at least the expected number of columns.
-                if (fields.length < DB_COLUMNS.length) {
-                    log(`Skipping row ${i+1}: expected ${DB_COLUMNS.length} columns but found ${fields.length}`, 'warn');
-                    continue;
-                }
+      log(`📄 Parsed ${rows.length} rows successfully.`);
+      return rows;
+    }
 
-                // Build row object for insertion
-                const obj = { created_at: new Date().toISOString() };
-                for (let j=0;j<DB_COLUMNS.length;j++){
-                    let v = fields[j] ?? '';
-                    v = v.trim();
-                    // Convert 'nan' or 'null' (case-insensitive) to actual null
-                    if (!v || v.toLowerCase()==='nan' || v.toLowerCase()==='null' || v.toLowerCase()==='empty') v = null;
-                    // Clean LaTeX if the column requires it
-                    if (v !== null && LATEX_CLEANUP_COLUMNS.includes(DB_COLUMNS[j])) v = cleanLatex(v);
-                    
-                    obj[DB_COLUMNS[j]] = v;
-                }
-                rows.push(obj);
-            }
-            if (rows.length === 0) throw new Error('No valid rows parsed from CSV.');
-            return rows;
-        }
+    // ---------------- UPLOADER ----------------
+    async function uploadRows(rows, tableName) {
+      if (!supabaseClient) throw new Error("Supabase client not initialized.");
+      if (!rows || !rows.length) throw new Error("No rows to insert.");
 
-        // ---------- Supabase insert ----------
-        async function insertDataIntoSupabase(table, rows) {
-            const { data, error } = await supabaseClient
-                .from(table)
-                .insert(rows)
-                .select();
+      log(`🚀 Uploading ${rows.length} rows to "${tableName}"...`);
+      const { data, error } = await supabaseClient.from(tableName).insert(rows);
 
-            if (error) {
-                // Provide a helpful hint for common Supabase errors
-                if (/permission denied|violates row-level security|RLS/i.test(error.message)) {
-                    throw new Error(`Supabase insertion error: ${error.message}. Check table RLS/policies for anon role.`);
-                }
-                throw new Error(`Supabase insertion error: ${error.message}`);
-            }
-            return data;
-        }
+      if (error) throw error;
+      log(`✅ Successfully inserted ${data?.length || rows.length} rows.`);
+    }
 
-        // ---------- UI helpers ----------
-        function populateSubjects() {
-            subjectSelect.innerHTML = '';
-            const placeholder = document.createElement('option');
-            placeholder.value = '';
-            placeholder.textContent = '--- Select Subject ---';
-            placeholder.selected = true;
-            placeholder.disabled = true;
-            subjectSelect.appendChild(placeholder);
+    // ---------------- MAIN ----------------
+    document.getElementById("processBtn").addEventListener("click", async () => {
+      const csvInput = document.getElementById("csvInput").value;
+      const chapterSelect = document.getElementById("chapterSelect");
+      const tableName = chapterSelect.value.trim();
 
-            Object.keys(NCERT_SYLLABUS).forEach(key => {
-                const opt = document.createElement('option');
-                opt.value = key;
-                // Title-case the subject name
-                opt.textContent = key.replace('_',' ').replace(/\b\w/g, c=>c.toUpperCase());
-                subjectSelect.appendChild(opt);
-            });
-        }
+      if (!csvInput) {
+        log("⚠️ Please paste a CSV before processing.");
+        return;
+      }
 
-        function populateChaptersFor(subjectKey) {
-            chapterSelect.innerHTML = '';
-            const placeholder = document.createElement('option');
-            placeholder.value = '';
-            placeholder.textContent = subjectKey ? '--- Select Chapter ---' : '--- Select a Subject First ---';
-            placeholder.selected = true;
-            placeholder.disabled = true;
-            chapterSelect.appendChild(placeholder);
-
-            if (subjectKey && NCERT_SYLLABUS[subjectKey]) {
-                NCERT_SYLLABUS[subjectKey].forEach(ch => {
-                    const opt = document.createElement('option');
-                    opt.value = ch.value;
-                    opt.textContent = `${ch.name} (table: ${ch.value})`;
-                    chapterSelect.appendChild(opt);
-                });
-                chapterSelect.disabled = false;
-            } else {
-                chapterSelect.disabled = true;
-            }
-            tableNameInput.value = ''; // Clear table name input when subject changes
-        }
-
-        // ---------- Main workflow Handler ----------
-        async function startAutomation() {
-            if (!supabaseClient) {
-                log('Supabase client not initialized. Check configuration.', 'error');
-                return;
-            }
-
-            const subj = subjectSelect.value;
-            const tableName = chapterSelect.value;
-            let csvOriginal = csvInput.value.trim();
-
-            if (!subj || !tableName) {
-                log('Please select both subject and chapter/table name.', 'error');
-                return;
-            }
-            if (!csvOriginal) {
-                log('Please paste CSV data before processing.', 'error');
-                return;
-            }
-
-            // ⭐ NEW ENHANCED FIX: Replace ALL newlines within quoted strings with spaces.
-            // This ensures that the outer .split(/\r?\n/) correctly separates the records.
-            // It searches for quoted sections (") and replaces any newlines inside them.
-            const csvCleaned = csvOriginal.replace(
-                /(")([^"]*)(")/g, // Finds a quoted string
-                (match, p1, p2, p3) => p1 + p2.replace(/[\r\n]+/g, ' ') + p3 // Replaces newlines inside p2 with space
-            );
-
-
-            try {
-                setButtonState(true, 'Parsing CSV — please wait...');
-                log('Parsing CSV input...', 'info');
-                const rows = parseCSV(csvCleaned); // Pass the CLEANED data
-                log(`Parsed ${rows.length} rows. Preparing to insert into '${tableName}'`, 'info');
-
-                setButtonState(true, `Inserting ${rows.length} rows into ${tableName}...`);
-                const inserted = await insertDataIntoSupabase(tableName, rows);
-                log(`Success: ${inserted.length} records inserted into '${tableName}'`, 'success');
-                setButtonState(false, 'Parse CSV & Insert into Supabase');
-                
-            } catch (err) {
-                log(`Automation failed: ${err.message}`, 'error');
-                setButtonState(false, 'Parse CSV & Insert into Supabase');
-            }
-        }
-
-        // ---------- Initialization ----------
-        function init() {
-            // 1. Populate UI dropdowns
-            populateSubjects();
-            populateChaptersFor(); 
-
-            // 2. Wire up event listeners
-            subjectSelect.addEventListener('change', () => {
-                populateChaptersFor(subjectSelect.value);
-            });
-
-            chapterSelect.addEventListener('change', () => {
-                tableNameInput.value = chapterSelect.value || '';
-            });
-
-            automateButton.addEventListener('click', startAutomation);
-            clearButton.addEventListener('click', () => {
-                csvInput.value = '';
-                log('Cleared CSV input box.', 'info');
-            });
-
-            // 3. Initialize Supabase Client
-            if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY === "YOUR_SUPABASE_ANON_KEY_HERE") {
-                configError.classList.remove('hidden');
-                log('Supabase credentials missing or invalid. Please set window.SUPABASE_URL and window.SUPABASE_ANON_KEY.', 'error');
-                automateButton.disabled = true;
-                return;
-            }
-
-            try {
-                supabaseClient = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-                configError.classList.add('hidden');
-                log('Supabase client initialized. Ready to process CSV.', 'success');
-            } catch (e) {
-                log(`Failed to initialize Supabase: ${e.message}`, 'error');
-                automateButton.disabled = true;
-            }
-        }
-
-        // Launch initialization when the page is fully loaded
-        document.addEventListener('DOMContentLoaded', init);
-
-        // Expose minimal helpers for debugging if needed (from original code)
-        window.startAutomation = startAutomation;
-        window.parseCSV = parseCSV;
-    })();
-    </script>
+      try {
+        log("🔍 Parsing CSV...");
+        const rows = parseCSV(csvInput);
+        await uploadRows(rows, tableName);
+        log("🎉 Upload completed successfully!");
+      } catch (err) {
+        log("❌ Error: " + err.message);
+      }
+    });
+  </script>
 </body>
 </html>
