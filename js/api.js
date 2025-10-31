@@ -1,4 +1,8 @@
 // js/api.js
+// -----------------------------------------------------------------------------
+// Handles fetching quiz questions, saving results, and GA4 event logging
+// -----------------------------------------------------------------------------
+
 import { getInitializedClients, getAuthUser, logAnalyticsEvent } from './config.js';
 import * as UI from './ui-renderer.js';
 import { cleanKatexMarkers } from './utils.js';
@@ -6,12 +10,18 @@ import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/fir
 
 const appId = 'ready4exam-app';
 
+// -----------------------------------------------------------------------------
+// GET INITIALIZED CLIENTS (Supabase optional)
+// -----------------------------------------------------------------------------
 function getClients() {
   const { supabase, db } = getInitializedClients();
   if (!db) throw new Error("[API] Firestore not initialized.");
   return { supabase, db };
 }
 
+// -----------------------------------------------------------------------------
+// MAP TOPIC → TABLE NAME (Supabase)
+// -----------------------------------------------------------------------------
 function getTableName(topic) {
   const map = {
     motion: "motion",
@@ -23,12 +33,20 @@ function getTableName(topic) {
     matter_pure: "matter_pure",
     atom_molecules: "atom_molecules",
     structure_atom: "structure_atom",
+    fundamental_unit: "fundamental_unit",
+    tissues: "tissues",
+    food_resources: "food_resources",
   };
 
   const key = topic.toLowerCase().replace(/\s+/g, '_').trim();
-  return map[key] || key;
+  const table = map[key] || key;
+  console.log(`[API] Topic '${topic}' mapped to table '${table}'`);
+  return table;
 }
 
+// -----------------------------------------------------------------------------
+// FETCH QUESTIONS (Supabase)
+// -----------------------------------------------------------------------------
 export async function fetchQuestions(topic, difficulty) {
   const { supabase } = getClients();
   const table = getTableName(topic);
@@ -44,10 +62,13 @@ export async function fetchQuestions(topic, difficulty) {
     `)
     .eq('difficulty', normalizedDiff);
 
-  if (error) throw new Error(error.message);
-  if (!data?.length) throw new Error("No questions found.");
+  if (error) {
+    console.error(`[API ERROR] Failed to fetch from ${table}:`, error);
+    throw new Error(error.message);
+  }
+  if (!data?.length) throw new Error("No questions found for this topic/difficulty.");
 
-  return data.map((q) => ({
+  const normalized = data.map((q) => ({
     id: q.id,
     text: cleanKatexMarkers(q.question_text),
     options: {
@@ -60,12 +81,22 @@ export async function fetchQuestions(topic, difficulty) {
     scenario_reason: cleanKatexMarkers(q.scenario_reason_text || ''),
     question_type: (q.question_type || '').trim().toLowerCase(),
   }));
+
+  console.log(`[API] Loaded ${normalized.length} questions from '${table}'`);
+  return normalized;
 }
 
+// -----------------------------------------------------------------------------
+// SAVE QUIZ RESULTS TO FIRESTORE + SEND TO GA4
+// -----------------------------------------------------------------------------
 export async function saveResult(resultData) {
   const { db } = getClients();
   const user = getAuthUser();
-  if (!user) return console.warn("[API] Not saving result — user not authenticated.");
+
+  if (!user) {
+    console.warn("[API] Skipping save — user not authenticated.");
+    return;
+  }
 
   try {
     await addDoc(collection(db, "quiz_scores"), {
@@ -82,9 +113,10 @@ export async function saveResult(resultData) {
 
     console.log("[API] Quiz result saved to Firestore.");
 
-    // GA4 Analytics logging
+    // ✅ Log the event to GA4
     logAnalyticsEvent("quiz_completed", {
       user_id: user.uid,
+      email_hash: await hashEmail(user.email),
       topic: resultData.topic,
       difficulty: resultData.difficulty,
       score: resultData.score,
@@ -92,6 +124,22 @@ export async function saveResult(resultData) {
       percentage: Math.round((resultData.score / resultData.total) * 100),
     });
   } catch (err) {
-    console.error("[API ERROR] Firestore save failed:", err);
+    console.error("[API ERROR] Firestore save or GA4 log failed:", err);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Utility: Hash email before logging to GA4 (privacy-safe)
+// -----------------------------------------------------------------------------
+async function hashEmail(email) {
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(email.trim().toLowerCase());
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    return Array.from(new Uint8Array(hashBuffer))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  } catch {
+    return "anonymous";
   }
 }
