@@ -1,14 +1,10 @@
 // js/auth-paywall.js
-// -----------------------------------------------------------------------------
-// Firebase Authentication (Google Sign-In + Session Persistence)
-// -----------------------------------------------------------------------------
-
 import { getInitializedClients } from "./config.js";
 import {
   GoogleAuthProvider,
+  getRedirectResult,
   signInWithPopup,
   signInWithRedirect,
-  getRedirectResult,
   onAuthStateChanged,
   signOut as firebaseSignOut,
   setPersistence,
@@ -16,100 +12,53 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
 const LOG = "[AUTH-PAYWALL]";
-let authInstance = null;
-let externalCallback = null;
-let isSigningIn = false;
+let auth = null;
+let externalCb = null;
 
-/**
- * Get or initialize Firebase Auth instance
- */
-function getAuthInstance() {
-  if (!authInstance) {
-    const { auth } = getInitializedClients();
-    if (!auth) throw new Error("[AUTH] Firebase Auth not initialized.");
-    authInstance = auth;
+const provider = new GoogleAuthProvider();
+provider.setCustomParameters({ prompt: "select_account" });
+
+function getAuth() {
+  if (!auth) {
+    const { auth: a } = getInitializedClients();
+    auth = a;
   }
-  return authInstance;
+  return auth;
 }
 
-/**
- * Initialize authentication listener
- */
-export async function initializeAuthListener(callback) {
-  const auth = getAuthInstance();
-  await setPersistence(auth, browserLocalPersistence);
-
-  try {
-    const redirectResult = await getRedirectResult(auth);
-    if (redirectResult?.user) {
-      console.log(LOG, "Restored user via redirect:", redirectResult.user.uid);
-    }
-  } catch (err) {
-    console.warn(LOG, "Redirect restore failed:", err.message);
-  }
-
-  if (typeof callback === "function") externalCallback = callback;
-
-  onAuthStateChanged(auth, (user) => {
+export async function initializeAuthListener(cb) {
+  const a = getAuth();
+  await setPersistence(a, browserLocalPersistence);
+  try { await getRedirectResult(a); } catch {}
+  if (cb) externalCb = cb;
+  onAuthStateChanged(a, (user) => {
     console.log(LOG, "Auth state changed →", user ? user.uid : "Signed Out");
-    if (externalCallback) externalCallback(user);
+    if (externalCb) externalCb(user);
   });
-
   console.log(LOG, "Auth listener initialized.");
 }
 
-/**
- * Sign in with Google (Popup → Redirect fallback)
- */
 export async function signInWithGoogle() {
-  const auth = getAuthInstance();
-  if (isSigningIn) return;
-  isSigningIn = true;
-
-  const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: "select_account" });
-
+  const a = getAuth();
   try {
-    const result = await signInWithPopup(auth, provider);
-    console.log(LOG, "Popup sign-in success:", result.user?.email);
-    return result;
-  } catch (error) {
-    const popupBlocked = [
-      "auth/popup-blocked",
-      "auth/cancelled-popup-request",
-      "auth/web-storage-unsupported",
-    ];
-    if (popupBlocked.includes(error.code)) {
-      console.warn(LOG, "Popup blocked → redirect fallback.");
-      await signInWithRedirect(auth, provider);
-    } else {
-      console.error(LOG, "Sign-in failed:", error);
-    }
-  } finally {
-    isSigningIn = false;
+    console.log(LOG, "Starting Google sign-in (popup)...");
+    const res = await signInWithPopup(a, provider);
+    return res;
+  } catch (e) {
+    console.warn(LOG, "Popup failed, redirecting...");
+    await signInWithRedirect(a, provider);
   }
 }
 
-/**
- * Sign out current user
- */
 export async function signOut() {
-  const auth = getAuthInstance();
   try {
-    await firebaseSignOut(auth);
+    await firebaseSignOut(getAuth());
     console.log(LOG, "User signed out successfully.");
-  } catch (err) {
-    console.error(LOG, "Sign-out failed:", err);
+  } catch (e) {
+    console.error(LOG, "Sign-out failed:", e);
   }
 }
 
-/**
- * Check whether user is logged in
- */
 export function checkAccess() {
-  try {
-    return !!getAuthInstance().currentUser;
-  } catch {
-    return false;
-  }
+  try { return !!getAuth().currentUser; } catch { return false; }
 }
