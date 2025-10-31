@@ -1,11 +1,8 @@
 // js/config.js
 // -----------------------------------------------------------------------------
-// Centralized configuration and initialization for all services
-// (Firebase, Firestore, Auth, Supabase)
+// Unified Firebase + Firestore + Supabase configuration
 // -----------------------------------------------------------------------------
 
-// --- Mandatory Global Variables ---
-// These must be defined in <script> before this module loads (quiz-engine.html)
 const firebaseConfig =
   typeof __firebase_config !== "undefined" ? JSON.parse(__firebase_config) : {};
 const initialAuthToken =
@@ -16,8 +13,6 @@ import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebase
 import {
   getAuth,
   signInWithCustomToken,
-  onAuthStateChanged,
-  signOut as firebaseSignOut,
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
@@ -30,6 +25,7 @@ let db = null;
 let auth = null;
 let supabase = null;
 let isInitialized = false;
+let initializePromise = null;
 
 // --- Supabase Config (LIVE CREDENTIALS) ---
 const SUPABASE_URL = "https://gkyvojcmqsgdynmitcuf.supabase.co";
@@ -37,66 +33,61 @@ const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdreXZvamNtcXNnZHlubWl0Y3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3NDQ0OTcsImV4cCI6MjA3NjMyMDQ5N30.5dn5HbXxQ5sYNECS9o3VxVeyL6I6Z2Yf-nmPwztx1hE";
 
 /**
- * Initializes Firebase + Firestore + Supabase
+ * Initialize all services (Firebase, Firestore, Supabase)
  */
 export async function initializeServices() {
-  if (isInitialized) {
-    console.warn("[CONFIG] Services already initialized.");
-    return;
-  }
+  if (isInitialized) return;
+  if (initializePromise) return initializePromise;
 
-  // 1️⃣ Validate Config
-  if (Object.keys(firebaseConfig).length === 0) {
-    console.error("[CONFIG ERROR] Firebase config is empty. Cannot initialize.");
-    throw new Error("Missing Firebase configuration.");
-  }
-
-  // 2️⃣ Initialize Firebase App safely
-  firebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
-  auth = getAuth(firebaseApp);
-  db = getFirestore(firebaseApp);
-  console.log("[CONFIG] Firebase app, Auth, and Firestore initialized.");
-
-  // 3️⃣ Initialize Supabase
-  supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  console.log("[CONFIG] Supabase client initialized.");
-
-  // 4️⃣ Try signing in with custom token (optional)
-  try {
-    if (initialAuthToken) {
-      await signInWithCustomToken(auth, initialAuthToken);
-      console.log("[CONFIG] Signed in with custom token.");
+  initializePromise = (async () => {
+    if (Object.keys(firebaseConfig).length === 0) {
+      throw new Error("[CONFIG] Firebase configuration missing.");
     }
-  } catch (error) {
-    console.warn(
-      "[CONFIG WARNING] Custom token sign-in failed. Falling back to Google Sign-In.",
-      error
-    );
-  }
 
-  isInitialized = true;
-  console.log("[CONFIG] All services initialized successfully.");
+    // Firebase App + Services
+    firebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    auth = getAuth(firebaseApp);
+    db = getFirestore(firebaseApp);
+    console.log("[CONFIG] Firebase initialized successfully.");
+
+    // Supabase
+    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log("[CONFIG] Supabase client ready.");
+
+    // Optional: Login via custom token (if provided)
+    if (initialAuthToken) {
+      try {
+        await signInWithCustomToken(auth, initialAuthToken);
+        console.log("[CONFIG] Signed in using custom token.");
+      } catch (e) {
+        console.warn("[CONFIG] Token sign-in failed → continuing normally.", e);
+      }
+    }
+
+    isInitialized = true;
+    console.log("[CONFIG] All core services initialized.");
+  })();
+
+  return initializePromise;
 }
 
 /**
- * Retrieve initialized clients (for auth-paywall.js)
+ * Return initialized clients
  */
 export function getInitializedClients() {
-  if (!isInitialized) {
-    console.error("[CONFIG ERROR] Tried to get clients before init.");
-    throw new Error("Core services must be initialized first.");
-  }
+  if (!isInitialized) throw new Error("[CONFIG] Core services not initialized yet.");
   return { supabase, db, auth };
 }
 
 /**
- * Retrieve currently authenticated Firebase user
+ * Get current Firebase user
  */
 export function getAuthUser() {
   return auth ? auth.currentUser : null;
 }
 
 /**
- * Firebase Sign-Out wrapper
+ * Firebase sign-out export
  */
+import { signOut as firebaseSignOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 export const signOutUser = firebaseSignOut;
