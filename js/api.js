@@ -20,23 +20,25 @@ export async function fetchQuestions(topic, difficulty) {
   const { supabase } = getClients();
   const tableName = topic.toLowerCase().trim();
 
-  console.log(`[API] Fetching from '${tableName}' for difficulty '${difficulty}'`);
+  console.log(`[API] Fetching questions from '${tableName}' for difficulty '${difficulty}'`);
 
-  if (UI?.showStatus) {
-    UI.showStatus(`<p class="text-lg font-semibold text-cbse-blue">
-      Fetching 20 questions for <strong>${topic}</strong> (${difficulty})...
-    </p>`);
-  }
+  UI?.showStatus?.(
+    `<p class="text-lg font-semibold text-cbse-blue">
+      Loading questions for <strong>${topic}</strong> (${difficulty})...
+    </p>`
+  );
 
-  // Normalize difficulty name (Simple → Simple)
-  const normalizedDifficulty = difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase();
+  const normalizedDifficulty =
+    difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase();
 
   async function fetchByType(type, limit) {
     const normalizedType = type.toUpperCase();
     const { data, error } = await supabase
       .from(tableName)
-      .select(`id, question_text, question_type, scenario_reason_text,
-               option_a, option_b, option_c, option_d, correct_answer_key`)
+      .select(
+        `id, question_text, question_type, scenario_reason_text,
+         option_a, option_b, option_c, option_d, correct_answer_key`
+      )
       .eq('difficulty', normalizedDifficulty)
       .eq('question_type', normalizedType)
       .limit(limit);
@@ -48,7 +50,7 @@ export async function fetchQuestions(topic, difficulty) {
     return data || [];
   }
 
-  // Fetch question types with intended mix
+  // Fetch a fixed ratio of question types
   const [mcqData, arData, caseData] = await Promise.all([
     fetchByType('MCQ', 10),
     fetchByType('AR', 5),
@@ -58,24 +60,16 @@ export async function fetchQuestions(topic, difficulty) {
   const allData = [...mcqData, ...arData, ...caseData];
 
   if (allData.length === 0) {
-    console.error(`[API CRITICAL] No data found in '${tableName}' for difficulty '${normalizedDifficulty}'.`);
-    UI?.showStatus(`<span class="text-red-600 font-semibold">
+    console.error(`[API] No data found for ${topic}/${difficulty}.`);
+    UI?.showStatus?.(`<span class="text-red-600 font-semibold">
       No questions found for this topic/difficulty.
     </span>`);
     throw new Error("No questions found for this topic/difficulty.");
   }
 
-  if (allData.length < 20) {
-    const msg = `Found only ${allData.length} questions. Expected 20 (10 MCQ, 5 AR, 5 Case).`;
-    console.warn(`[API WARNING] ${msg}`);
-    UI?.showStatus(`<span class="text-yellow-600">${msg}</span>`);
-  }
-
-  // Normalize + clean question data
+  // Normalize + clean question data for engine
   const normalized = allData.map((q, idx) => {
     const type = (q.question_type || '').trim().toLowerCase();
-    const scenarioReason = cleanKatexMarkers(q.scenario_reason_text || '');
-
     return {
       id: q.id,
       text: cleanKatexMarkers(q.question_text),
@@ -86,7 +80,10 @@ export async function fetchQuestions(topic, difficulty) {
         D: cleanKatexMarkers(q.option_d),
       },
       correct_answer: (q.correct_answer_key || '').trim().toUpperCase(),
-      scenario_reason: type === 'ar' || type === 'case' ? scenarioReason : '',
+      explanation:
+        type === 'ar' || type === 'case'
+          ? cleanKatexMarkers(q.scenario_reason_text || '')
+          : '',
       question_type: type,
       question_order: idx + 1,
     };
