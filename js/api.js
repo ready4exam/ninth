@@ -12,40 +12,84 @@ function getClients() {
   return { supabase, db };
 }
 
-/**
- * Map topic names (from URL or chapter titles) to actual Supabase table names.
- */
+/* -----------------------------------------------------
+   MAP CHAPTER IDS → SUPABASE TABLE NAMES
+----------------------------------------------------- */
 function getTableName(topic) {
   const map = {
     // ⚙️ Physics
-    "motion": "motion",                                  // Chapter 7
-    "force": "force",                                    // Chapter 8
+    "motion": "motion",
     "force_and_laws_of_motion": "force",
-    "gravitation": "gravitation",                        // Chapter 9
-    "work_energy": "work_energy",                        // Chapter 10
+    "gravitation": "gravitation",
     "work_and_energy": "work_energy",
-    "sound": "sound",                                    // Chapter 11
+    "sound": "sound",
 
     // 🧪 Chemistry
-    "matter_surroundings": "matter_surroundings",        // Chapter 1
     "matter_in_our_surroundings": "matter_surroundings",
-    "matter_pure": "matter_pure",                        // Chapter 2
     "is_matter_around_us_pure": "matter_pure",
-    "atom_molecules": "atom_molecules",                  // Chapter 3
     "atoms_and_molecules": "atoms_molecules",
-    "structure_atom": "structure_atom",                  // Chapter 4
     "structure_of_the_atom": "structure_atom",
+
+    // 🧬 Biology
+    "fundamental_unit_of_life": "fundamental_unit",
+    "tissues": "tissues",
+    "improvement_in_food_resources": "food_resources",
+
+    // 🏛️ History
+    "french_revolution": "french_revolution",
+    "socialism_in_europe_and_the_russian_revolution": "socialism_europe",
+    "nazism_and_the_rise_of_hitler": "nazism",
+    "forest_society_and_colonialism": "forest_society",
+    "pastoralists_in_the_modern_world": "pastoralists",
+
+    // 🌏 Geography
+    "india_size_and_location": "india_size",
+    "physical_features_of_india": "physical_features",
+    "drainage": "drainage",
+    "climate": "climate",
+    "natural_vegetation_and_wildlife": "natural_veg",
+    "population": "population",
+
+    // 🏛️ Civics (Political Science)
+    "what_is_democracy_why_democracy": "what_is_democracy",
+    "constitutional_design": "constitutional_design",
+    "electoral_politics": "electoral_politics",
+    "working_of_institutions": "working_institutions",
+    "democratic_rights": "democratic_rights",
+
+    // 💰 Economics
+    "story_of_village_palampur": "village_palampur",
+    "people_as_resource": "people_resource",
+    "poverty_as_a_challenge": "poverty_challenge",
+    "food_security_in_india": "food_security",
+
+    // ➗ Mathematics
+    "number_systems": "number_systems",
+    "polynomials": "polynomials",
+    "coordinate_geometry": "coordinate_geometry",
+    "linear_equations_in_two_variables": "linear_equations",
+    "introduction_to_euclids_geometry": "euclids_geometry",
+    "lines_and_angles": "lines_angles",
+    "triangles": "triangles",
+    "quadrilaterals": "quadrilaterals",
+    "areas_of_parallelograms_and_triangles": "areas_shapes",
+    "circles": "circles",
+    "constructions": "constructions",
+    "herons_formula": "herons_formula",
+    "surface_areas_and_volumes": "surface_volumes",
+    "statistics": "statistics",
+    "probability": "probability"
   };
 
-  const key = topic.toLowerCase().replace(/\s+/g, '_').trim();
+  const key = topic?.toLowerCase()?.trim()?.replace(/\s+/g, '_') || '';
   const tableName = map[key] || key;
-  console.log(`[API] Topic '${topic}' mapped to table '${tableName}'`);
+  console.log(`[API] Topic '${topic}' → Table '${tableName}'`);
   return tableName;
 }
 
-/**
- * Fetch quiz questions based on topic & difficulty.
- */
+/* -----------------------------------------------------
+   FETCH QUESTIONS
+----------------------------------------------------- */
 export async function fetchQuestions(topic, difficulty) {
   const { supabase } = getClients();
   const table = getTableName(topic);
@@ -63,25 +107,24 @@ export async function fetchQuestions(topic, difficulty) {
     .eq('difficulty', normalizedDiff);
 
   if (error) {
-    console.error(`[API ERROR] Fetch failed from '${table}':`, error);
+    console.error(`[API ERROR] Failed to load from '${table}':`, error);
     UI.showStatus(`<span class="text-red-600 font-semibold">Error loading quiz. Please try again later.</span>`);
     throw error;
   }
 
   if (!data || data.length === 0) {
-    console.warn(`[API WARNING] No questions found in '${table}' (${normalizedDiff}).`);
     UI.showStatus(`<span class="text-yellow-600 font-semibold">No questions found for this topic/difficulty.</span>`);
     throw new Error("No questions found.");
   }
 
   const normalized = data.map((q) => ({
     id: q.id,
-    text: cleanKatexMarkers(q.question_text),
+    text: cleanKatexMarkers(q.question_text || ''),
     options: {
-      A: cleanKatexMarkers(q.option_a),
-      B: cleanKatexMarkers(q.option_b),
-      C: cleanKatexMarkers(q.option_c),
-      D: cleanKatexMarkers(q.option_d),
+      A: cleanKatexMarkers(q.option_a || ''),
+      B: cleanKatexMarkers(q.option_b || ''),
+      C: cleanKatexMarkers(q.option_c || ''),
+      D: cleanKatexMarkers(q.option_d || ''),
     },
     correct_answer: (q.correct_answer_key || '').trim().toUpperCase(),
     scenario_reason: cleanKatexMarkers(q.scenario_reason_text || ''),
@@ -92,9 +135,9 @@ export async function fetchQuestions(topic, difficulty) {
   return normalized;
 }
 
-/**
- * Save quiz result to Firestore (for signed-in users only).
- */
+/* -----------------------------------------------------
+   SAVE RESULT TO FIRESTORE
+----------------------------------------------------- */
 export async function saveResult(resultData) {
   const { db } = getClients();
   const user = getAuthUser();
