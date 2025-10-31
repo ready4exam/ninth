@@ -94,7 +94,7 @@
                 { name: "The Fundamental Unit of Life", value: "fundamental_unit" },
                 { name: "Improvement in Food Resources", value: "food_resources" },
                 { name: "Tissues", value: "tissues" }
-            ], // <-- FIX: Correct closing bracket and comma
+            ],
             social_science: [
                 { name: "The French Revolution", value: "french_revolution" },
                 { name: "India - Size and Location", value: "india_size" }
@@ -163,7 +163,8 @@
         /** Parses a CSV string into an array of objects. */
         function parseCSV(csvString) {
             const cleaned = csvString.trim().replace(/^\uFEFF/, '');
-            // NOTE: Due to pre-cleaning in startAutomation, we assume each entry is a full line now.
+            
+            // The split is now more reliable due to pre-cleaning in startAutomation
             const lines = cleaned.split(/\r?\n/).filter(l => l.trim().length > 0);
             if (lines.length < 2) throw new Error('CSV must include header and at least one data row.');
 
@@ -182,18 +183,13 @@
                 // Regex to handle quoted fields and commas within them
                 const fields = [];
                 let match;
-                // Updated regex for robust parsing of fields with embedded quotes and commas
                 const re = /(?:"((?:[^"]|"")*)"|([^,]*))(?:,|$)/g;
                 while ((match = re.exec(line)) !== null) {
                     const val = match[1] !== undefined ? match[1].replace(/""/g,'"') : match[2];
                     fields.push(val === undefined ? '' : val);
                 }
                 
-                // Fields length should match the number of columns, not the number of expected columns
-                // since the regex often captures one extra empty field at the end of the line
-                // if the last field is not quoted and the line ends with a comma.
-                // We will check against DB_COLUMNS.length and only use that many fields.
-
+                // We ensure we have at least the expected number of columns.
                 if (fields.length < DB_COLUMNS.length) {
                     log(`Skipping row ${i+1}: expected ${DB_COLUMNS.length} columns but found ${fields.length}`, 'warn');
                     continue;
@@ -205,7 +201,7 @@
                     let v = fields[j] ?? '';
                     v = v.trim();
                     // Convert 'nan' or 'null' (case-insensitive) to actual null
-                    if (!v || v.toLowerCase()==='nan' || v.toLowerCase()==='null') v = null;
+                    if (!v || v.toLowerCase()==='nan' || v.toLowerCase()==='null' || v.toLowerCase()==='empty') v = null;
                     // Clean LaTeX if the column requires it
                     if (v !== null && LATEX_CLEANUP_COLUMNS.includes(DB_COLUMNS[j])) v = cleanLatex(v);
                     
@@ -285,7 +281,7 @@
 
             const subj = subjectSelect.value;
             const tableName = chapterSelect.value;
-            const csvOriginal = csvInput.value.trim(); // Use original to check for empty
+            let csvOriginal = csvInput.value.trim();
 
             if (!subj || !tableName) {
                 log('Please select both subject and chapter/table name.', 'error');
@@ -296,18 +292,19 @@
                 return;
             }
 
-            // ⭐ FIX: Pre-clean CSV to remove newlines within quoted fields
-            // This prevents the "Invalid array length" error during line splitting/parsing.
-            const csvCleaned = csvOriginal
-                .replace(/"((?:[^"]|"")*)"/g, (match) => 
-                    match.replace(/\r?\n/g, ' ')
-                );
+            // ⭐ NEW ENHANCED FIX: Replace ALL newlines within quoted strings with spaces.
+            // This ensures that the outer .split(/\r?\n/) correctly separates the records.
+            // It searches for quoted sections (") and replaces any newlines inside them.
+            const csvCleaned = csvOriginal.replace(
+                /(")([^"]*)(")/g, // Finds a quoted string
+                (match, p1, p2, p3) => p1 + p2.replace(/[\r\n]+/g, ' ') + p3 // Replaces newlines inside p2 with space
+            );
 
 
             try {
                 setButtonState(true, 'Parsing CSV — please wait...');
                 log('Parsing CSV input...', 'info');
-                const rows = parseCSV(csvCleaned); // Pass the cleaned data to the parser
+                const rows = parseCSV(csvCleaned); // Pass the CLEANED data
                 log(`Parsed ${rows.length} rows. Preparing to insert into '${tableName}'`, 'info');
 
                 setButtonState(true, `Inserting ${rows.length} rows into ${tableName}...`);
@@ -315,9 +312,6 @@
                 log(`Success: ${inserted.length} records inserted into '${tableName}'`, 'success');
                 setButtonState(false, 'Parse CSV & Insert into Supabase');
                 
-                // Optionally clear the CSV after successful upload
-                // csvInput.value = '';
-
             } catch (err) {
                 log(`Automation failed: ${err.message}`, 'error');
                 setButtonState(false, 'Parse CSV & Insert into Supabase');
