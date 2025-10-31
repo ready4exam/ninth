@@ -1,154 +1,111 @@
 // js/auth-paywall.js
 // -----------------------------------------------------------------------------
-// Firebase Authentication for Ready4Exam Quiz Platform.
-// Supports popup → redirect fallback, persistent sessions, and external callback.
+// Firebase Authentication (Google Sign-In + Session Persistence)
 // -----------------------------------------------------------------------------
 
 import { getInitializedClients } from "./config.js";
-
 import {
   GoogleAuthProvider,
-  getRedirectResult as firebaseGetRedirectResult,
   signInWithPopup,
   signInWithRedirect,
+  getRedirectResult,
   onAuthStateChanged,
   signOut as firebaseSignOut,
   setPersistence,
   browserLocalPersistence,
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-const LOG_TAG = "[AUTH-PAYWALL]";
+const LOG = "[AUTH-PAYWALL]";
 let authInstance = null;
-let externalOnAuthChange = null;
+let externalCallback = null;
 let isSigningIn = false;
 
-// -----------------------------------------------------------------------------
-// Provider setup
-// -----------------------------------------------------------------------------
-const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: "select_account" });
-
-// Optionally inject clientId from window.__firebase_config
-if (window.__firebase_config) {
-  try {
-    const cfg = JSON.parse(window.__firebase_config);
-    if (cfg.clientId) googleProvider.clientId = cfg.clientId;
-  } catch (err) {
-    console.warn(LOG_TAG, "Could not parse clientId from config.", err);
-  }
-}
-
-// -----------------------------------------------------------------------------
-// Internal helpers
-// -----------------------------------------------------------------------------
+/**
+ * Get or initialize Firebase Auth instance
+ */
 function getAuthInstance() {
   if (!authInstance) {
-    try {
-      const { auth } = getInitializedClients();
-      if (!auth) throw new Error("Auth client not present");
-      authInstance = auth;
-    } catch (e) {
-      console.error(
-        LOG_TAG,
-        "Auth instance not available. Ensure config.initializeServices() ran.",
-        e
-      );
-      throw e;
-    }
+    const { auth } = getInitializedClients();
+    if (!auth) throw new Error("[AUTH] Firebase Auth not initialized.");
+    authInstance = auth;
   }
   return authInstance;
 }
 
-function internalAuthChangeHandler(user) {
-  console.log(LOG_TAG, "Auth state changed →", user ? user.uid : "Signed Out");
-  if (typeof externalOnAuthChange === "function") {
-    try {
-      externalOnAuthChange(user);
-    } catch (e) {
-      console.error(LOG_TAG, "External onAuthChange callback error:", e);
-    }
-  }
-}
-
-// -----------------------------------------------------------------------------
-// Initialize listener, restore redirect sessions, set persistence
-// -----------------------------------------------------------------------------
-export async function initializeAuthListener(onAuthChangeCallback = null) {
+/**
+ * Initialize authentication listener
+ */
+export async function initializeAuthListener(callback) {
   const auth = getAuthInstance();
-
-  // Persist session across reloads
   await setPersistence(auth, browserLocalPersistence);
 
-  // Try restoring redirect result before attaching listener
   try {
-    const redirectResult = await firebaseGetRedirectResult(auth);
+    const redirectResult = await getRedirectResult(auth);
     if (redirectResult?.user) {
-      console.log(LOG_TAG, "Restored user via redirect:", redirectResult.user.uid);
-    } else {
-      console.log(LOG_TAG, "No redirect result to restore.");
+      console.log(LOG, "Restored user via redirect:", redirectResult.user.uid);
     }
-  } catch (error) {
-    console.warn(LOG_TAG, "Redirect result error:", error.message);
+  } catch (err) {
+    console.warn(LOG, "Redirect restore failed:", err.message);
   }
 
-  if (onAuthChangeCallback && typeof onAuthChangeCallback === "function") {
-    externalOnAuthChange = onAuthChangeCallback;
-  }
+  if (typeof callback === "function") externalCallback = callback;
 
-  onAuthStateChanged(auth, internalAuthChangeHandler);
-  console.log(LOG_TAG, "Auth listener initialized.");
+  onAuthStateChanged(auth, (user) => {
+    console.log(LOG, "Auth state changed →", user ? user.uid : "Signed Out");
+    if (externalCallback) externalCallback(user);
+  });
+
+  console.log(LOG, "Auth listener initialized.");
 }
 
-// -----------------------------------------------------------------------------
-// Sign-in with Google (Popup → Redirect fallback)
-// -----------------------------------------------------------------------------
+/**
+ * Sign in with Google (Popup → Redirect fallback)
+ */
 export async function signInWithGoogle() {
   const auth = getAuthInstance();
   if (isSigningIn) return;
   isSigningIn = true;
 
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+
   try {
-    console.log(LOG_TAG, "Starting Google sign-in (popup)...");
-    const result = await signInWithPopup(auth, googleProvider);
-    console.log(LOG_TAG, "Popup sign-in success:", result.user?.uid);
+    const result = await signInWithPopup(auth, provider);
+    console.log(LOG, "Popup sign-in success:", result.user?.email);
     return result;
   } catch (error) {
-    const popupFailureCodes = [
+    const popupBlocked = [
       "auth/popup-blocked",
       "auth/cancelled-popup-request",
       "auth/web-storage-unsupported",
     ];
-    if (popupFailureCodes.includes(error.code)) {
-      console.warn(LOG_TAG, "Popup blocked → using redirect flow.");
-      await signInWithRedirect(auth, googleProvider);
+    if (popupBlocked.includes(error.code)) {
+      console.warn(LOG, "Popup blocked → redirect fallback.");
+      await signInWithRedirect(auth, provider);
     } else {
-      console.error(LOG_TAG, "Sign-in failed:", error);
-      throw error;
+      console.error(LOG, "Sign-in failed:", error);
     }
   } finally {
     isSigningIn = false;
   }
 }
 
-// -----------------------------------------------------------------------------
-// Sign-out
-// -----------------------------------------------------------------------------
+/**
+ * Sign out current user
+ */
 export async function signOut() {
   const auth = getAuthInstance();
   try {
     await firebaseSignOut(auth);
-    console.log(LOG_TAG, "User signed out successfully.");
-  } catch (error) {
-    console.error(LOG_TAG, "Sign-out failed:", error);
-    throw error;
+    console.log(LOG, "User signed out successfully.");
+  } catch (err) {
+    console.error(LOG, "Sign-out failed:", err);
   }
 }
 
-export const signOutUser = signOut;
-
-// -----------------------------------------------------------------------------
-// Simple access check
-// -----------------------------------------------------------------------------
+/**
+ * Check whether user is logged in
+ */
 export function checkAccess() {
   try {
     return !!getAuthInstance().currentUser;
