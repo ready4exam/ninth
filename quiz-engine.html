@@ -5,10 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ready4Exam | Quiz Engine</title>
 
-  <!-- Tailwind + Fonts -->
+  <!-- Tailwind & Fonts -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
-
   <script>
     tailwind.config = {
       theme: {
@@ -21,14 +20,10 @@
           }
         }
       }
-    }
+    };
   </script>
-
   <style>
     body { font-family: 'Inter', sans-serif; background-color: #f5f7fa; }
-    .option-label { transition: all 0.2s ease; }
-    .option-label.correct { border-color: #16a34a; background-color: #dcfce7; }
-    .option-label.incorrect { border-color: #dc2626; background-color: #fee2e2; }
     .option-label:hover { border-color: #2563eb; }
   </style>
 </head>
@@ -37,51 +32,33 @@
 
   <!-- Header -->
   <header class="bg-cbse-blue shadow-md py-4 px-6 flex justify-between items-center">
-    <div class="flex items-center gap-4">
-      <!-- Home Button -->
-      <a href="index.html" title="Back to Home" class="text-white hover:opacity-90">
-        <i data-lucide="home" class="w-6 h-6"></i>
-      </a>
-      <div>
-        <h1 id="quiz-page-title" class="text-2xl font-extrabold text-accent-gold tracking-wider">
-          Ready4<span class="text-white">Exam</span>
-        </h1>
-        <p class="text-sm text-white opacity-90 italic">
-          Ready4Exam helps students excel in school exams — a learning initiative by Ready4Industry.
-        </p>
-      </div>
+    <div class="flex items-center space-x-4">
+      <a href="index.html" class="text-white font-bold hover:text-accent-gold">🏠 Home</a>
+      <h1 id="quiz-page-title" class="text-2xl font-extrabold text-accent-gold tracking-wider">
+        Ready4<span class="text-white">Exam</span>
+      </h1>
     </div>
 
     <div class="flex items-center space-x-4">
+      <span id="welcome-user" class="text-white hidden"></span>
       <span id="difficulty-display"
-        class="px-3 py-1 text-sm font-semibold bg-yellow-100 text-yellow-800 rounded-full">
-        Difficulty: Simple
-      </span>
-
-      <!-- Auth Controls -->
-      <div id="auth-controls" class="flex items-center space-x-2">
-        <button id="login-btn" class="px-4 py-2 bg-white text-cbse-blue rounded hover:bg-gray-100">
-          Sign In
-        </button>
-      </div>
+        class="px-3 py-1 text-sm font-semibold bg-yellow-100 text-yellow-800 rounded-full">Difficulty: Simple</span>
+      <button id="logout-nav-btn"
+        class="hidden px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">Sign Out</button>
     </div>
   </header>
 
-  <!-- Smooth Loading / Auth Transition -->
-  <div id="status-message"
-    class="text-center p-6 font-semibold text-blue-700 hidden transition-all duration-300 ease-in-out">
-  </div>
-
+  <!-- Loading Screen -->
   <div id="loading-screen" class="flex flex-col items-center justify-center flex-grow hidden">
     <div class="animate-pulse text-cbse-blue text-lg font-semibold">
       Initializing your quiz experience... please wait
     </div>
   </div>
 
-  <!-- Paywall -->
+  <!-- Paywall (Visible Before Login) -->
   <div id="paywall-screen"
-    class="hidden flex flex-col items-center justify-center p-12 transition-all duration-300 ease-in-out">
-    <div id="paywall-content" class="bg-white rounded-xl p-10 shadow-xl border border-gray-200 text-center max-w-md">
+    class="flex flex-col items-center justify-center flex-grow p-8 bg-cbse-light">
+    <div class="bg-white rounded-xl p-10 shadow-xl border border-gray-200 text-center max-w-md">
       <h2 class="text-2xl font-bold text-gray-800 mb-4">Sign in to Continue</h2>
       <p class="text-gray-600 mb-6">
         Access premium quizzes for <b>Ready4Exam</b> by signing in with Google.
@@ -108,12 +85,11 @@
     </div>
   </main>
 
-  <!-- Results / Review -->
+  <!-- Results -->
   <section id="results-screen" class="hidden flex flex-col items-center justify-center text-center py-10 px-6">
     <h2 class="text-3xl font-extrabold text-green-600 mb-4">Quiz Completed!</h2>
     <p class="text-lg text-gray-700 mb-3">Your final score:</p>
     <p id="score-display" class="text-5xl font-bold text-blue-700 mb-8">-- / --</p>
-
     <div id="review-container" class="w-full max-w-3xl text-left mb-8"></div>
   </section>
 
@@ -136,20 +112,47 @@
     });
   </script>
 
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      lucide.createIcons();
-    });
-  </script>
-
   <!-- JS Modules -->
-  <script type="module" src="./js/config.js"></script>
-  <script type="module" src="./js/auth-paywall.js"></script>
-  <script type="module" src="./js/api.js"></script>
-  <script type="module" src="./js/ui-renderer.js?v=1.4"></script>
-  <script type="module" src="./js/quiz-engine.js"></script>
+  <script type="module">
+    import { initializeAuthListener, signInWithGoogle, signOut } from "./js/auth-paywall.js";
+    import * as UI from "./js/ui-renderer.js";
+    import "./js/api.js";
+    import "./js/quiz-engine.js";
 
+    const paywallScreen = document.getElementById("paywall-screen");
+    const quizContent = document.getElementById("quiz-content");
+    const signInBtn = document.getElementById("google-signin-btn");
+    const logoutBtn = document.getElementById("logout-nav-btn");
+    const welcomeUser = document.getElementById("welcome-user");
+
+    function showPaywall() {
+      paywallScreen.classList.remove("hidden");
+      quizContent.classList.add("hidden");
+    }
+
+    function showQuiz() {
+      paywallScreen.classList.add("hidden");
+      quizContent.classList.remove("hidden");
+    }
+
+    // 🟩 Auth initialization
+    initializeAuthListener((user) => {
+      if (user) {
+        const name = user.displayName?.split(" ")[0] || "User";
+        welcomeUser.textContent = `Welcome, ${name}`;
+        welcomeUser.classList.remove("hidden");
+        logoutBtn.classList.remove("hidden");
+        showQuiz();
+      } else {
+        showPaywall();
+        welcomeUser.classList.add("hidden");
+        logoutBtn.classList.add("hidden");
+      }
+    });
+
+    // 🟦 Events
+    signInBtn.addEventListener("click", () => signInWithGoogle());
+    logoutBtn.addEventListener("click", () => signOut());
+  </script>
 </body>
 </html>
