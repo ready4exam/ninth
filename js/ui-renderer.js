@@ -5,61 +5,38 @@ let els = {};
 let isInit = false;
 
 /**
- * Cache DOM elements for quick access.
+ * Initialize DOM element references
  */
 export function initializeElements() {
   if (isInit) return;
-
   els = {
-    // Header / Status
     title: document.getElementById('quiz-page-title'),
     diffBadge: document.getElementById('difficulty-display'),
     status: document.getElementById('status-message'),
-
-    // Quiz elements
     list: document.getElementById('question-list'),
     counter: document.getElementById('question-counter'),
-    prevButton: document.getElementById('prev-btn'),
-    nextButton: document.getElementById('next-btn'),
-    submitButton: document.getElementById('submit-btn'),
-    reviewCompleteBtn: document.getElementById('review-complete-btn'),
-
-    // Results / Review
     reviewScreen: document.getElementById('results-screen'),
     score: document.getElementById('score-display'),
-
-    // Auth / paywall
-    authNav: document.getElementById('auth-nav-container'),
-    paywall: document.getElementById('paywall-screen'),
-    paywallContent: document.getElementById('paywall-content'),
+    reviewBtn: document.getElementById('review-complete-btn'),
   };
-
   isInit = true;
-  console.log('[UI RENDERER] Elements initialized.');
-}
-
-export function getElements() {
-  if (!isInit) initializeElements();
-  return els;
 }
 
 /**
- * Show a status message at the top.
+ * Status bar helpers
  */
-export function showStatus(msg, cls = 'text-gray-700') {
+export function showStatus(msg) {
   initializeElements();
   els.status.innerHTML = msg;
-  els.status.className = `p-3 font-semibold text-center ${cls}`;
   els.status.classList.remove('hidden');
 }
 
 export function hideStatus() {
-  initializeElements();
   els.status.classList.add('hidden');
 }
 
 /**
- * Update header with topic name & difficulty.
+ * Header display (topic + difficulty)
  */
 export function updateHeader(topic, diff) {
   initializeElements();
@@ -68,44 +45,39 @@ export function updateHeader(topic, diff) {
 }
 
 /**
- * Renders a single question.
- * Displays scenario/explanation ONLY for AR or Case-type questions and only after submission.
+ * Render a single question (with Reason if AR/Case)
  */
-export function renderQuestion(q, index, selectedAnswer, isSubmitted) {
+export function renderQuestion(q, idx, selected, submitted) {
   initializeElements();
-  if (!els.list) return;
-
   const isAR = q.question_type === 'ar' || q.question_type === 'case';
-  const questionText = cleanKatexMarkers(q.text || '');
-  const reasonText = cleanKatexMarkers(q.explanation || '');
+  const qText = cleanKatexMarkers(q.text);
+  const reason = cleanKatexMarkers(q.explanation || ''); // ✅ fixed key name
 
   els.list.innerHTML = `
     <div class="space-y-4">
-      <p class="text-lg font-bold text-gray-800">Q${index}: ${questionText}</p>
-
-      ${isSubmitted && isAR && reasonText
-        ? `<p class="italic text-gray-700 border-l-4 border-blue-400 pl-4">${reasonText}</p>`
-        : ''}
-
+      <p class="text-lg font-bold text-gray-800">Q${idx + 1}: ${qText}</p>
+      ${
+        isAR && reason
+          ? `<p class="italic text-gray-700 border-l-4 border-blue-400 pl-4">Reason (R): ${reason}</p>`
+          : ''
+      }
       <div class="space-y-3">
         ${['A', 'B', 'C', 'D']
-          .map((opt) => {
-            const optText = cleanKatexMarkers(q.options?.[opt] || '');
-            const isSel = selectedAnswer === opt;
-            const isCorrect = isSubmitted && q.correct_answer === opt;
-            const isWrong = isSubmitted && isSel && !isCorrect;
-
-            let cls = 'option-label flex items-center p-3 border-2 rounded-lg transition';
-            if (isCorrect) cls += ' border-green-600 bg-green-50';
-            else if (isWrong) cls += ' border-red-600 bg-red-50';
+          .map(opt => {
+            const text = cleanKatexMarkers(q.options[opt]);
+            const isSel = selected === opt;
+            const isCorrect = submitted && q.correct_answer === opt;
+            const isWrong = submitted && isSel && !isCorrect;
+            let cls = 'option-label';
+            if (isCorrect) cls += ' correct';
+            else if (isWrong) cls += ' incorrect';
             else if (isSel) cls += ' border-blue-500 bg-blue-50';
-
             return `
-              <label class="block">
-                <input type="radio" name="q-${q.id}" value="${opt}" class="hidden" ${isSel ? 'checked' : ''} ${isSubmitted ? 'disabled' : ''}>
+              <label>
+                <input type="radio" name="q-${q.id}" value="${opt}" class="hidden"
+                  ${isSel ? 'checked' : ''} ${submitted ? 'disabled' : ''}>
                 <div class="${cls}">
-                  <span class="font-bold mr-2">${opt}.</span>
-                  <p class="flex-grow">${optText}</p>
+                  <span class="font-bold mr-2">${opt}.</span> ${text}
                 </div>
               </label>`;
           })
@@ -113,108 +85,104 @@ export function renderQuestion(q, index, selectedAnswer, isSubmitted) {
       </div>
     </div>
   `;
-
-  if (els.counter) {
-    els.counter.textContent = `${index} / ${quizLengthSafe()}`;
-  }
 }
 
 /**
- * Show all correct answers in a summary view (after submit).
+ * Review screen showing all questions and correct answers together
  */
-export function renderAllQuestionsForReview(questions, userAnswers = {}) {
+export function renderReview(questions) {
   initializeElements();
-  if (!els.list) return;
-
   els.list.innerHTML = questions
-    .map((q, i) => {
-      const isAR = q.question_type === 'ar' || q.question_type === 'case';
-      const reasonText = cleanKatexMarkers(q.explanation || '');
-      const qText = cleanKatexMarkers(q.text || '');
-      const userAns = userAnswers[q.id] || '-';
-      const correct = q.correct_answer || '-';
-      const isCorrect = userAns === correct;
+    .map(
+      (q, i) => `
+    <div class="mb-6 p-4 bg-gray-50 rounded-lg border">
+      <p class="font-bold text-lg mb-1">Q${i + 1}: ${cleanKatexMarkers(q.text)}</p>
+      ${
+        q.explanation
+          ? `<p class="italic text-gray-600 mb-2">Reason (R): ${cleanKatexMarkers(
+              q.explanation
+            )}</p>`
+          : ''
+      }
+      <p class="text-green-700 font-semibold">Correct Answer: ${q.correct_answer}</p>
+    </div>
+  `
+    )
+    .join('');
+  els.reviewScreen.classList.remove('hidden');
+}
 
+/**
+ * Display score at end of quiz
+ */
+export function showScore(score, total) {
+  initializeElements();
+  els.score.textContent = `${score} / ${total}`;
+  els.reviewScreen.classList.remove('hidden');
+}
+
+/**
+ * Render difficulty retry options at the end
+ */
+export function renderDifficultyOptions(currentTopic, currentDifficulty) {
+  initializeElements();
+
+  const difficulties = ['simple', 'medium', 'advanced'];
+  const labels = {
+    simple: 'Simple (Easy)',
+    medium: 'Medium',
+    advanced: 'Advanced (Hard)',
+  };
+
+  const nextButtonsHTML = difficulties
+    .map(diff => {
+      const isCurrent = diff === currentDifficulty;
+      const btnClass = isCurrent
+        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+        : diff === 'simple'
+        ? 'bg-green-500 hover:bg-green-600 text-white'
+        : diff === 'medium'
+        ? 'bg-yellow-500 hover:bg-yellow-600 text-white'
+        : 'bg-red-500 hover:bg-red-600 text-white';
       return `
-        <div class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
-          <p class="font-bold text-lg mb-1">Q${i + 1}: ${qText}</p>
-          ${isAR && reasonText ? `<p class="italic text-gray-600 mb-2">${reasonText}</p>` : ''}
-          <p class="text-sm">Your Answer: <span class="${isCorrect ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}">${userAns}</span></p>
-          <p class="text-green-700 font-semibold">Correct Answer: ${correct}</p>
-        </div>
-      `;
+        <button
+          class="px-6 py-2 rounded-lg font-semibold ${btnClass} transition"
+          ${isCurrent ? 'disabled' : ''}
+          data-diff="${diff}"
+        >
+          ${labels[diff]}
+        </button>`;
     })
     .join('');
 
-  showView('results-screen');
-}
+  const newTopicBtn = `
+    <button id="back-to-chapters-btn"
+      class="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition">
+      Choose Another Topic
+    </button>
+  `;
 
-/**
- * Update navigation button visibility depending on quiz state.
- */
-export function updateNavigation(currentIndex, total, isSubmitted) {
-  initializeElements();
-  const { prevButton, nextButton, submitButton, reviewCompleteBtn } = els;
-  if (!prevButton || !nextButton) return;
+  const container = document.createElement('div');
+  container.className = 'mt-8 space-y-4 text-center';
+  container.innerHTML = `
+    <h3 class="text-xl font-bold text-gray-800 mb-3">Try Another Difficulty:</h3>
+    <div class="flex justify-center flex-wrap gap-3">${nextButtonsHTML}</div>
+    <div class="mt-6">${newTopicBtn}</div>
+  `;
 
-  prevButton.classList.add('hidden');
-  nextButton.classList.add('hidden');
-  submitButton?.classList.add('hidden');
-  reviewCompleteBtn?.classList.add('hidden');
+  els.reviewScreen.appendChild(container);
 
-  if (!isSubmitted) {
-    if (currentIndex > 0) prevButton.classList.remove('hidden');
-    if (currentIndex < total - 1) nextButton.classList.remove('hidden');
-    if (currentIndex === total - 1) submitButton?.classList.remove('hidden');
-  } else {
-    if (currentIndex > 0) prevButton.classList.remove('hidden');
-    if (currentIndex < total - 1) nextButton.classList.remove('hidden');
-    reviewCompleteBtn?.classList.remove('hidden');
-  }
-}
-
-/**
- * Attach delegated answer listener for radio buttons.
- */
-export function attachAnswerListeners(handler) {
-  initializeElements();
-  if (!els.list) return;
-  els.list.addEventListener('change', (e) => {
-    const r = e.target;
-    if (r.type === 'radio' && r.name.startsWith('q-')) {
-      handler(r.name.slice(2), r.value);
+  // Event delegation for navigation
+  container.addEventListener('click', e => {
+    if (e.target.matches('[data-diff]')) {
+      const diff = e.target.dataset.diff;
+      if (!diff) return;
+      const params = new URLSearchParams(window.location.search);
+      params.set('difficulty', diff);
+      window.location.href = `quiz-engine.html?${params.toString()}`;
+    }
+    if (e.target.id === 'back-to-chapters-btn') {
+      window.location.href = 'chapter-selection.html';
     }
   });
-}
-
-/**
- * Manage which section of the quiz UI is visible.
- */
-export function showView(view) {
-  initializeElements();
-  const quizContent = document.getElementById('quiz-content');
-  const paywall = els.paywall;
-  const review = els.reviewScreen;
-  [quizContent, paywall, review].forEach((v) => v && v.classList.add('hidden'));
-
-  if (view === 'quiz-content' && quizContent) quizContent.classList.remove('hidden');
-  if (view === 'results-screen' && review) review.classList.remove('hidden');
-  if (view === 'paywall-screen' && paywall) paywall.classList.remove('hidden');
-}
-
-/**
- * Update score display on results screen.
- */
-export function showResults(score, total) {
-  initializeElements();
-  if (els.score) els.score.textContent = `${score} / ${total}`;
-  showView('results-screen');
-}
-
-/**
- * Utility to avoid undefined total
- */
-function quizLengthSafe() {
-  const list = document.getElementById('question-list');
-  return list ? list.children.length || '--' : '--';
 }
