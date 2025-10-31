@@ -3,131 +3,143 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ready4Exam CSV Quiz Processor & Uploader</title>
+  <title>Ready4Exam | CSV Upload Tool</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body class="bg-gray-50 min-h-screen flex flex-col items-center justify-center p-6">
+<body class="bg-gray-100 text-gray-800">
+  <div class="max-w-3xl mx-auto my-10 bg-white shadow-xl rounded-2xl p-6">
+    <h1 class="text-3xl font-bold text-center text-indigo-600 mb-6">📘 Ready4Exam CSV Upload Tool</h1>
 
-  <div class="w-full max-w-3xl bg-white shadow-lg rounded-2xl p-8">
-    <h1 class="text-3xl font-bold text-center mb-2 text-indigo-700">Ready4Exam CSV Quiz Processor</h1>
-    <p class="text-gray-500 text-center mb-6">Paste Gemini CSV output below and upload to Supabase.</p>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-      <div>
-        <label class="block text-gray-700 font-semibold mb-2">Subject</label>
-        <select id="subjectSelect" class="w-full border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-400">
-          <option value="science">Science</option>
-          <option value="mathematics">Mathematics</option>
-          <option value="social_science">Social Science</option>
-        </select>
-      </div>
-
-      <div>
-        <label class="block text-gray-700 font-semibold mb-2">Chapter / Table</label>
-        <select id="chapterSelect" class="w-full border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-400">
-          <option value="fundamental_unit">The Fundamental Unit of Life</option>
-          <option value="matter_in_surroundings">Matter in Our Surroundings</option>
-          <option value="cell_structure">Cell Structure and Functions</option>
-        </select>
-      </div>
+    <!-- Subject Selection -->
+    <div class="mb-4">
+      <label class="block text-gray-700 font-semibold mb-2">Subject</label>
+      <select id="subjectSelect" class="w-full border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+        <option value="">-- Select Subject --</option>
+        <option value="science">Science</option>
+        <option value="mathematics">Mathematics</option>
+        <option value="social_science">Social Science</option>
+      </select>
     </div>
 
-    <textarea id="csvInput"
-      class="w-full h-60 border rounded-lg p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-      placeholder="Paste your Gemini CSV output here..."></textarea>
+    <!-- Chapter / Table Selection -->
+    <div class="mb-6">
+      <label class="block text-gray-700 font-semibold mb-2">Chapter / Table</label>
+      <select id="chapterSelect" class="w-full border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+        <!-- Science Chapters -->
+        <optgroup label="Science">
+          <option value="fundamental_unit">The Fundamental Unit of Life</option>
+          <option value="tissue">Tissues</option>
+          <option value="food_resources">Improvement in Food Resources</option>
+          <option value="matter_in_surroundings">Matter in Our Surroundings</option>
+          <option value="cell_structure">Cell Structure and Functions</option>
+        </optgroup>
 
-    <button id="processBtn"
-      class="w-full bg-indigo-600 text-white font-semibold py-2 rounded-lg hover:bg-indigo-700 transition-all">
+        <!-- Mathematics Chapters -->
+        <optgroup label="Mathematics">
+          <option value="number_systems">Number Systems</option>
+          <option value="polynomials">Polynomials</option>
+          <option value="coordinate_geometry">Coordinate Geometry</option>
+        </optgroup>
+
+        <!-- Social Science Chapters -->
+        <optgroup label="Social Science">
+          <option value="french_revolution">The French Revolution</option>
+          <option value="natural_vegetation">Natural Vegetation and Wildlife</option>
+          <option value="climate">Climate</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <!-- CSV Upload -->
+    <div class="mb-4">
+      <label class="block text-gray-700 font-semibold mb-2">Upload CSV</label>
+      <input type="file" id="csvFile" accept=".csv" class="w-full border rounded-lg p-2" />
+    </div>
+
+    <button id="uploadBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg font-semibold">
       Parse CSV & Insert into Supabase
     </button>
 
-    <pre id="logArea" class="mt-6 bg-gray-900 text-green-400 text-sm p-4 rounded-lg overflow-y-auto h-48"></pre>
+    <pre id="log" class="bg-gray-100 mt-6 p-4 rounded-lg h-64 overflow-y-auto text-sm text-gray-700 border"></pre>
   </div>
 
   <script>
-    // ---------------- CONFIG ----------------
-    const SUPABASE_URL = "https://gkyvojcmqsgdynmitcuf.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdreXZvamNtcXNnZHlubWl0Y3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3NDQ0OTcsImV4cCI6MjA3NjMyMDQ5N30.5dn5HbXxQ5sYNECS9o3VxVeyL6I6Z2Yf-nmPwztx1hE"; // replace this
+    // Initialize Supabase
+    const SUPABASE_URL = "https://https://gkyvojcmqsgdynmitcuf.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdreXZvamNtcXNnZHlubWl0Y3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3NDQ0OTcsImV4cCI6MjA3NjMyMDQ5N30.5dn5HbXxQ5sYNECS9o3VxVeyL6I6Z2Yf-nmPwztx1hE";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const uploadBtn = document.getElementById('uploadBtn');
+    const csvFileInput = document.getElementById('csvFile');
+    const logEl = document.getElementById('log');
+    const chapterSelect = document.getElementById('chapterSelect');
+
     const DB_COLUMNS = [
-      'difficulty', 'question_type', 'question_text', 'scenario_reason_text',
-      'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer_key'
+      'difficulty',
+      'question_type',
+      'question_text',
+      'scenario_reason_text',
+      'option_a',
+      'option_b',
+      'option_c',
+      'option_d',
+      'correct_answer_key'
     ];
 
-    // ---------------- INIT ----------------
-    const log = (msg) => {
+    const log = msg => {
       console.log(msg);
-      const logArea = document.getElementById("logArea");
-      logArea.textContent += msg + "\n";
-      logArea.scrollTop = logArea.scrollHeight;
+      logEl.textContent += msg + "\n";
     };
 
-    let supabaseClient;
-    try {
-      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      log("✅ Supabase client initialized successfully.");
-    } catch (err) {
-      log("❌ Supabase initialization failed: " + err.message);
-    }
-
-    // ---------------- CSV PARSER ----------------
     function parseCSV(csvText) {
-      // Normalize and clean up
-      let cleanText = csvText.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").trim();
+      // Normalize BOM + line endings
+      csvText = csvText.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
+      const { data } = Papa.parse(csvText.trim(), { header: true, skipEmptyLines: true });
 
-      const lines = cleanText.split("\n").filter(line => line.trim().length > 0);
-      const header = lines[0].split(",").map(h => h.trim().replace(/['"]+/g, "").toLowerCase());
+      if (!data.length) throw new Error("CSV file appears empty.");
 
+      // Validate header
+      const header = Object.keys(data[0]).map(h => h.trim().toLowerCase());
       const expected = DB_COLUMNS.map(c => c.toLowerCase());
       const headerOk = expected.every(col => header.includes(col));
 
       if (!headerOk) {
-        throw new Error(`Header mismatch.\nExpected: ${expected.join(", ")}\nFound: ${header.join(", ")}`);
+        throw new Error(
+          `Header mismatch. Expected: ${expected.join(', ')}\nFound: ${header.join(', ')}`
+        );
       }
-
-      const rows = lines.slice(1).map(line => {
-        const cols = line.split(",").map(c => c.trim().replace(/^"|"$/g, ""));
-        const row = {};
-        header.forEach((key, i) => { row[key] = cols[i] || ""; });
-        return row;
-      });
-
-      log(`📄 Parsed ${rows.length} rows successfully.`);
-      return rows;
+      return data;
     }
 
-    // ---------------- UPLOADER ----------------
-    async function uploadRows(rows, tableName) {
-      if (!supabaseClient) throw new Error("Supabase client not initialized.");
-      if (!rows || !rows.length) throw new Error("No rows to insert.");
+    uploadBtn.addEventListener('click', async () => {
+      const file = csvFileInput.files[0];
+      if (!file) return alert("Please select a CSV file first.");
 
-      log(`🚀 Uploading ${rows.length} rows to "${tableName}"...`);
-      const { data, error } = await supabaseClient.from(tableName).insert(rows);
-
-      if (error) throw error;
-      log(`✅ Successfully inserted ${data?.length || rows.length} rows.`);
-    }
-
-    // ---------------- MAIN ----------------
-    document.getElementById("processBtn").addEventListener("click", async () => {
-      const csvInput = document.getElementById("csvInput").value;
-      const chapterSelect = document.getElementById("chapterSelect");
       const tableName = chapterSelect.value.trim();
+      if (!tableName) return alert("Please select a chapter/table first.");
 
-      if (!csvInput) {
-        log("⚠️ Please paste a CSV before processing.");
-        return;
-      }
+      logEl.textContent = "";
+      log(`📂 Reading file: ${file.name}`);
 
-      try {
-        log("🔍 Parsing CSV...");
-        const rows = parseCSV(csvInput);
-        await uploadRows(rows, tableName);
-        log("🎉 Upload completed successfully!");
-      } catch (err) {
-        log("❌ Error: " + err.message);
-      }
+      const reader = new FileReader();
+      reader.onload = async e => {
+        try {
+          const csvText = e.target.result;
+          const rows = parseCSV(csvText);
+          log(`✅ Parsed ${rows.length} rows. Inserting into table "${tableName}"...`);
+
+          const { data, error } = await supabaseClient.from(tableName).insert(rows);
+          if (error) throw error;
+
+          log(`🎉 Successfully inserted ${rows.length} rows into "${tableName}".`);
+        } catch (err) {
+          console.error(err);
+          log(`❌ Error: ${err.message}`);
+        }
+      };
+      reader.readAsText(file);
     });
   </script>
 </body>
