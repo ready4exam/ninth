@@ -1,4 +1,8 @@
 // js/auth-paywall.js
+// -----------------------------------------------------------------------------
+// Handles Google Sign-In, Auth State, and Paywall Control
+// -----------------------------------------------------------------------------
+
 import { getInitializedClients } from "./config.js";
 import {
   GoogleAuthProvider,
@@ -11,14 +15,16 @@ import {
   browserLocalPersistence,
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-// UI overlay called from quiz-engine via UI module
-import * as UI from './ui-renderer.js';
+import * as UI from "./ui-renderer.js";
 
 const LOG_TAG = "[AUTH-PAYWALL]";
 let authInstance = null;
 let externalOnAuthChange = null;
 let isSigningIn = false;
 
+// -----------------------------------------------------------------------------
+// Google Auth Provider Setup
+// -----------------------------------------------------------------------------
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
 
@@ -31,6 +37,9 @@ if (window.__firebase_config) {
   }
 }
 
+// -----------------------------------------------------------------------------
+// Auth Client Getter
+// -----------------------------------------------------------------------------
 function getAuthInstance() {
   if (!authInstance) {
     try {
@@ -45,6 +54,9 @@ function getAuthInstance() {
   return authInstance;
 }
 
+// -----------------------------------------------------------------------------
+// Internal Auth State Handler
+// -----------------------------------------------------------------------------
 function internalAuthChangeHandler(user) {
   console.log(LOG_TAG, "Auth state changed →", user ? user.uid : "Signed Out");
   if (typeof externalOnAuthChange === "function") {
@@ -56,6 +68,9 @@ function internalAuthChangeHandler(user) {
   }
 }
 
+// -----------------------------------------------------------------------------
+// Initialize Auth Listener
+// -----------------------------------------------------------------------------
 export async function initializeAuthListener(onAuthChangeCallback = null) {
   const auth = getAuthInstance();
 
@@ -82,19 +97,32 @@ export async function initializeAuthListener(onAuthChangeCallback = null) {
   console.log(LOG_TAG, "Auth listener initialized.");
 }
 
+// -----------------------------------------------------------------------------
+// Google Sign-In Flow
+// -----------------------------------------------------------------------------
 export async function signInWithGoogle() {
   const auth = getAuthInstance();
   if (isSigningIn) return;
   isSigningIn = true;
 
-  // Show professional auth loading overlay
+  // Professional overlay during sign-in
   try {
-    UI.showAuthLoading('Opening Google Sign-In — choose your account.');
+    UI.showAuthLoading("Opening Google Sign-In — choose your account.");
 
     try {
       const result = await signInWithPopup(auth, googleProvider);
       console.log(LOG_TAG, "Popup sign-in success:", result.user?.uid);
       UI.hideAuthLoading();
+
+      // ✅ Hide paywall and show quiz after sign-in
+      const paywall = document.getElementById("paywall-screen");
+      const quizContent = document.getElementById("quiz-content");
+      if (paywall) paywall.classList.add("hidden");
+      if (quizContent) quizContent.classList.remove("hidden");
+
+      // Notify quiz-engine listener that user is signed in
+      document.dispatchEvent(new CustomEvent("userSignedIn", { detail: result.user }));
+
       return result;
     } catch (popupError) {
       const popupFailureCodes = [
@@ -104,9 +132,7 @@ export async function signInWithGoogle() {
       ];
       if (popupFailureCodes.includes(popupError.code)) {
         console.warn(LOG_TAG, "Popup blocked → falling back to redirect.");
-        // start redirect flow (this will navigate away)
         await signInWithRedirect(auth, googleProvider);
-        // note: redirect will leave page; overlay remains but browser will navigate
       } else {
         console.error(LOG_TAG, "Popup error:", popupError);
         UI.hideAuthLoading();
@@ -118,11 +144,20 @@ export async function signInWithGoogle() {
   }
 }
 
+// -----------------------------------------------------------------------------
+// Sign-Out Flow
+// -----------------------------------------------------------------------------
 export async function signOut() {
   const auth = getAuthInstance();
   try {
     await firebaseSignOut(auth);
     console.log(LOG_TAG, "User signed out successfully.");
+
+    // Show paywall again when signed out
+    const paywall = document.getElementById("paywall-screen");
+    const quizContent = document.getElementById("quiz-content");
+    if (paywall) paywall.classList.remove("hidden");
+    if (quizContent) quizContent.classList.add("hidden");
   } catch (error) {
     console.error(LOG_TAG, "Sign-out failed:", error);
     throw error;
@@ -131,6 +166,9 @@ export async function signOut() {
 
 export const signOutUser = signOut;
 
+// -----------------------------------------------------------------------------
+// Access Check
+// -----------------------------------------------------------------------------
 export function checkAccess() {
   try {
     return !!getAuthInstance().currentUser;
