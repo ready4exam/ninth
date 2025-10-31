@@ -88,6 +88,34 @@ export function updateHeader(topic, diff) {
 ----------------------------------- */
 export function showAuthLoading(message = 'Signing you in — please wait...') {
   initializeElements();
+
+  let overlay = document.getElementById('auth-loading-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'auth-loading-overlay';
+    overlay.className = 'fixed inset-0 bg-white/80 flex items-center justify-center z-50';
+    overlay.innerHTML = `
+      <div class="p-6 rounded-lg shadow-lg text-center max-w-lg bg-white">
+        <div class="text-2xl font-bold mb-2">Signing in</div>
+        <div class="text-sm text-gray-700 mb-4">${message}</div>
+        <div class="w-12 h-12 mx-auto mb-1">
+          <svg class="animate-spin w-12 h-12 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+          </svg>
+        </div>
+        <div class="text-xs text-gray-500 mt-2">
+          If the flow doesn't continue, check your popup/redirect settings or try again.
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  } else {
+    const msgEl = overlay.querySelector('.text-sm.text-gray-700');
+    if (msgEl) msgEl.textContent = message;
+    overlay.classList.remove('hidden');
+  }
+}
   // if overlay exists, update text
   let overlay = document.getElementById(els.statusOverlayId);
   if (!overlay) {
