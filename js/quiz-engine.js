@@ -1,14 +1,17 @@
 // js/quiz-engine.js
-// -----------------------------------------------------------------------------
-// Core quiz logic: question rendering, navigation, submission
-// This version assumes authentication is handled by quiz-engine.html
-// -----------------------------------------------------------------------------
-
+// -------------------------------------------------------------
+// Handles quiz lifecycle and authentication flow
+// -------------------------------------------------------------
 import { initializeServices, getAuthUser } from "./config.js";
 import { fetchQuestions, saveResult } from "./api.js";
 import * as UI from "./ui-renderer.js";
+import {
+  initializeAuthListener,
+  signInWithGoogle,
+  signOut,
+  checkAccess,
+} from "./auth-paywall.js";
 
-// Global state
 let quizState = {
   classId: null,
   subject: null,
@@ -21,158 +24,111 @@ let quizState = {
   score: 0,
 };
 
-/**
- * Parse quiz parameters from URL
- */
 function parseUrlParameters() {
-  const urlParams = new URLSearchParams(window.location.search);
-  quizState.classId = urlParams.get("class");
-  quizState.subject = urlParams.get("subject");
-  quizState.topicSlug = urlParams.get("topic");
-  quizState.difficulty = urlParams.get("difficulty");
-
+  const params = new URLSearchParams(window.location.search);
+  quizState.classId = params.get("class");
+  quizState.subject = params.get("subject");
+  quizState.topicSlug = params.get("topic");
+  quizState.difficulty = params.get("difficulty") || "Simple";
   if (!quizState.topicSlug) throw new Error("Missing topic parameter.");
   UI.updateHeader(quizState.topicSlug, quizState.difficulty);
 }
 
-/**
- * Render question
- */
 function renderQuestion() {
   const q = quizState.questions[quizState.currentQuestionIndex];
-  if (!q) {
-    UI.showStatus("<span>No question to display.</span>");
-    return;
-  }
-
-  UI.renderQuestion(q, quizState.currentQuestionIndex, quizState.userAnswers[q.id], quizState.isSubmitted);
-
-  const els = UI.getElements?.() || {};
-  if (els.counter)
-    els.counter.textContent = `${quizState.currentQuestionIndex + 1} / ${quizState.questions.length}`;
-
-  UI.updateNavigation?.(quizState.currentQuestionIndex, quizState.questions.length, quizState.isSubmitted);
-  UI.hideStatus();
+  if (!q) return UI.showStatus("No question to display.");
+  UI.renderQuestion(q, quizState.currentQuestionIndex + 1, quizState.userAnswers[q.id], quizState.isSubmitted);
+  UI.updateNavigation(quizState.currentQuestionIndex, quizState.questions.length, quizState.isSubmitted);
 }
 
-/**
- * Navigation between questions
- */
+function handleAnswerSelection(qid, opt) {
+  if (quizState.isSubmitted) return;
+  quizState.userAnswers[qid] = opt;
+}
+
 function handleNavigation(dir) {
-  const newIndex = quizState.currentQuestionIndex + dir;
-  if (newIndex >= 0 && newIndex < quizState.questions.length) {
-    quizState.currentQuestionIndex = newIndex;
+  const next = quizState.currentQuestionIndex + dir;
+  if (next >= 0 && next < quizState.questions.length) {
+    quizState.currentQuestionIndex = next;
     renderQuestion();
   }
 }
 
-/**
- * Handle answer selection
- */
-function handleAnswerSelection(questionId, selectedOption) {
-  if (quizState.isSubmitted) return;
-  quizState.userAnswers[questionId] = selectedOption;
-  renderQuestion();
-}
-
-/**
- * Submit quiz
- */
 async function handleSubmit() {
-  if (quizState.isSubmitted) return;
   quizState.isSubmitted = true;
-  quizState.score = 0;
-
-  quizState.questions.forEach((q) => {
-    const ans = quizState.userAnswers[q.id];
-    if (ans && ans.toUpperCase() === (q.correct_answer || "").toUpperCase()) quizState.score++;
-  });
+  quizState.score = quizState.questions.filter(
+    (q) => quizState.userAnswers[q.id]?.toUpperCase() === q.correct_answer
+  ).length;
 
   const user = getAuthUser();
-  const result = {
-    classId: quizState.classId,
-    subject: quizState.subject,
-    topic: quizState.topicSlug,
-    difficulty: quizState.difficulty,
-    score: quizState.score,
-    total: quizState.questions.length,
-    user_answers: quizState.userAnswers,
-  };
+  if (user) {
+    await saveResult({
+      classId: quizState.classId,
+      subject: quizState.subject,
+      topic: quizState.topicSlug,
+      difficulty: quizState.difficulty,
+      score: quizState.score,
+      total: quizState.questions.length,
+      user_answers: quizState.userAnswers,
+    });
+  }
+
+  UI.showResults(quizState.score, quizState.questions.length);
+  UI.renderAllQuestionsForReview(quizState.questions, quizState.userAnswers);
+}
+
+async function loadQuiz() {
+  UI.showStatus("Loading quiz questions...");
+  const questions = await fetchQuestions(quizState.topicSlug, quizState.difficulty);
+  quizState.questions = questions;
+  quizState.userAnswers = Object.fromEntries(questions.map((q) => [q.id, null]));
+  quizState.currentQuestionIndex = 0;
+  quizState.isSubmitted = false;
+
+  UI.attachAnswerListeners(handleAnswerSelection);
+  renderQuestion();
+  UI.showView("quiz-content");
+}
+
+async function onAuthChange(user) {
+  const paywall = document.getElementById("paywall-screen");
+  const welcome = document.getElementById("welcome-user");
+  const logoutBtn = document.getElementById("logout-nav-btn");
+  const signInBtn = document.getElementById("google-signin-btn");
 
   if (user) {
-    try {
-      await saveResult(result);
-      console.log("[ENGINE] Quiz result saved.");
-    } catch (e) {
-      console.warn("[ENGINE] Save failed:", e);
-    }
-  }
-
-  quizState.currentQuestionIndex = 0;
-  renderQuestion();
-  UI.showResults(quizState.score, quizState.questions.length);
-  UI.renderAllQuestionsForReview?.(quizState.questions, quizState.userAnswers);
-  UI.updateNavigation?.(quizState.currentQuestionIndex, quizState.questions.length, true);
-}
-
-/**
- * Load quiz questions from Supabase
- */
-export async function loadQuiz() {
-  try {
-    UI.showStatus("Fetching questions...");
-    const questions = await fetchQuestions(quizState.topicSlug, quizState.difficulty);
-    if (!questions?.length) throw new Error("No questions found.");
-
-    quizState.questions = questions;
-    quizState.userAnswers = Object.fromEntries(questions.map((q) => [q.id, null]));
-    quizState.currentQuestionIndex = 0;
-    quizState.isSubmitted = false;
-
-    renderQuestion();
-    UI.attachAnswerListeners?.(handleAnswerSelection);
-    UI.showView?.("quiz-content");
-  } catch (err) {
-    console.error("[ENGINE] loadQuiz failed:", err);
-    UI.showStatus(`<span class="text-red-600">Error:</span> ${err.message}`);
+    welcome.textContent = `Welcome, ${user.displayName?.split(" ")[0] || "Student"}!`;
+    welcome.classList.remove("hidden");
+    logoutBtn.classList.remove("hidden");
+    logoutBtn.onclick = () => signOut();
+    paywall.classList.add("hidden");
+    await loadQuiz();
+  } else {
+    welcome.classList.add("hidden");
+    logoutBtn.classList.add("hidden");
+    UI.showView("paywall-screen");
+    if (signInBtn) signInBtn.onclick = () => signInWithGoogle();
   }
 }
 
-/**
- * Attach DOM event listeners
- */
-function attachDomEventHandlers() {
-  const els = UI.getElements?.() || {};
+function attachEvents() {
+  const els = UI.getElements();
   els.prevButton?.addEventListener("click", () => handleNavigation(-1));
   els.nextButton?.addEventListener("click", () => handleNavigation(1));
   els.submitButton?.addEventListener("click", handleSubmit);
 }
 
-/**
- * Initialize quiz engine (after user login)
- */
-async function initQuizEngine() {
+async function init() {
   try {
     UI.initializeElements();
     parseUrlParameters();
-
-    UI.showStatus("Initializing services...");
     await initializeServices();
-    console.log("[ENGINE] Firebase & Supabase initialized.");
-
-    attachDomEventHandlers();
-    UI.hideStatus();
-
-    // Load questions only after login (triggered externally)
-    const user = getAuthUser();
-    if (user) await loadQuiz();
-    else UI.showStatus("Please sign in to continue.", "text-red-600");
-
-    console.log("[ENGINE] Initialization complete.");
-  } catch (err) {
-    console.error("[ENGINE FATAL] Initialization failed:", err);
-    UI.showStatus(`<span class="text-red-600">Critical error:</span> ${err.message}`);
+    await initializeAuthListener(onAuthChange);
+    attachEvents();
+  } catch (e) {
+    console.error("[ENGINE INIT ERROR]", e);
+    UI.showStatus(`<span class='text-red-600'>${e.message}</span>`);
   }
 }
 
-document.addEventListener("DOMContentLoaded", initQuizEngine);
+document.addEventListener("DOMContentLoaded", init);
