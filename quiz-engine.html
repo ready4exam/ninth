@@ -9,6 +9,21 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
 
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            'cbse-blue': '#1a3e6a',
+            'cbse-light': '#f5f7fa',
+            'accent-gold': '#ffb703',
+          }
+        }
+      }
+    }
+  </script>
+
   <style>
     body { font-family: 'Inter', sans-serif; background-color: #f5f7fa; }
     .option-label { transition: all 0.2s ease; }
@@ -21,13 +36,13 @@
 <body class="min-h-screen flex flex-col">
 
   <!-- Header -->
-  <header class="bg-white shadow-md py-4 px-6 flex justify-between items-center">
+  <header class="bg-cbse-blue shadow-md py-4 px-6 flex justify-between items-center">
     <div>
-      <h1 id="quiz-page-title" class="text-2xl font-extrabold text-cbse-blue">
-        Ready4<span class="text-blue-600">Exam</span>
+      <h1 id="quiz-page-title" class="text-2xl font-extrabold text-accent-gold tracking-wider">
+        Ready4<span class="text-white">Exam</span>
       </h1>
-      <p class="text-sm text-gray-500 -mt-1">
-       Ready4Exam helps students excel in school exams — a learning initiative by Ready4Industry.
+      <p class="text-sm text-white opacity-90 italic">
+        Ready4Exam helps students excel in school exams — a learning initiative by Ready4Industry.
       </p>
     </div>
     <div id="auth-nav-container" class="flex items-center space-x-3">
@@ -39,9 +54,15 @@
     </div>
   </header>
 
-  <!-- Status / Auth Transition -->
+  <!-- Smooth Loading / Auth Transition -->
   <div id="status-message"
-    class="text-center p-6 font-semibold text-blue-600 hidden transition-all duration-300 ease-in-out">
+    class="text-center p-6 font-semibold text-blue-700 hidden transition-all duration-300 ease-in-out">
+  </div>
+
+  <div id="loading-screen" class="flex flex-col items-center justify-center flex-grow hidden">
+    <div class="animate-pulse text-cbse-blue text-lg font-semibold">
+      Initializing your quiz experience... please wait
+    </div>
   </div>
 
   <!-- Paywall -->
@@ -59,7 +80,7 @@
     </div>
   </div>
 
-  <!-- Quiz Section -->
+  <!-- Quiz Content -->
   <main id="quiz-content" class="hidden flex flex-col items-center max-w-4xl mx-auto px-4 py-8">
     <div id="question-list" class="w-full space-y-6 mb-8"></div>
 
@@ -74,11 +95,11 @@
     </div>
   </main>
 
-  <!-- Results -->
+  <!-- Results / Review -->
   <section id="results-screen" class="hidden flex flex-col items-center justify-center text-center py-10 px-6">
-    <h2 class="text-4xl font-extrabold text-green-600 mb-4">Quiz Completed!</h2>
+    <h2 class="text-3xl font-extrabold text-green-600 mb-4">Quiz Completed!</h2>
     <p class="text-lg text-gray-700 mb-3">Your final score:</p>
-    <p id="score-display" class="text-6xl font-bold text-blue-700 mb-8">-- / --</p>
+    <p id="score-display" class="text-5xl font-bold text-blue-700 mb-8">-- / --</p>
 
     <div id="review-container" class="w-full max-w-3xl text-left mb-8"></div>
     <div class="flex flex-wrap justify-center gap-3">
@@ -86,6 +107,11 @@
         class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Review Answers</button>
     </div>
   </section>
+
+  <!-- Footer -->
+  <footer class="bg-cbse-blue text-white text-center py-6 mt-auto">
+    <small class="opacity-80">© 2025 Ready4Exam Academic Portal. All Rights Reserved.</small>
+  </footer>
 
   <!-- Firebase Config -->
   <script>
