@@ -47,15 +47,22 @@
     </div>
 
     <div id="auth-nav-container" class="flex items-center space-x-4">
+      <!-- Home button -->
       <a href="index.html"
          class="px-4 py-2 bg-white text-cbse-blue font-semibold rounded hover:bg-gray-100 transition">
         Home
       </a>
+
+      <!-- Welcome message -->
       <span id="welcome-user" class="text-sm text-white hidden"></span>
+
+      <!-- Difficulty badge -->
       <span id="difficulty-display"
-        class="px-3 py-1 text-sm font-semibold bg-yellow-100 text-yellow-800 rounded-full">
+        class="hidden px-3 py-1 text-sm font-semibold bg-yellow-100 text-yellow-800 rounded-full">
         Difficulty: Simple
       </span>
+
+      <!-- Logout button -->
       <button id="logout-nav-btn"
         class="hidden px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">Sign Out</button>
     </div>
@@ -64,14 +71,14 @@
   <!-- Status -->
   <div id="status-message" class="text-center p-6 font-semibold text-blue-700 hidden"></div>
 
-  <!-- Loading -->
+  <!-- Loading Screen -->
   <div id="loading-screen" class="flex flex-col items-center justify-center flex-grow hidden">
     <div class="animate-pulse text-cbse-blue text-lg font-semibold">
       Initializing your quiz experience... please wait
     </div>
   </div>
 
-  <!-- Paywall -->
+  <!-- Paywall (Sign-In Screen) -->
   <div id="paywall-screen"
     class="hidden flex flex-col items-center justify-center p-12 transition-all duration-300 ease-in-out">
     <div class="bg-white rounded-xl p-10 shadow-xl border border-gray-200 text-center max-w-md">
@@ -87,97 +94,4 @@
   </div>
 
   <!-- Quiz Content -->
-  <main id="quiz-content" class="hidden flex flex-col items-center max-w-4xl mx-auto px-4 py-8">
-    <div id="question-list" class="w-full space-y-6 mb-8"></div>
-
-    <div class="w-full flex justify-between items-center bg-white rounded-lg shadow p-4">
-      <button id="prev-btn" class="px-5 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Previous</button>
-      <span id="question-counter" class="font-semibold text-gray-700">-- / --</span>
-      <div class="flex space-x-2">
-        <button id="next-btn" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Next</button>
-        <button id="submit-btn"
-          class="hidden px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Submit Quiz</button>
-      </div>
-    </div>
-  </main>
-
-  <!-- Results -->
-  <section id="results-screen" class="hidden flex flex-col items-center justify-center text-center py-10 px-6">
-    <h2 class="text-3xl font-extrabold text-green-600 mb-4">Quiz Completed!</h2>
-    <p class="text-lg text-gray-700 mb-3">Your final score:</p>
-    <p id="score-display" class="text-5xl font-bold text-blue-700 mb-8">-- / --</p>
-    <div id="review-container" class="w-full max-w-3xl text-left mb-8"></div>
-  </section>
-
-  <!-- Footer -->
-  <footer class="bg-cbse-blue text-white text-center py-6 mt-auto">
-    <small class="opacity-80">© 2025 Ready4Exam Academic Portal. All Rights Reserved.</small>
-  </footer>
-
-  <!-- Firebase Config -->
-  <script>
-    window.__firebase_config = JSON.stringify({
-      "apiKey": "AIzaSyAXdKiYRxBKAj280YcNuNwlKKDp85xpOWQ",
-      "authDomain": "quiz-signon.firebaseapp.com",
-      "projectId": "quiz-signon",
-      "storageBucket": "quiz-signon.firebasestorage.app",
-      "messagingSenderId": "863414222321",
-      "appId": "1:863414222321:web:819f5564825308bcd9d850",
-      "measurementId": "G-4EFDM0CRYY",
-      "clientId": "863414222321-XXXX.apps.googleusercontent.com"
-    });
-  </script>
-
-  <!-- JS Modules -->
-  <script type="module" src="./js/config.js"></script>
-  <script type="module" src="./js/auth-paywall.js"></script>
-  <script type="module" src="./js/api.js"></script>
-  <script type="module" src="./js/ui-renderer.js?v=1.4"></script>
-
-  <!-- 🚀 Auth-aware Quiz Engine -->
-  <script type="module">
-    import { getAuthUser } from './js/config.js';
-    import { initializeAuthListener, signInWithGoogle, signOut } from './js/auth-paywall.js';
-    import * as UI from './js/ui-renderer.js';
-    import { fetchQuestions, saveResult } from './js/api.js';
-
-    document.addEventListener("DOMContentLoaded", async () => {
-      await initializeAuthListener(async (user) => {
-        const welcomeEl = document.getElementById("welcome-user");
-        const logoutBtn = document.getElementById("logout-nav-btn");
-        const signInBtn = document.getElementById("google-signin-btn");
-
-        if (user) {
-          const name = user.displayName?.split(" ")[0] || "Student";
-          welcomeEl.textContent = `Welcome, ${name}!`;
-          welcomeEl.classList.remove("hidden");
-          logoutBtn.classList.remove("hidden");
-          logoutBtn.onclick = () => signOut();
-          startQuiz();
-        } else {
-          UI.showView("paywall-screen");
-          if (signInBtn) signInBtn.onclick = signInWithGoogle;
-          logoutBtn.classList.add("hidden");
-          welcomeEl.classList.add("hidden");
-        }
-      });
-    });
-
-    async function startQuiz() {
-      const params = new URLSearchParams(window.location.search);
-      const topic = params.get("topic");
-      const difficulty = params.get("difficulty");
-
-      try {
-        const questions = await fetchQuestions(topic, difficulty);
-        console.log("[QUIZ] Loaded questions:", questions.length);
-        UI.showView("quiz-content");
-        // quiz rendering continues through quiz-engine.js logic (phase_2 intact)
-      } catch (err) {
-        console.error("[QUIZ ERROR]", err);
-        UI.showStatus("Error loading quiz. Please try again later.", "text-red-600");
-      }
-    }
-  </script>
-</body>
-</html>
+  <main id="quiz-content" class="hidden flex flex-col items-center max-w-4xl mx-auto px-4 py
