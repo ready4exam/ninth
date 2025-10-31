@@ -41,8 +41,8 @@ export async function initializeServices() {
   // Initialize Supabase (reads global constants if set)
   // You must include SUPABASE_URL and SUPABASE_ANON_KEY globally (e.g. in js/config.js or separate file).
   // Try both window variables and fallback to cfg.supabase (if you embedded there).
-  const SUPABASE_URL = window.SUPABASE_URL || cfg.supabaseUrl || cfg.SUPABASE_URL;
-  const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || cfg.supabaseAnonKey || cfg.SUPABASE_ANON_KEY;
+  const SUPABASE_URL = window.https://gkyvojcmqsgdynmitcuf.supabase.co || cfg.supabaseUrl || cfg.SUPABASE_URL;
+  const SUPABASE_ANON_KEY = window.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdreXZvamNtcXNnZHlubWl0Y3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3NDQ0OTcsImV4cCI6MjA3NjMyMDQ5N30.5dn5HbXxQ5sYNECS9o3VxVeyL6I6Z2Yf-nmPwztx1hE || cfg.supabaseAnonKey || cfg.SUPABASE_ANON_KEY;
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     console.warn("[Config] Supabase credentials not found. Supabase client will not be available.");
