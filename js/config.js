@@ -1,53 +1,104 @@
 // js/config.js
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+// -----------------------------------------------------------------------------
+// Centralized configuration for Supabase, Firebase, and Google Analytics (GA4)
+// -----------------------------------------------------------------------------
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  initializeApp
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import {
   getAuth,
-  onAuthStateChanged,
+  onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
+import {
+  getFirestore
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-let app, auth, db, analytics, currentUser;
+// -----------------------------------------------------------------------------
+// 🔹 Supabase Configuration
+// -----------------------------------------------------------------------------
+const SUPABASE_URL = "https://gkyvojcmqsgdynmitcuf.supabase.co";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdreXZvamNtcXNnZHlubWl0Y3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3NDQ0OTcsImV4cCI6MjA3NjMyMDQ5N30.5dn5HbXxQ5sYNECS9o3VxVeyL6I6Z2Yf-nmPwztx1hE";
 
-export function initializeServices() {
-  if (app) return { app, auth, db, analytics };
+// -----------------------------------------------------------------------------
+// 🔹 Firebase Configuration (from quiz-signon project)
+// -----------------------------------------------------------------------------
+const firebaseConfig = {
+  apiKey: "AIzaSyAXdKiYRxBKAj280YcNuNwlKKDp85xpOWQ",
+  authDomain: "quiz-signon.firebaseapp.com",
+  projectId: "quiz-signon",
+  storageBucket: "quiz-signon.firebasestorage.app",
+  messagingSenderId: "863414222321",
+  appId: "1:863414222321:web:819f5564825308bcd9d850",
+  measurementId: "G-4EFDM0CRYY",
+};
 
-  const firebaseConfig = JSON.parse(window.__firebase_config || "{}");
-  if (!firebaseConfig.projectId) throw new Error("Firebase config missing.");
+// -----------------------------------------------------------------------------
+// 🔹 Initialize Supabase + Firebase + Firestore + Auth
+// -----------------------------------------------------------------------------
+let supabaseClient = null;
+let firebaseApp = null;
+let firebaseAuth = null;
+let firestoreDB = null;
+let initialized = false;
 
-  app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  db = getFirestore(app);
+export async function initializeServices() {
+  if (initialized) return;
 
-  try {
-    analytics = getAnalytics(app);
-    console.log("[Config] Google Analytics initialized.");
-  } catch (e) {
-    console.warn("[Config] Analytics not supported in this environment.", e);
-  }
+  // Supabase
+  supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  console.log("[Config] Supabase initialized.");
 
-  onAuthStateChanged(auth, (user) => {
-    currentUser = user || null;
-  });
-
+  // Firebase
+  firebaseApp = initializeApp(firebaseConfig);
+  firebaseAuth = getAuth(firebaseApp);
+  firestoreDB = getFirestore(firebaseApp);
   console.log("[Config] Firebase initialized.");
-  return { app, auth, db, analytics };
-}
 
-export function getInitializedClients() {
-  if (!app || !db || !auth) initializeServices();
-  return { app, auth, db, analytics };
-}
+  // GA4 setup
+  if (firebaseConfig.measurementId && !window.gtag) {
+    const gtagScript = document.createElement("script");
+    gtagScript.src = `https://www.googletagmanager.com/gtag/js?id=${firebaseConfig.measurementId}`;
+    gtagScript.async = true;
+    document.head.appendChild(gtagScript);
 
-export function getAuthUser() {
-  return currentUser;
-}
-
-export function logAnalyticsEvent(eventName, data = {}) {
-  if (!analytics) return;
-  try {
-    logEvent(analytics, eventName, data);
-  } catch (err) {
-    console.warn("[Analytics] logEvent failed:", err);
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function () {
+      dataLayer.push(arguments);
+    };
+    gtag("js", new Date());
+    gtag("config", firebaseConfig.measurementId);
+    console.log("[Config] Google Analytics initialized.");
   }
+
+  initialized = true;
+}
+
+// -----------------------------------------------------------------------------
+// 🔹 Return initialized clients
+// -----------------------------------------------------------------------------
+export function getInitializedClients() {
+  if (!supabaseClient || !firebaseApp || !firebaseAuth || !firestoreDB) {
+    throw new Error("Core services not initialized.");
+  }
+  return {
+    supabase: supabaseClient,
+    auth: firebaseAuth,
+    db: firestoreDB,
+  };
+}
+
+// -----------------------------------------------------------------------------
+// 🔹 Auth helpers
+// -----------------------------------------------------------------------------
+export function getAuthUser() {
+  const auth = firebaseAuth;
+  return auth?.currentUser || null;
+}
+
+export function observeAuthChanges(callback) {
+  const auth = firebaseAuth;
+  if (auth) onAuthStateChanged(auth, callback);
 }
