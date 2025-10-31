@@ -1,97 +1,214 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ready4Exam | Quiz Engine</title>
+// js/quiz-engine.js
+// -----------------------------------------------------------------------------
+// Core quiz logic: loading questions, tracking progress, auth state
+// -----------------------------------------------------------------------------
 
-  <!-- Tailwind + Fonts -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
+import { initializeServices, getAuthUser } from "./config.js";
+import { fetchQuestions, saveResult } from "./api.js";
+import * as UI from "./ui-renderer.js";
+import {
+  checkAccess,
+  initializeAuthListener,
+  signInWithGoogle,
+  signOut,
+} from "./auth-paywall.js";
 
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: { sans: ['Inter', 'sans-serif'] },
-          colors: {
-            'cbse-blue': '#1a3e6a',
-            'cbse-light': '#f5f7fa',
-            'accent-gold': '#ffb703',
-          }
-        }
-      }
+// Global state
+let quizState = {
+  classId: null,
+  subject: null,
+  topicSlug: null,
+  difficulty: null,
+  questions: [],
+  currentQuestionIndex: 0,
+  userAnswers: {},
+  isSubmitted: false,
+  score: 0,
+};
+
+/**
+ * Parse quiz parameters from URL
+ */
+function parseUrlParameters() {
+  const urlParams = new URLSearchParams(window.location.search);
+  quizState.classId = urlParams.get("class");
+  quizState.subject = urlParams.get("subject");
+  quizState.topicSlug = urlParams.get("topic");
+  quizState.difficulty = urlParams.get("difficulty");
+
+  if (!quizState.topicSlug) throw new Error("Missing topic parameter.");
+  UI.updateHeader(quizState.topicSlug, quizState.difficulty);
+}
+
+/**
+ * Render question
+ */
+function renderQuestion() {
+  const q = quizState.questions[quizState.currentQuestionIndex];
+  if (!q) {
+    UI.showStatus("<span>No question to display.</span>");
+    return;
+  }
+
+  UI.renderQuestion(q, quizState.currentQuestionIndex, quizState.userAnswers[q.id], quizState.isSubmitted);
+
+  const els = UI.getElements?.() || {};
+  if (els.counter)
+    els.counter.textContent = `${quizState.currentQuestionIndex + 1} / ${quizState.questions.length}`;
+
+  UI.updateNavigation?.(quizState.currentQuestionIndex, quizState.questions.length, quizState.isSubmitted);
+  UI.hideStatus();
+}
+
+/**
+ * Navigation between questions
+ */
+function handleNavigation(dir) {
+  const newIndex = quizState.currentQuestionIndex + dir;
+  if (newIndex >= 0 && newIndex < quizState.questions.length) {
+    quizState.currentQuestionIndex = newIndex;
+    renderQuestion();
+  }
+}
+
+/**
+ * Handle answer selection
+ */
+function handleAnswerSelection(questionId, selectedOption) {
+  if (quizState.isSubmitted) return;
+  quizState.userAnswers[questionId] = selectedOption;
+  renderQuestion();
+}
+
+/**
+ * Submit quiz
+ */
+async function handleSubmit() {
+  if (quizState.isSubmitted) return;
+  quizState.isSubmitted = true;
+  quizState.score = 0;
+
+  quizState.questions.forEach((q) => {
+    const ans = quizState.userAnswers[q.id];
+    if (ans && ans.toUpperCase() === (q.correct_answer || "").toUpperCase()) quizState.score++;
+  });
+
+  const user = getAuthUser();
+  const result = {
+    classId: quizState.classId,
+    subject: quizState.subject,
+    topic: quizState.topicSlug,
+    difficulty: quizState.difficulty,
+    score: quizState.score,
+    total: quizState.questions.length,
+    user_answers: quizState.userAnswers,
+  };
+
+  if (user) {
+    try {
+      await saveResult(result);
+    } catch (e) {
+      console.warn("[ENGINE] Save failed:", e);
     }
-  </script>
+  }
 
-  <style>
-    body { font-family: 'Inter', sans-serif; background-color: #f5f7fa; }
-    .option-label { transition: all 0.2s ease; }
-    .option-label.correct { border-color: #16a34a; background-color: #dcfce7; }
-    .option-label.incorrect { border-color: #dc2626; background-color: #fee2e2; }
-    .option-label:hover { border-color: #2563eb; }
-  </style>
-</head>
+  quizState.currentQuestionIndex = 0;
+  renderQuestion();
+  UI.showResults(quizState.score, quizState.questions.length);
+  UI.renderAllQuestionsForReview?.(quizState.questions, quizState.userAnswers);
+  UI.updateNavigation?.(quizState.currentQuestionIndex, quizState.questions.length, true);
+}
 
-<body class="min-h-screen flex flex-col">
+/**
+ * Load quiz questions from Supabase
+ */
+async function loadQuiz() {
+  try {
+    UI.showStatus("Fetching questions...");
+    const questions = await fetchQuestions(quizState.topicSlug, quizState.difficulty);
+    if (!questions?.length) throw new Error("No questions found.");
 
-  <!-- Header -->
-  <header class="bg-cbse-blue shadow-md py-4 px-6 flex justify-between items-center">
-    <div>
-      <h1 id="quiz-page-title" class="text-2xl font-extrabold text-accent-gold tracking-wider">
-        Ready4<span class="text-white">Exam</span>
-      </h1>
-      <p class="text-sm text-white opacity-90 italic">
-        Ready4Exam helps students excel in school exams — a learning initiative by Ready4Industry.
-      </p>
-    </div>
+    quizState.questions = questions;
+    quizState.userAnswers = Object.fromEntries(questions.map((q) => [q.id, null]));
+    quizState.currentQuestionIndex = 0;
+    quizState.isSubmitted = false;
 
-    <div id="auth-nav-container" class="flex items-center space-x-4">
-      <!-- Home button -->
-      <a href="index.html"
-         class="px-4 py-2 bg-white text-cbse-blue font-semibold rounded hover:bg-gray-100 transition">
-        Home
-      </a>
+    renderQuestion();
+    UI.attachAnswerListeners?.(handleAnswerSelection);
+    UI.showView?.("quiz-content");
+  } catch (err) {
+    console.error("[ENGINE] loadQuiz failed:", err);
+    UI.showStatus(`<span class="text-red-600">Error:</span> ${err.message}`);
+  }
+}
 
-      <!-- Welcome message -->
-      <span id="welcome-user" class="text-sm text-white hidden"></span>
+/**
+ * Auth state callback
+ */
+async function onAuthChange(user) {
+  try {
+    if (user) {
+      UI.updateAuthUI?.(user);
+      const hasAccess = await checkAccess(quizState.topicSlug);
+      if (hasAccess) await loadQuiz();
+      else UI.showView?.("paywall-screen");
+    } else {
+      UI.updateAuthUI?.(null);
+      UI.showView?.("paywall-screen");
+    }
+  } catch (err) {
+    console.error("[ENGINE] Auth change error:", err);
+  }
+}
 
-      <!-- Difficulty badge -->
-      <span id="difficulty-display"
-        class="hidden px-3 py-1 text-sm font-semibold bg-yellow-100 text-yellow-800 rounded-full">
-        Difficulty: Simple
-      </span>
+/**
+ * Attach static DOM event listeners
+ */
+function attachDomEventHandlers() {
+  const els = UI.getElements?.() || {};
+  els.prevButton?.addEventListener("click", () => handleNavigation(-1));
+  els.nextButton?.addEventListener("click", () => handleNavigation(1));
+  els.submitButton?.addEventListener("click", handleSubmit);
+  els.reviewCompleteBtn?.addEventListener("click", () => (window.location.href = "index.html"));
 
-      <!-- Logout button -->
-      <button id="logout-nav-btn"
-        class="hidden px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">Sign Out</button>
-    </div>
-  </header>
+  document.addEventListener(
+    "click",
+    (e) => {
+      const btn = e.target.closest("button, a");
+      if (!btn) return;
 
-  <!-- Status -->
-  <div id="status-message" class="text-center p-6 font-semibold text-blue-700 hidden"></div>
+      if (btn.id === "login-btn" || btn.id === "google-signin-btn" || btn.id === "paywall-login-btn")
+        return signInWithGoogle();
+      if (btn.id === "logout-nav-btn") return signOut();
+    },
+    false
+  );
+}
 
-  <!-- Loading Screen -->
-  <div id="loading-screen" class="flex flex-col items-center justify-center flex-grow hidden">
-    <div class="animate-pulse text-cbse-blue text-lg font-semibold">
-      Initializing your quiz experience... please wait
-    </div>
-  </div>
+/**
+ * Initialize quiz engine
+ */
+async function initQuizEngine() {
+  try {
+    UI.initializeElements();
+    parseUrlParameters();
 
-  <!-- Paywall (Sign-In Screen) -->
-  <div id="paywall-screen"
-    class="hidden flex flex-col items-center justify-center p-12 transition-all duration-300 ease-in-out">
-    <div class="bg-white rounded-xl p-10 shadow-xl border border-gray-200 text-center max-w-md">
-      <h2 class="text-2xl font-bold text-gray-800 mb-4">Sign in to Continue</h2>
-      <p class="text-gray-600 mb-6">
-        Access premium quizzes for <b>Ready4Exam</b> by signing in with Google.
-      </p>
-      <button id="google-signin-btn"
-        class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition">
-        Sign in with Google
-      </button>
-    </div>
-  </div>
+    UI.showStatus("Initializing services...");
+    await initializeServices();
+    console.log("[ENGINE] Firebase/Supabase ready.");
 
-  <!-- Quiz Content -->
-  <main id="quiz-content" class="hidden flex flex-col items-center max-w-4xl mx-auto px-4 py
+    await initializeAuthListener(onAuthChange);
+    console.log("[ENGINE] Auth listener ready.");
+
+    attachDomEventHandlers();
+    UI.hideStatus();
+
+    console.log("[ENGINE] Initialization complete.");
+  } catch (err) {
+    console.error("[ENGINE FATAL] Initialization failed:", err);
+    UI.showStatus(`<span class="text-red-600">Critical error:</span> ${err.message}`);
+  }
+}
+
+// Start when DOM is loaded
+document.addEventListener("DOMContentLoaded", initQuizEngine);
