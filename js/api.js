@@ -1,8 +1,4 @@
 // js/api.js
-// -----------------------------------------------------------------------------
-// Handles fetching quiz questions, saving results, and GA4 event logging
-// -----------------------------------------------------------------------------
-
 import { getInitializedClients, getAuthUser, logAnalyticsEvent } from './config.js';
 import * as UI from './ui-renderer.js';
 import { cleanKatexMarkers } from './utils.js';
@@ -10,49 +6,53 @@ import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/fir
 
 const appId = 'ready4exam-app';
 
-// -----------------------------------------------------------------------------
-// GET INITIALIZED CLIENTS (Supabase optional)
-// -----------------------------------------------------------------------------
 function getClients() {
   const { supabase, db } = getInitializedClients();
-  if (!db) throw new Error("[API] Firestore not initialized.");
+  // supabase may be null if credentials missing
+  if (!db) throw new Error("[API] Firestore (db) not initialized.");
   return { supabase, db };
 }
 
-// -----------------------------------------------------------------------------
-// MAP TOPIC → TABLE NAME (Supabase)
-// -----------------------------------------------------------------------------
 function getTableName(topic) {
   const map = {
+    // Physics
     motion: "motion",
     force: "force",
+    force_and_laws_of_motion: "force",
     gravitation: "gravitation",
     work_energy: "work_energy",
+    work_and_energy: "work_energy",
     sound: "sound",
+    // Chemistry
     matter_surroundings: "matter_surroundings",
+    matter_in_our_surroundings: "matter_surroundings",
     matter_pure: "matter_pure",
+    is_matter_around_us_pure: "matter_pure",
+    atoms_molecules: "atom_molecules",
     atom_molecules: "atom_molecules",
     structure_atom: "structure_atom",
-    fundamental_unit: "fundamental_unit",
+    structure_of_the_atom: "structure_atom",
+    // Biology (if you added)
     tissues: "tissues",
-    food_resources: "food_resources",
+    fundamental_unit: "fundamental_unit",
+    food_resources: "food_resources"
   };
 
-  const key = topic.toLowerCase().replace(/\s+/g, '_').trim();
-  const table = map[key] || key;
-  console.log(`[API] Topic '${topic}' mapped to table '${table}'`);
-  return table;
+  const key = (topic || "").toLowerCase().replace(/\s+/g, '_').trim();
+  return map[key] || key;
 }
 
-// -----------------------------------------------------------------------------
-// FETCH QUESTIONS (Supabase)
-// -----------------------------------------------------------------------------
 export async function fetchQuestions(topic, difficulty) {
   const { supabase } = getClients();
-  const table = getTableName(topic);
+  if (!supabase) {
+    UI.showStatus("Supabase not configured on this environment.", 'text-red-600');
+    throw new Error("Supabase not initialized.");
+  }
 
+  const table = getTableName(topic);
   UI.showStatus(`Loading questions for <b>${topic}</b> (${difficulty})...`, 'text-blue-600');
-  const normalizedDiff = difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase();
+
+  const normalizedDiff = difficulty ? difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase() : '';
 
   const { data, error } = await supabase
     .from(table)
@@ -63,10 +63,13 @@ export async function fetchQuestions(topic, difficulty) {
     .eq('difficulty', normalizedDiff);
 
   if (error) {
-    console.error(`[API ERROR] Failed to fetch from ${table}:`, error);
-    throw new Error(error.message);
+    console.error(`[API ERROR] Supabase fetch failed from '${table}':`, error);
+    throw new Error(error.message || "Failed to load questions.");
   }
-  if (!data?.length) throw new Error("No questions found for this topic/difficulty.");
+
+  if (!data || data.length === 0) {
+    throw new Error("No questions found.");
+  }
 
   const normalized = data.map((q) => ({
     id: q.id,
@@ -82,64 +85,44 @@ export async function fetchQuestions(topic, difficulty) {
     question_type: (q.question_type || '').trim().toLowerCase(),
   }));
 
-  console.log(`[API] Loaded ${normalized.length} questions from '${table}'`);
+  console.log(`[API] Loaded ${normalized.length} questions from '${table}'.`);
   return normalized;
 }
 
-// -----------------------------------------------------------------------------
-// SAVE QUIZ RESULTS TO FIRESTORE + SEND TO GA4
-// -----------------------------------------------------------------------------
 export async function saveResult(resultData) {
   const { db } = getClients();
   const user = getAuthUser();
-
-  if (!user) {
-    console.warn("[API] Skipping save — user not authenticated.");
-    return;
-  }
+  if (!user) return console.warn("[API] Not saving result — user not authenticated.");
 
   try {
-    await addDoc(collection(db, "quiz_scores"), {
-      action: "Quiz Completed",
-      userId: user.uid,
-      email: user.email,
-      chapter: resultData.topic,
-      difficulty: resultData.difficulty,
+    const payload = {
+      action: "quiz_completed",
+      user_id: user.uid,
+      email: user.email || null,
+      classId: resultData.classId || null,
+      subject: resultData.subject || null,
+      topic: resultData.topic || null,
+      difficulty: resultData.difficulty || null,
       score: resultData.score,
       total: resultData.total,
       percentage: Math.round((resultData.score / resultData.total) * 100),
+      user_answers: resultData.user_answers || null,
       timestamp: serverTimestamp(),
-    });
+    };
 
+    await addDoc(collection(db, `results/${appId}/scores`), payload);
     console.log("[API] Quiz result saved to Firestore.");
 
-    // ✅ Log the event to GA4
+    // GA4 Logging — safe wrapper
     logAnalyticsEvent("quiz_completed", {
       user_id: user.uid,
-      email_hash: await hashEmail(user.email),
       topic: resultData.topic,
       difficulty: resultData.difficulty,
       score: resultData.score,
       total: resultData.total,
-      percentage: Math.round((resultData.score / resultData.total) * 100),
+      percentage: payload.percentage,
     });
   } catch (err) {
-    console.error("[API ERROR] Firestore save or GA4 log failed:", err);
-  }
-}
-
-// -----------------------------------------------------------------------------
-// Utility: Hash email before logging to GA4 (privacy-safe)
-// -----------------------------------------------------------------------------
-async function hashEmail(email) {
-  try {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(email.trim().toLowerCase());
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    return Array.from(new Uint8Array(hashBuffer))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-  } catch {
-    return "anonymous";
+    console.error("[API ERROR] Firestore save failed:", err);
   }
 }
