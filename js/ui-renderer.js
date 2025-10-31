@@ -17,11 +17,11 @@ export function initializeElements() {
     submitButton: document.getElementById('submit-btn'),
     reviewScreen: document.getElementById('results-screen'),
     score: document.getElementById('score-display'),
+    reviewContainer: document.getElementById('review-container'),
     reviewBtn: document.getElementById('review-complete-btn'),
     authNav: document.getElementById('auth-nav-container'),
     paywallScreen: document.getElementById('paywall-screen'),
-    quizContent: document.getElementById('quiz-content'),
-    reviewContainer: document.getElementById('review-container')
+    quizContent: document.getElementById('quiz-content')
   };
   isInit = true;
   console.log('[UI] Elements initialized.');
@@ -30,23 +30,28 @@ export function initializeElements() {
 export function showStatus(msg, cls = 'text-gray-700') {
   initializeElements();
   els.status.innerHTML = msg;
-  els.status.className = `p-3 text-center font-semibold ${cls}`;
+  els.status.className = `p-4 text-center font-semibold ${cls}`;
   els.status.classList.remove('hidden');
 }
 export function hideStatus() { els.status.classList.add('hidden'); }
-export function updateHeader(topic, diff) {
+
+export function updateHeader(topic = '', diff = '--') {
+  initializeElements();
   if (els.title) els.title.textContent = `${topic.toUpperCase()} Quiz`;
   if (els.diffBadge) els.diffBadge.textContent = `Difficulty: ${diff}`;
 }
 
 export function showView(viewName) {
-  const views = [els.quizContent, els.reviewScreen, els.paywallScreen];
-  views.forEach(v => v && v.classList.add('hidden'));
+  const all = [els.quizContent, els.reviewScreen, els.paywallScreen];
+  all.forEach(v => v && v.classList.add('hidden'));
   if (els[viewName]) els[viewName].classList.remove('hidden');
 }
 
+/* ---------- RENDER QUESTION ---------- */
 export function renderQuestion(q, idx, selected, submitted) {
-  const reason = cleanKatexMarkers(q.explanation || q.scenario_reason || '');
+  initializeElements();
+
+  const reason = q.scenario_reason || q.explanation || '';
   const qText = cleanKatexMarkers(q.text || '');
 
   const options = ['A', 'B', 'C', 'D'].map(opt => {
@@ -68,9 +73,9 @@ export function renderQuestion(q, idx, selected, submitted) {
   els.list.innerHTML = `
     <div class="space-y-5">
       <p class="text-lg font-semibold text-gray-800">Q${idx}: ${qText}</p>
-      ${reason && !submitted ? `<p class="italic text-gray-700">${reason}</p>` : ''}
+      ${reason && !submitted ? `<p class="italic text-gray-700">${cleanKatexMarkers(reason)}</p>` : ''}
       <div class="space-y-3">${options}</div>
-      ${submitted && reason ? `<p class="text-gray-600 mt-3 italic">${reason}</p>` : ''}
+      ${submitted && reason ? `<p class="italic text-gray-600 mt-3">${cleanKatexMarkers(reason)}</p>` : ''}
     </div>`;
 
   if (els.counter) els.counter.textContent = `${idx} / ${els._total || '--'}`;
@@ -97,6 +102,7 @@ export function updateNavigation(currentIndex, total, submitted) {
   if (els.counter) els.counter.textContent = `${currentIndex + 1} / ${total}`;
 }
 
+/* ---------- RESULTS + REVIEW ---------- */
 export function showResults(score, total) {
   els.score.textContent = `${score} / ${total}`;
   showView('reviewScreen');
@@ -112,6 +118,7 @@ export function renderAllQuestionsForReview(questions) {
     </div>`).join('');
 }
 
+/* ---------- RETRY OPTIONS ---------- */
 export function renderDifficultyOptions() {
   const container = document.createElement('div');
   container.className = 'mt-6 text-center';
