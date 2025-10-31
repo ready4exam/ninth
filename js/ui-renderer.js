@@ -28,7 +28,6 @@ export function initializeElements() {
     submitButton: document.getElementById("submit-btn"),
     reviewScreen: document.getElementById("results-screen"),
     score: document.getElementById("score-display"),
-    reviewCompleteBtn: document.getElementById("review-complete-btn"),
     authNav: document.getElementById("auth-nav-container"),
     paywallScreen: document.getElementById("paywall-screen"),
     paywallContent: document.getElementById("paywall-content"),
@@ -146,7 +145,6 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
   let reasonRaw = q.explanation || q.scenario_reason || "";
   const reason = normalizeReasonText(cleanKatexMarkers(reasonRaw));
 
-  // Label adjustments
   let label = "";
   if (type === "ar") label = "Reasoning (R)";
   else if (type === "case") label = "Context";
@@ -229,7 +227,6 @@ export function updateNavigation(currentIndexZeroBased, totalQuestions, submitte
   show(els.prevButton, currentIndexZeroBased > 0);
   show(els.nextButton, currentIndexZeroBased < totalQuestions - 1);
   show(els.submitButton, !submitted && currentIndexZeroBased === totalQuestions - 1);
-  show(els.reviewCompleteBtn, submitted);
   if (els.counter)
     els.counter.textContent = `${currentIndexZeroBased + 1} / ${totalQuestions}`;
 }
@@ -300,11 +297,12 @@ export function renderAllQuestionsForReview(questions, userAnswers = {}) {
 }
 
 /* -----------------------------------
-   AUTH UI
+   AUTH UI (Fixed: show username properly)
 ----------------------------------- */
 export function updateAuthUI(user) {
   initializeElements();
   if (!els.authNav) return;
+
   if (user) {
     const name =
       user.displayName?.split(" ")[0] ||
