@@ -7,9 +7,7 @@ let isInit = false;
 function normalizeReasonText(txt) {
   if (!txt) return "";
   return txt
-    .replace(/^\s*Reasoning\s*:\s*/i, "")
-    .replace(/^\s*Reason\s*\(R\)\s*:\s*/i, "")
-    .replace(/^\s*Reason\s*:\s*/i, "")
+    .replace(/^\s*(Reasoning|Reason|Context)\s*(\(R\))?\s*:\s*/i, "")
     .trim();
 }
 
@@ -117,7 +115,6 @@ export function showAuthLoading(message = "Signing you in — please wait...") {
     overlay.classList.remove("hidden");
   }
 }
-
 export function hideAuthLoading() {
   const overlay = document.getElementById("auth-loading-overlay");
   if (overlay) overlay.remove();
@@ -145,19 +142,23 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
   if (!els.list) return;
 
   const type = (q.question_type || "").toLowerCase();
-  const isARorCase = type === "ar" || type === "case";
   const qText = cleanKatexMarkers(q.text || "");
   let reasonRaw = q.explanation || q.scenario_reason || "";
   const reason = normalizeReasonText(cleanKatexMarkers(reasonRaw));
 
+  // Label adjustments
+  let label = "";
+  if (type === "ar") label = "Reasoning (R)";
+  else if (type === "case") label = "Context";
+
   const reasonHtml =
-    isARorCase && reason && !submitted
-      ? `<p class="italic text-gray-700 mt-2 mb-3">${reason}</p>`
+    (type === "ar" || type === "case") && reason && !submitted
+      ? `<p class="text-gray-700 mt-2 mb-3">${label}: ${reason}</p>`
       : "";
 
   const submittedExplanationHtml =
-    submitted && isARorCase && reason
-      ? `<div class="mt-3 p-3 bg-gray-50 rounded text-gray-700 border border-gray-100"><b>Explanation:</b> ${reason}</div>`
+    submitted && (type === "ar" || type === "case") && reason
+      ? `<div class="mt-3 p-3 bg-gray-50 rounded text-gray-700 border border-gray-100"><b>${label}:</b> ${reason}</div>`
       : "";
 
   const optionsHtml = ["A", "B", "C", "D"]
@@ -207,14 +208,9 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
 export function attachAnswerListeners(handler) {
   initializeElements();
   if (!els.list) return;
-
   if (els._listener) els.list.removeEventListener("change", els._listener);
   const listener = (e) => {
-    if (
-      e.target &&
-      e.target.type === "radio" &&
-      e.target.name.startsWith("q-")
-    ) {
+    if (e.target && e.target.type === "radio" && e.target.name.startsWith("q-")) {
       const qid = e.target.name.substring(2);
       handler(qid, e.target.value);
     }
@@ -229,13 +225,11 @@ export function attachAnswerListeners(handler) {
 export function updateNavigation(currentIndexZeroBased, totalQuestions, submitted) {
   initializeElements();
   els._total = totalQuestions;
-
   const show = (btn, cond) => btn && btn.classList.toggle("hidden", !cond);
   show(els.prevButton, currentIndexZeroBased > 0);
   show(els.nextButton, currentIndexZeroBased < totalQuestions - 1);
   show(els.submitButton, !submitted && currentIndexZeroBased === totalQuestions - 1);
   show(els.reviewCompleteBtn, submitted);
-
   if (els.counter)
     els.counter.textContent = `${currentIndexZeroBased + 1} / ${totalQuestions}`;
 }
@@ -256,14 +250,18 @@ export function renderAllQuestionsForReview(questions, userAnswers = {}) {
   const html = questions
     .map((q, i) => {
       const txt = cleanKatexMarkers(q.text || "");
-      const cleanedReason = normalizeReasonText(cleanKatexMarkers(q.explanation || ""));
+      const reason = normalizeReasonText(cleanKatexMarkers(q.explanation || ""));
+      const label =
+        (q.question_type || "").toLowerCase() === "case"
+          ? "Context"
+          : "Reasoning (R)";
       const ua = userAnswers[q.id] || "-";
       const ca = q.correct_answer || "-";
       const correct = ua && ua.toUpperCase() === ca.toUpperCase();
       return `
         <div class="mb-6 p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
           <p class="font-bold text-lg mb-1">Q${i + 1}: ${txt}</p>
-          ${cleanedReason ? `<p class="italic text-gray-700 mb-2">${cleanedReason}</p>` : ""}
+          ${reason ? `<p class="text-gray-700 mb-2">${label}: ${reason}</p>` : ""}
           <p>Your Answer: <span class="${correct ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}">${ua}</span></p>
           <p>Correct Answer: <b class="text-green-700">${ca}</b></p>
         </div>`;
@@ -271,21 +269,47 @@ export function renderAllQuestionsForReview(questions, userAnswers = {}) {
     .join("");
 
   els.reviewContainer.innerHTML = html;
+
+  // Add difficulty retry + back buttons
+  const retryBlock = document.createElement("div");
+  retryBlock.className = "text-center mt-8 space-y-4";
+  retryBlock.innerHTML = `
+    <h3 class="text-lg font-semibold mb-3">Try Again or Explore</h3>
+    <div class="flex justify-center gap-3 flex-wrap">
+      <button data-diff="simple" class="px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700">Simple (Easy)</button>
+      <button data-diff="medium" class="px-5 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">Medium</button>
+      <button data-diff="advanced" class="px-5 py-2 bg-red-600 text-white rounded hover:bg-red-700">Advanced (Hard)</button>
+    </div>
+    <button id="back-to-chapters-btn" class="mt-4 px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700">Go Back to Chapter Selection</button>
+  `;
+  els.reviewContainer.appendChild(retryBlock);
+
+  retryBlock.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-diff]");
+    if (btn) {
+      const params = new URLSearchParams(window.location.search);
+      params.set("difficulty", btn.dataset.diff);
+      window.location.href = `quiz-engine.html?${params.toString()}`;
+    }
+    if (e.target.id === "back-to-chapters-btn") {
+      window.location.href = "chapter-selection.html";
+    }
+  });
+
   showView("results-screen");
 }
 
 /* -----------------------------------
-   AUTH UI (sign in/out)
+   AUTH UI
 ----------------------------------- */
 export function updateAuthUI(user) {
   initializeElements();
   if (!els.authNav) return;
   if (user) {
-    const name = user.displayName
-      ? user.displayName.split(" ")[0]
-      : user.email
-      ? user.email.split("@")[0]
-      : "User";
+    const name =
+      user.displayName?.split(" ")[0] ||
+      user.email?.split("@")[0] ||
+      "User";
     els.authNav.innerHTML = `
       <span class="text-sm mr-2 text-gray-700">Hi, ${name}</span>
       <button id="logout-nav-btn" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Sign Out</button>`;
