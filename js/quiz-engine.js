@@ -1,17 +1,12 @@
 // js/quiz-engine.js
 // -----------------------------------------------------------------------------
-// Core quiz logic: loading questions, tracking progress, auth state
+// Core quiz logic: question rendering, navigation, submission
+// This version assumes authentication is handled by quiz-engine.html
 // -----------------------------------------------------------------------------
 
 import { initializeServices, getAuthUser } from "./config.js";
 import { fetchQuestions, saveResult } from "./api.js";
 import * as UI from "./ui-renderer.js";
-import {
-  checkAccess,
-  initializeAuthListener,
-  signInWithGoogle,
-  signOut,
-} from "./auth-paywall.js";
 
 // Global state
 let quizState = {
@@ -107,6 +102,7 @@ async function handleSubmit() {
   if (user) {
     try {
       await saveResult(result);
+      console.log("[ENGINE] Quiz result saved.");
     } catch (e) {
       console.warn("[ENGINE] Save failed:", e);
     }
@@ -122,7 +118,7 @@ async function handleSubmit() {
 /**
  * Load quiz questions from Supabase
  */
-async function loadQuiz() {
+export async function loadQuiz() {
   try {
     UI.showStatus("Fetching questions...");
     const questions = await fetchQuestions(quizState.topicSlug, quizState.difficulty);
@@ -143,50 +139,17 @@ async function loadQuiz() {
 }
 
 /**
- * Auth state callback
- */
-async function onAuthChange(user) {
-  try {
-    if (user) {
-      UI.updateAuthUI?.(user);
-      const hasAccess = await checkAccess(quizState.topicSlug);
-      if (hasAccess) await loadQuiz();
-      else UI.showView?.("paywall-screen");
-    } else {
-      UI.updateAuthUI?.(null);
-      UI.showView?.("paywall-screen");
-    }
-  } catch (err) {
-    console.error("[ENGINE] Auth change error:", err);
-  }
-}
-
-/**
- * Attach static DOM event listeners
+ * Attach DOM event listeners
  */
 function attachDomEventHandlers() {
   const els = UI.getElements?.() || {};
   els.prevButton?.addEventListener("click", () => handleNavigation(-1));
   els.nextButton?.addEventListener("click", () => handleNavigation(1));
   els.submitButton?.addEventListener("click", handleSubmit);
-  els.reviewCompleteBtn?.addEventListener("click", () => (window.location.href = "index.html"));
-
-  document.addEventListener(
-    "click",
-    (e) => {
-      const btn = e.target.closest("button, a");
-      if (!btn) return;
-
-      if (btn.id === "login-btn" || btn.id === "google-signin-btn" || btn.id === "paywall-login-btn")
-        return signInWithGoogle();
-      if (btn.id === "logout-nav-btn") return signOut();
-    },
-    false
-  );
 }
 
 /**
- * Initialize quiz engine
+ * Initialize quiz engine (after user login)
  */
 async function initQuizEngine() {
   try {
@@ -195,13 +158,15 @@ async function initQuizEngine() {
 
     UI.showStatus("Initializing services...");
     await initializeServices();
-    console.log("[ENGINE] Firebase/Supabase ready.");
-
-    await initializeAuthListener(onAuthChange);
-    console.log("[ENGINE] Auth listener ready.");
+    console.log("[ENGINE] Firebase & Supabase initialized.");
 
     attachDomEventHandlers();
     UI.hideStatus();
+
+    // Load questions only after login (triggered externally)
+    const user = getAuthUser();
+    if (user) await loadQuiz();
+    else UI.showStatus("Please sign in to continue.", "text-red-600");
 
     console.log("[ENGINE] Initialization complete.");
   } catch (err) {
@@ -210,5 +175,4 @@ async function initQuizEngine() {
   }
 }
 
-// Start when DOM is loaded
 document.addEventListener("DOMContentLoaded", initQuizEngine);
