@@ -1,415 +1,346 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSV Data Uploader Tool</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-    
-    <script>
-        // *** CREDENTIALS EMBEDDED DIRECTLY ***
-        const SUPABASE_URL = "https://gkyvojcmqsgdynmitcuf.supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdreXZvamNtcXNnZHlubWl0Y3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3NDQ0OTcsImV4cCI6MjA3NjMyMDQ5N30.5dn5HbXxQ5sYNECS9o3VxVeyL6I6Z2Yf-nmPwztx1hE";
-    </script>
-    
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'], },
-                    colors: {
-                        'primary-blue': '#1a3e6a',
-                        'accent-green': '#059669',
-                    }
-                }
-            }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CSV Quiz Processor & Uploader — Ready4Exam</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: { 'primary-blue': '#1a3e6a', 'accent-green': '#059669' }
         }
-    </script>
+      }
+    };
+  </script>
+
+  <!-- Load Supabase client (UMD) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js"></script>
+
+  <style>
+    body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+  </style>
 </head>
-<body class="bg-gray-50 min-h-screen antialiased p-4">
+<body class="bg-gray-50 min-h-screen p-6">
 
-    <div class="max-w-4xl mx-auto bg-white p-6 md:p-10 rounded-xl shadow-2xl border-t-8 border-primary-blue">
-        <h1 class="text-3xl font-extrabold text-primary-blue mb-4">CSV Quiz Processor & Uploader</h1>
-        <p class="text-gray-600 mb-6">
-            **Step 1:** Select the **Subject** and **Chapter/Table Name** below.<br>
-            **Step 2:** Paste the Gemini-generated CSV and click upload.
-        </p>
+  <div class="max-w-4xl mx-auto bg-white p-6 md:p-10 rounded-xl shadow-2xl border-t-8 border-primary-blue">
+    <h1 class="text-3xl font-extrabold text-primary-blue mb-2">CSV Quiz Processor & Uploader</h1>
+    <p class="text-gray-600 mb-6">Step 1: Choose Subject & Chapter. Step 2: Paste the Gemini-generated CSV (include header). Step 3: Parse & upload.</p>
 
-        <div class="space-y-4 mb-6">
-            <div>
-                <label for="subject-select" class="block text-sm font-medium text-gray-700">1. Select Subject</label>
-                <select id="subject-select" onchange="handleSubjectChange()" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-accent-green focus:border-accent-green">
-                    </select>
-            </div>
+    <div class="space-y-4 mb-6">
+      <div>
+        <label class="block text-sm font-medium text-gray-700">1. Select Subject</label>
+        <select id="subject-select" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm"></select>
+      </div>
 
-            <div>
-                <label for="table-name-select" class="block text-sm font-medium text-gray-700">2. Select Chapter / Table Name</label>
-                <select id="table-name-select" onchange="updateTableNameDisplay()" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-accent-green focus:border-accent-green" disabled>
-                    <option value="">--- Select a Subject First ---</option>
-                </select>
-            </div>
-            
-            <div>
-                <label for="current-table-name" class="block text-sm font-medium text-gray-700">Selected Supabase Table Name (Copy this into your prompt)</label>
-                <input type="text" id="current-table-name" readonly placeholder="Table name will appear here after selecting a chapter..." 
-                        class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm bg-gray-100 text-primary-blue font-mono cursor-copy">
-            </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">2. Select Chapter / Table Name</label>
+        <select id="table-name-select" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm" disabled>
+          <option value="">--- Select a Subject First ---</option>
+        </select>
+      </div>
 
-            <div>
-                <label for="csv-input" class="block text-sm font-medium text-gray-700">3. Paste Gemini CSV Output Here (Including Header)</label>
-                <textarea id="csv-input" rows="10" placeholder="Paste your 60-question CSV output from Gemini here..." class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-accent-green focus:border-accent-green"></textarea>
-            </div>
-        </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Selected Supabase Table Name</label>
+        <input id="current-table-name" readonly class="mt-1 block w-full p-3 bg-gray-100 border border-gray-300 rounded-lg font-mono text-sm" placeholder="Table name will appear here" />
+      </div>
 
-        <button id="automate-button" onclick="startAutomation()"
-                class="w-full px-6 py-3 text-lg font-bold text-white bg-accent-green rounded-lg shadow-md hover:bg-green-700 transition duration-150">
-            4. Parse CSV & Insert Data into Supabase
-        </button>
-
-        <div id="status-log" class="mt-8 space-y-2">
-            <h2 class="text-xl font-semibold text-gray-700 mb-3">Process Log:</h2>
-            <p id="log-initial" class="text-gray-500">Ready to start...</p>
-        </div>
-        
-        <div id="config-error" class="hidden error-message mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-            **Configuration Error 🛑** Supabase credentials (`SUPABASE_URL`, `SUPABASE_ANON_KEY`) were not found. Please ensure the file **./js/config.js** exists and contains the correct definitions.
-        </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">3. Paste Gemini CSV Output (including header)</label>
+        <textarea id="csv-input" rows="10" class="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm" placeholder="Paste CSV here..."></textarea>
+      </div>
     </div>
 
-    <script>
-        // --- NCERT Syllabus Data and Table Naming Convention ---
-        
-        const NCERT_SYLLABUS = {
-            "science": [
-                { name: "Motion", value: "motion" },
-                { name: "Force and Laws of Motion", value: "force" },
-                { name: "Gravitation", value: "gravitation" },
-                { name: "Work and Energy", value: "work_energy" },
-                { name: "Sound", value: "sound" },
-                { name: "Matter in Our Surroundings", value: "matter_surroundings" },
-                { name: "Is Matter Around Us Pure", value: "matter_pure" },
-                { name: "Atoms and Molecules", value: "atoms_molecules" },
-                { name: "Structure of the Atom", value: "structure_atom" },
-                { name: "The Fundamental Unit of Life", value: "fundamental_unit" },
-                { name: "Tissues", value: "tissues" },
-                { name: "Diversity in Living Organisms", value: "diversity" },
-                { name: "Why Do We Fall Ill", value: "fall_ill" },
-                { name: "Natural Resources", value: "natural_resources" },
-                { name: "Improvement in Food Resources", value: "food_resources" }
-            ],
-            "social_science": [
-                // History
-                { name: "The French Revolution", value: "french_revolution" },
-                { name: "Socialism in Europe and the Russian Revolution", value: "socialism_europe" },
-                { name: "Nazism and the Rise of Hitler", value: "nazism" },
-                { name: "Forest Society and Colonialism", value: "forest_society" },
-                { name: "Pastoralists in the Modern World", value: "pastoralists" },
-                // Geography
-                { name: "India - Size and Location", value: "india_size" },
-                { name: "Physical Features of India", value: "physical_features" },
-                { name: "Drainage", value: "drainage" },
-                { name: "Climate", value: "climate" },
-                { name: "Natural Vegetation and Wild Life", value: "natural_veg" },
-                { name: "Population", value: "population" },
-                // Civics (Democratic Politics)
-                { name: "What is Democracy? Why Democracy?", value: "what_is_democracy" },
-                { name: "Constitutional Design", value: "constitutional_design" },
-                { name: "Electoral Politics", value: "electoral_politics" },
-                { name: "Working of Institutions", value: "working_institutions" },
-                { name: "Democratic Rights", value: "democratic_rights" },
-                // Economics
-                { name: "The Story of Village Palampur", value: "village_palampur" },
-                { name: "People as Resource", value: "people_resource" },
-                { name: "Poverty as a Challenge", value: "poverty_challenge" },
-                { name: "Food Security in India", value: "food_security" }
-            ],
-            "maths": [
-                { name: "Number Systems", value: "number_systems" },
-                { name: "Polynomials", value: "polynomials" },
-                { name: "Coordinate Geometry", value: "coordinate_geometry" },
-                { name: "Linear Equations in Two Variables", value: "linear_equations" },
-                { name: "Introduction to Euclid's Geometry", value: "euclids_geometry" },
-                { name: "Lines and Angles", value: "lines_angles" },
-                { name: "Triangles", value: "triangles" },
-                { name: "Quadrilaterals", value: "quadrilaterals" },
-                { name: "Areas of Parallelograms and Triangles", value: "areas_shapes" },
-                { name: "Circles", value: "circles" },
-                { name: "Constructions", value: "constructions" },
-                { name: "Heron's Formula", value: "herons_formula" },
-                { name: "Surface Areas and Volumes", value: "surface_volumes" },
-                { name: "Statistics", value: "statistics" },
-                { name: "Probability", value: "probability" }
-            ]
-        };
+    <div class="flex gap-3 items-center">
+      <button id="automate-button" class="flex-1 px-6 py-3 bg-accent-green text-white font-bold rounded-lg shadow hover:bg-green-700">Parse CSV & Insert into Supabase</button>
+      <button id="clear-button" class="px-4 py-3 bg-gray-200 rounded-lg hover:bg-gray-300">Clear</button>
+    </div>
 
-        // --- Supabase and Database Constants ---
-        const DB_COLUMNS = [
-            'difficulty', 'question_type', 'question_text', 
-            'scenario_reason_text', 'option_a', 'option_b', 'option_c', 'option_d', 
-            'correct_answer_key'
-        ];
-        
-        const LATEX_CLEANUP_COLUMNS = [
-            'question_text', 'scenario_reason_text', 'option_a', 'option_b', 'option_c', 'option_d'
-        ];
+    <div id="status-log" class="mt-8">
+      <h2 class="text-xl font-semibold text-gray-700 mb-3">Process Log</h2>
+      <div id="log-entries" class="space-y-2">
+        <p id="log-initial" class="text-gray-500">Ready to start...</p>
+      </div>
+    </div>
 
-        let supabaseClient;
-        let button;
-        let log;
+    <div id="config-error" class="hidden mt-6 p-4 bg-red-50 border border-red-200 rounded text-red-700">
+      Configuration missing: set <code>window.SUPABASE_URL</code> and <code>window.SUPABASE_ANON_KEY</code> before using this page.
+    </div>
+  </div>
 
-        // --- Core Utility Functions ---
-        function cleanLatex(input) {
-            if (input === null || typeof input !== 'string') return input;
-            let cleaned = input.replace(/\$|\\\(|\\\)|\\\[|\\\]|{|}/g, '');
-            cleaned = cleaned.replace(/\\(text|mathbf|mathrm|unit|cdot|times|approx|sim|perp|parallel)\s*\{([^}]*)\}/g, '$2');
-            cleaned = cleaned.replace(/\\(text|mathbf|rightarrow|implies|times|div|sum|int|sqrt|alpha|beta|gamma|delta|sigma|mu|rho|eta|tau|pi|deg)\s*/gi, ' ');
-            cleaned = cleaned.replace(/\\/g, ''); 
-            return cleaned.replace(/\s\s+/g, ' ').trim();
+  <script>
+  (function () {
+    // ---------- CONFIG ----------
+    // If you prefer to set credentials here, set them to the window object.
+    // Example (uncomment and replace with your keys) OR set them in a separate script before this file:
+    //
+    // window.SUPABASE_URL = "https://gkyvojcmqsgdynmitcuf.supabase.co";
+    // window.SUPABASE_ANON_KEY = "eyJhbGciOiJ...";
+
+    // --- NCERT SYLLABUS (Subject -> chapters with table name as 'value') ---
+    const NCERT_SYLLABUS = {
+      science: [
+        { name: "Motion", value: "motion" },
+        { name: "Force and Laws of Motion", value: "force" },
+        { name: "Gravitation", value: "gravitation" },
+        { name: "Work and Energy", value: "work_energy" },
+        { name: "Sound", value: "sound" },
+        { name: "Matter in Our Surroundings", value: "matter_surroundings" },
+        { name: "Is Matter Around Us Pure", value: "matter_pure" },
+        { name: "Atoms and Molecules", value: "atom_molecules" },
+        { name: "Structure of the Atom", value: "structure_atom" }
+      ],
+      social_science: [
+        { name: "The French Revolution", value: "french_revolution" },
+        { name: "India - Size and Location", value: "india_size" }
+      ],
+      maths: [
+        { name: "Number Systems", value: "number_systems" },
+        { name: "Polynomials", value: "polynomials" }
+      ]
+    };
+
+    // DB columns expected in CSV (header order). Adjust if your CSV header differs.
+    const DB_COLUMNS = [
+      'difficulty', 'question_type', 'question_text',
+      'scenario_reason_text', 'option_a', 'option_b', 'option_c', 'option_d',
+      'correct_answer_key'
+    ];
+
+    const LATEX_CLEANUP_COLUMNS = [
+      'question_text','scenario_reason_text','option_a','option_b','option_c','option_d'
+    ];
+
+    // ---------- DOM ----------
+    const subjectSelect = document.getElementById('subject-select');
+    const chapterSelect = document.getElementById('table-name-select');
+    const tableNameInput = document.getElementById('current-table-name');
+    const csvInput = document.getElementById('csv-input');
+    const automateButton = document.getElementById('automate-button');
+    const clearButton = document.getElementById('clear-button');
+    const logEntries = document.getElementById('log-entries');
+    const configError = document.getElementById('config-error');
+
+    let supabaseClient = null;
+
+    // ---------- Utilities ----------
+    function log(message, level = 'info') {
+      const p = document.createElement('div');
+      p.className = 'p-2 rounded';
+      if (level === 'info') p.classList.add('bg-gray-100','text-gray-700');
+      if (level === 'success') p.classList.add('bg-green-100','text-accent-green','font-semibold');
+      if (level === 'error') p.classList.add('bg-red-100','text-red-700','font-semibold');
+      if (level === 'warn') p.classList.add('bg-yellow-100','text-yellow-700');
+      p.innerHTML = `<small class="opacity-60">${new Date().toLocaleTimeString()}</small> — ${message}`;
+      logEntries.insertBefore(p, logEntries.children[1] || null);
+    }
+
+    function setButtonState(disabled, text) {
+      automateButton.disabled = disabled;
+      automateButton.textContent = text;
+      automateButton.classList.toggle('opacity-50', disabled);
+    }
+
+    function cleanLatex(input) {
+      if (input === null || typeof input !== 'string') return input;
+      let s = input.replace(/\$|\\\(|\\\)|\\\[|\\\]|{|}/g, '');
+      s = s.replace(/\\(text|mathbf|mathrm|unit|cdot|times|approx|sim|perp|parallel)\s*\{([^}]*)\}/g, '$2');
+      s = s.replace(/\\[a-zA-Z]+/g, ' ');
+      return s.replace(/\s\s+/g, ' ').trim();
+    }
+
+    // CSV parsing (reasonable robustness)
+    const CSV_FIELD_REGEX = /(?:\"((?:[^"]|"")*)\")|([^,]+)/g;
+
+    function parseCSV(csvString) {
+      const cleaned = csvString.trim().replace(/^\uFEFF/, '');
+      const lines = cleaned.split(/\r?\n/).filter(l => l.trim().length > 0);
+      if (lines.length < 2) throw new Error('CSV must include header and at least one data row.');
+
+      const header = lines[0].split(',').map(h => h.trim().replace(/['"]+/g,'').toLowerCase());
+      const expected = DB_COLUMNS.map(c => c.toLowerCase());
+      // allow header columns to contain expected columns (not necessarily exact order)
+      const headerOk = expected.every((col, idx) => header[idx] && header[idx].includes(col));
+      if (!headerOk) {
+        throw new Error(`Header mismatch. Expected: ${DB_COLUMNS.join(', ')}. Found: ${header.join(', ')}`);
+      }
+
+      const rows = [];
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        // Basic split that respects quoted fields:
+        const fields = [];
+        let match;
+        const re = /(?:"((?:[^"]|"")*)"|([^,]*))(?:,|$)/g;
+        while ((match = re.exec(line)) !== null) {
+          const val = match[1] !== undefined ? match[1].replace(/""/g,'"') : match[2];
+          fields.push(val === undefined ? '' : val);
         }
-
-        // --- Dropdown Management Functions ---
-        function updateTableNameDisplay() {
-            const tableSelect = document.getElementById('table-name-select');
-            const tableInput = document.getElementById('current-table-name');
-            const selectedValue = tableSelect.value;
-            if (selectedValue) {
-                tableInput.value = selectedValue;
-            } else {
-                tableInput.value = '';
-            }
+        if (fields.length < DB_COLUMNS.length) {
+          log(`Skipping row ${i+1}: expected ${DB_COLUMNS.length} columns but found ${fields.length}`, 'warn');
+          continue;
         }
-
-        function populateSubjectSelect() {
-            const select = document.getElementById('subject-select');
-            select.innerHTML = ''; 
-            const defaultOption = document.createElement('option');
-            defaultOption.value = "";
-            defaultOption.textContent = "--- Select Subject ---";
-            defaultOption.disabled = true;
-            defaultOption.selected = true;
-            select.appendChild(defaultOption);
-            Object.keys(NCERT_SYLLABUS).forEach(subjectKey => {
-                const option = document.createElement('option');
-                option.value = subjectKey;
-                option.textContent = subjectKey.charAt(0).toUpperCase() + subjectKey.slice(1).replace('_', ' '); 
-                select.appendChild(option);
-            });
+        // Build row object
+        const obj = { created_at: new Date().toISOString() };
+        for (let j=0;j<DB_COLUMNS.length;j++){
+          let v = fields[j] ?? '';
+          v = v.trim();
+          if (!v || v.toLowerCase()==='nan' || v.toLowerCase()==='null') v = null;
+          if (v !== null && LATEX_CLEANUP_COLUMNS.includes(DB_COLUMNS[j])) v = cleanLatex(v);
+          obj[DB_COLUMNS[j]] = v;
         }
-        
-        function handleSubjectChange() {
-            const subjectSelect = document.getElementById('subject-select');
-            const chapterSelect = document.getElementById('table-name-select');
-            const selectedSubject = subjectSelect.value;
-            chapterSelect.innerHTML = ''; 
-            chapterSelect.disabled = true;
-            const defaultOption = document.createElement('option');
-            defaultOption.value = "";
-            defaultOption.textContent = selectedSubject ? "--- Select Chapter ---" : "--- Select a Subject First ---";
-            defaultOption.disabled = true;
-            defaultOption.selected = true;
-            chapterSelect.appendChild(defaultOption);
-            if (selectedSubject && NCERT_SYLLABUS[selectedSubject]) {
-                const chapters = NCERT_SYLLABUS[selectedSubject];
-                chapters.forEach(chapter => {
-                    const option = document.createElement('option');
-                    option.value = chapter.value;
-                    option.textContent = `${chapter.name} (Table: ${chapter.value})`;
-                    chapterSelect.appendChild(option);
-                });
-                chapterSelect.disabled = false;
-            }
-            updateTableNameDisplay();
+        rows.push(obj);
+      }
+      if (rows.length === 0) throw new Error('No valid rows parsed from CSV.');
+      return rows;
+    }
+
+    // ---------- Supabase insert ----------
+    async function insertDataIntoSupabase(table, rows) {
+      const { data, error } = await supabaseClient
+        .from(table)
+        .insert(rows)
+        .select();
+
+      if (error) {
+        // RLS or permission hint
+        if (/permission denied|violates row-level security|RLS/i.test(error.message)) {
+          throw new Error(`Supabase insertion error: ${error.message}. Check table RLS/policies for anon role.`);
         }
+        throw new Error(`Supabase insertion error: ${error.message}`);
+      }
+      return data;
+    }
 
+    // ---------- UI helpers ----------
+    function populateSubjects() {
+      subjectSelect.innerHTML = '';
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = '--- Select Subject ---';
+      placeholder.selected = true;
+      placeholder.disabled = true;
+      subjectSelect.appendChild(placeholder);
 
-        // --- Initialization and Logging ---
-        function init() {
-            log = document.getElementById('status-log');
-            button = document.getElementById('automate-button');
-            
-            populateSubjectSelect();
-            handleSubjectChange(); 
+      Object.keys(NCERT_SYLLABUS).forEach(key => {
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = key.replace('_',' ').replace(/\b\w/g, c=>c.toUpperCase());
+        subjectSelect.appendChild(opt);
+      });
+    }
 
-            // Check config (should pass now)
-            if (typeof window.SUPABASE_URL === 'undefined' || typeof window.SUPABASE_ANON_KEY === 'undefined' || window.SUPABASE_URL === null) {
-                 document.getElementById('log-initial').textContent = "Configuration required...";
-                 document.getElementById('config-error').classList.remove('hidden');
-                 button.disabled = true;
-                 return;
-            }
-            
-            document.getElementById('log-initial').textContent = "Initializing environment...";
-            
-            // Initialize Supabase Client
-            try {
-                supabaseClient = supabase.createClient(
-                    window.SUPABASE_URL,
-                    window.SUPABASE_ANON_KEY
-                );
-                // Hide the configuration error message since credentials are found
-                document.getElementById('config-error').classList.add('hidden'); 
-                logMessage('Supabase client initialized successfully. Ready to process CSV.', 'success');
-            } catch (e) {
-                logMessage(`Error initializing Supabase client: ${e.message}`, 'error');
-                button.disabled = true;
-            }
-        }
+    function populateChaptersFor(subjectKey) {
+      chapterSelect.innerHTML = '';
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = subjectKey ? '--- Select Chapter ---' : '--- Select a Subject First ---';
+      placeholder.selected = true;
+      placeholder.disabled = true;
+      chapterSelect.appendChild(placeholder);
 
-        function logMessage(message, type = 'info') {
-            const p = document.createElement('p');
-            p.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`; 
-            p.className = 'p-2 rounded';
-            if (type === 'info') p.classList.add('bg-gray-100', 'text-gray-700');
-            if (type === 'success') p.classList.add('bg-green-100', 'text-accent-green', 'font-semibold');
-            if (type === 'error') p.classList.add('bg-red-100', 'text-red-700', 'font-semibold');
-            if (type === 'warning') p.classList.add('bg-yellow-100', 'text-yellow-700');
-            const logContainer = document.getElementById('status-log');
-            const firstLogEntry = logContainer.querySelector('h2').nextElementSibling;
-            logContainer.insertBefore(p, firstLogEntry);
-        }
+      if (subjectKey && NCERT_SYLLABUS[subjectKey]) {
+        NCERT_SYLLABUS[subjectKey].forEach(ch => {
+          const opt = document.createElement('option');
+          opt.value = ch.value;
+          opt.textContent = `${ch.name} (table: ${ch.value})`;
+          chapterSelect.appendChild(opt);
+        });
+        chapterSelect.disabled = false;
+      } else {
+        chapterSelect.disabled = true;
+      }
+      tableNameInput.value = '';
+    }
 
-        function setButtonState(disabled, text) {
-            button.disabled = disabled;
-            button.textContent = text;
-        }
-        
-        // --- Robust CSV Parsing Logic (Unchanged) ---
-        const CSV_REGEX = /(?!\s*$",)(?!\s*$)\s*(?:(?:"((?:[^"]|"")*)")|([^",]*))\s*(?:,|$)/g;
+    // ---------- Main workflow ----------
+    async function startAutomation() {
+      if (!supabaseClient) {
+        log('Supabase client not initialized.', 'error');
+        return;
+      }
 
-        function parseCSV(csvString) {
-            logMessage('Parsing CSV data...');
-            let cleanString = csvString.trim().replace(/^\uFEFF/, '');
-            cleanString = cleanString.replace(/,nan,|,NaN,/, ",,"); 
-            cleanString = cleanString.replace(/,nan\n|,NaN\n/, ",\n"); 
-            const lines = cleanString.split('\n');
-            if (lines.length < 2) {
-                throw new Error("CSV input must contain at least a header row and one data row.");
-            }
-            const headerLine = lines[0];
-            const header = headerLine.split(',').map(h => h.trim().replace(/['"]+/g, '').toLowerCase());
-            const expectedHeader = DB_COLUMNS.map(col => col.toLowerCase()); 
-            const headerMatch = expectedHeader.every((expectedCol, i) => 
-                header[i] && header[i].includes(expectedCol)
-            );
-            if (!headerMatch) {
-                logMessage(`Error: Header mismatch. Please ensure the header is: ${DB_COLUMNS.join(', ')}`, 'error');
-                logMessage(`Found header columns: ${header.join(', ')}`, 'error');
-                throw new Error("CSV Header mismatch. Check the log for required vs. found columns.");
-            }
-            const data = [];
-            const timestampCol = 'created_at';
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (line === "") continue;
-                const fields = line.match(CSV_REGEX);
-                
-                if (!fields) continue;
-                let fieldValues = [];
-                for(let f = 0; f < fields.length; f++) {
-                    let value = fields[f].match(/"((?:[^"]|"")*)"|([^",]*)/)?.[1] || fields[f].match(/"((?:[^"]|"")*)"|([^",]*)/)?.[2];
-                    fieldValues.push(value);
-                }
-                
-                if (fieldValues.length < DB_COLUMNS.length) {
-                    logMessage(`Skipping row ${i + 1} due to insufficient column count (${fieldValues.length} found, expected ${DB_COLUMNS.length}). Line data: ${line.substring(0, 50)}...`, 'warning');
-                    continue;
-                }
-                fieldValues = fieldValues.slice(0, DB_COLUMNS.length);
-                
-                let rowData = {};
-                rowData[timestampCol] = new Date().toISOString();
+      const subj = subjectSelect.value;
+      const tableName = chapterSelect.value;
+      const csv = csvInput.value.trim();
 
-                for (let j = 0; j < DB_COLUMNS.length; j++) {
-                    const colName = DB_COLUMNS[j];
-                    let value = fieldValues[j];
-                    
-                    value = value ? value.trim().replace(/^"|"$/g, '').replace(/""/g, '"') : "";
-                    
-                    if (value === '' || value.toLowerCase() === 'null' || value.toLowerCase() === 'nan') {
-                        value = null;
-                    }
+      if (!subj || !tableName) {
+        log('Please select both subject and chapter/table name.', 'error');
+        return;
+      }
+      if (!csv) {
+        log('Please paste CSV data before processing.', 'error');
+        return;
+      }
 
-                    if (LATEX_CLEANUP_COLUMNS.includes(colName) && value !== null) {
-                        value = cleanLatex(value);
-                    }
+      try {
+        setButtonState(true, 'Parsing CSV — please wait...');
+        log('Parsing CSV input...', 'info');
+        const rows = parseCSV(csv);
+        log(`Parsed ${rows.length} rows. Preparing to insert into '${tableName}'`, 'info');
 
-                    rowData[colName] = value;
-                }
-                data.push(rowData);
-            }
-            if (data.length === 0) {
-                 throw new Error("Failed to parse any valid data rows. Check the CSV format for structural issues.");
-            }
-            logMessage(`Successfully parsed **${data.length}** records from CSV.`, 'success');
-            return data;
-        }
+        setButtonState(true, `Inserting into ${tableName}...`);
+        const inserted = await insertDataIntoSupabase(tableName, rows);
+        log(`Success: ${inserted.length} records inserted into '${tableName}'`, 'success');
+        setButtonState(false, 'Parse CSV & Insert into Supabase');
 
-        // --- Supabase Insertion Logic (Unchanged) ---
-        async function insertDataIntoSupabase(tableName, data) {
-            logMessage(`Attempting to insert ${data.length} records into table **${tableName}**...`);
-            const { data: insertedData, error } = await supabaseClient
-                .from(tableName)
-                .insert(data)
-                .select(); 
-            if (error) {
-                if (error.message.includes("violates row-level security policy") || error.message.includes("permission denied")) {
-                     throw new Error(`Supabase insertion error: Permission Denied. Check that **Row Level Security (RLS)** policy includes the 'anon' role for INSERTs on table '${tableName}'.`);
-                }
-                throw new Error(`Supabase insertion error: ${error.message}`);
-            }
-            return insertedData;
-        }
+      } catch (err) {
+        log(`Automation failed: ${err.message}`, 'error');
+        setButtonState(false, 'Parse CSV & Insert into Supabase');
+      }
+    }
 
-        // --- Main Automation Workflow (UPDATED: Removed createTableWithRLS call) ---
-        async function startAutomation() {
-            if (!supabaseClient) {
-                logMessage('Initialization failed. Please check configuration and try again.', 'error');
-                return;
-            }
-            
-            const tableName = document.getElementById('table-name-select').value.trim();
-            const csvInput = document.getElementById('csv-input').value.trim();
-            
-            if (!document.getElementById('subject-select').value || !tableName) {
-                logMessage('Please select a Subject and Chapter/Table Name.', 'error');
-                return;
-            }
-            if (!csvInput) {
-                logMessage('Please paste the CSV data into the text area.', 'error');
-                return;
-            }
+    // ---------- Init ----------
+    function init() {
+      populateSubjects();
+      populateChaptersFor(); // initialize
 
-            setButtonState(true, `Processing: Parsing CSV for table '${tableName}'...`);
-            
-            try {
-                // 1. Parse CSV Data
-                const quizData = parseCSV(csvInput);
-                
-                if (!quizData || quizData.length === 0) {
-                    throw new Error("No valid data rows were parsed from the CSV.");
-                }
-                logMessage(`Content Parsed: Ready to insert **${quizData.length}** records into table **${tableName}**.`, 'success');
+      // Wire events
+      subjectSelect.addEventListener('change', () => {
+        populateChaptersFor(subjectSelect.value);
+      });
 
-                // 2. Insert Data into Supabase
-                setButtonState(true, `Processing: Inserting into Supabase table '${tableName}'...`);
-                const insertedRecords = await insertDataIntoSupabase(tableName, quizData);
-                
-                // 3. Complete
-                logMessage(`**Automation Complete!** **${insertedRecords.length}** records added to table **${tableName}**.`, 'success');
-                setButtonState(false, 'Process Another CSV');
+      chapterSelect.addEventListener('change', () => {
+        tableNameInput.value = chapterSelect.value || '';
+      });
 
-            } catch (error) {
-                logMessage(`Automation Failed: ${error.message}`, 'error');
-                setButtonState(false, 'Error. Check Log and Try Again.');
-            }
-        }
-        
-        document.addEventListener('DOMContentLoaded', init);
-        
-        window.handleSubjectChange = handleSubjectChange;
-        window.startAutomation = startAutomation;
-        window.updateTableNameDisplay = updateTableNameDisplay;
-    </script>
+      automateButton.addEventListener('click', startAutomation);
+      clearButton.addEventListener('click', () => {
+        csvInput.value = '';
+        log('Cleared CSV input box.', 'info');
+      });
+
+      // Check config (allow credentials provided before this script)
+      if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
+        // If you want to embed credentials here, uncomment at top OR set them via a <script> before this file
+        configError.classList.remove('hidden');
+        log('Supabase credentials missing. Set window.SUPABASE_URL and window.SUPABASE_ANON_KEY.', 'error');
+        automateButton.disabled = true;
+        return;
+      }
+
+      try {
+        supabaseClient = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+        configError.classList.add('hidden');
+        log('Supabase client initialized. Ready to process CSV.', 'success');
+      } catch (e) {
+        log(`Failed to initialize Supabase: ${e.message}`, 'error');
+        automateButton.disabled = true;
+      }
+    }
+
+    // Launch
+    document.addEventListener('DOMContentLoaded', init);
+
+    // Expose minimal helpers for debugging if needed
+    window.startAutomation = startAutomation;
+    window.parseCSV = parseCSV;
+  })();
+  </script>
 </body>
 </html>
