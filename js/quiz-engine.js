@@ -1,12 +1,19 @@
 // js/quiz-engine.js
+// -----------------------------------------------------------------------------
+// Core quiz logic: loading questions, tracking progress, auth state
+// -----------------------------------------------------------------------------
 
-// Import required modules
-import { initializeServices, getAuthUser } from './config.js';
-import { fetchQuestions, saveResult } from './api.js';
-import * as UI from './ui-renderer.js';
-import { checkAccess, initializeAuthListener, signInWithGoogle, signOut } from './auth-paywall.js';
+import { initializeServices, getAuthUser } from "./config.js";
+import { fetchQuestions, saveResult } from "./api.js";
+import * as UI from "./ui-renderer.js";
+import {
+  checkAccess,
+  initializeAuthListener,
+  signInWithGoogle,
+  signOut,
+} from "./auth-paywall.js";
 
-// --- Global state ---
+// Global state
 let quizState = {
   classId: null,
   subject: null,
@@ -19,60 +26,45 @@ let quizState = {
   score: 0,
 };
 
-// --- Helpers ---
+/**
+ * Parse quiz parameters from URL
+ */
 function parseUrlParameters() {
   const urlParams = new URLSearchParams(window.location.search);
-  quizState.classId = urlParams.get('class');
-  quizState.subject = urlParams.get('subject');
-  quizState.topicSlug = urlParams.get('topic'); // e.g., 'motion'
-  quizState.difficulty = urlParams.get('difficulty'); // e.g., 'simple'
+  quizState.classId = urlParams.get("class");
+  quizState.subject = urlParams.get("subject");
+  quizState.topicSlug = urlParams.get("topic");
+  quizState.difficulty = urlParams.get("difficulty");
 
-  // If you want to relax the "only motion" constraint, remove this block.
-  if (!quizState.topicSlug) {
-    UI.showStatus(`<span class="text-red-500">Error:</span> Missing topic parameter.`);
-    throw new Error('Missing topic parameter.');
-  }
-
-  // Set UI header immediately (safe even if UI hasn't fully rendered)
-  try {
-    UI.updateHeader(quizState.topicSlug, quizState.difficulty || '--');
-  } catch (e) {
-    console.warn('[ENGINE] updateHeader failed (non-fatal):', e);
-  }
+  if (!quizState.topicSlug) throw new Error("Missing topic parameter.");
+  UI.updateHeader(quizState.topicSlug, quizState.difficulty);
 }
 
 /**
- * Render current question
+ * Render question
  */
 function renderQuestion() {
   const q = quizState.questions[quizState.currentQuestionIndex];
   if (!q) {
-    // Nothing to render
-    UI.showStatus('<span class="text-gray-600">No question to display.</span>');
+    UI.showStatus("<span>No question to display.</span>");
     return;
   }
 
-  UI.renderQuestion(q, quizState.currentQuestionIndex + 1, quizState.userAnswers[q.id], quizState.isSubmitted);
+  UI.renderQuestion(q, quizState.currentQuestionIndex, quizState.userAnswers[q.id], quizState.isSubmitted);
 
-  // Update question counter (if UI exposes it)
-  try {
-    const elements = UI.getElements();
-    if (elements.questionCounter) {
-      elements.questionCounter.textContent = `${quizState.currentQuestionIndex + 1} / ${quizState.questions.length}`;
-    }
-  } catch (e) {
-    // not fatal
-  }
+  const els = UI.getElements?.() || {};
+  if (els.counter)
+    els.counter.textContent = `${quizState.currentQuestionIndex + 1} / ${quizState.questions.length}`;
 
-  UI.updateNavigation(quizState.currentQuestionIndex, quizState.questions.length, quizState.isSubmitted);
+  UI.updateNavigation?.(quizState.currentQuestionIndex, quizState.questions.length, quizState.isSubmitted);
   UI.hideStatus();
 }
 
 /**
- * Navigation
+ * Navigation between questions
  */
-function handleNavigation(direction) {
-  const newIndex = quizState.currentQuestionIndex + direction;
+function handleNavigation(dir) {
+  const newIndex = quizState.currentQuestionIndex + dir;
   if (newIndex >= 0 && newIndex < quizState.questions.length) {
     quizState.currentQuestionIndex = newIndex;
     renderQuestion();
@@ -80,7 +72,7 @@ function handleNavigation(direction) {
 }
 
 /**
- * Answer selection handler (questionId string, option letter)
+ * Handle answer selection
  */
 function handleAnswerSelection(questionId, selectedOption) {
   if (quizState.isSubmitted) return;
@@ -97,15 +89,12 @@ async function handleSubmit() {
   quizState.score = 0;
 
   quizState.questions.forEach((q) => {
-    const userAnswer = quizState.userAnswers[q.id];
-    if (userAnswer && userAnswer.toUpperCase() === (q.correct_answer || '').toUpperCase()) {
-      quizState.score++;
-    }
+    const ans = quizState.userAnswers[q.id];
+    if (ans && ans.toUpperCase() === (q.correct_answer || "").toUpperCase()) quizState.score++;
   });
 
-  // Save result (if user logged-in)
   const user = getAuthUser();
-  const resultData = {
+  const result = {
     classId: quizState.classId,
     subject: quizState.subject,
     topic: quizState.topicSlug,
@@ -117,189 +106,109 @@ async function handleSubmit() {
 
   if (user) {
     try {
-      await saveResult(resultData);
+      await saveResult(result);
     } catch (e) {
-      console.warn('[ENGINE] saveResult failed (non-fatal):', e);
+      console.warn("[ENGINE] Save failed:", e);
     }
   }
 
-  // Show first question in review mode and show results
   quizState.currentQuestionIndex = 0;
   renderQuestion();
   UI.showResults(quizState.score, quizState.questions.length);
-
-  // render review list (all correct answers view) if UI provides that
-  try {
-    UI.renderAllQuestionsForReview(quizState.questions, quizState.userAnswers);
-  } catch (e) {
-    // It's ok if UI doesn't expose that function
-  }
-
-  // update navigation for review state
-  UI.updateNavigation(quizState.currentQuestionIndex, quizState.questions.length, true);
+  UI.renderAllQuestionsForReview?.(quizState.questions, quizState.userAnswers);
+  UI.updateNavigation?.(quizState.currentQuestionIndex, quizState.questions.length, true);
 }
 
 /**
- * Loads quiz questions from API and initializes question state
+ * Load quiz questions from Supabase
  */
 async function loadQuiz() {
   try {
-    UI.showStatus('Fetching questions...', 'text-blue-600');
-
-    const questions = await fetchQuestions(quizState.topicSlug, quizState.difficulty || 'simple');
-
-    if (!questions || questions.length === 0) {
-      UI.showStatus(`<span class="text-red-600">Error:</span> No questions found for this topic/difficulty.`, 'text-red-600');
-      return;
-    }
+    UI.showStatus("Fetching questions...");
+    const questions = await fetchQuestions(quizState.topicSlug, quizState.difficulty);
+    if (!questions?.length) throw new Error("No questions found.");
 
     quizState.questions = questions;
-
-    // initialize userAnswers keys
-    quizState.questions.forEach((q) => {
-      quizState.userAnswers[q.id] = quizState.userAnswers[q.id] || null;
-    });
-
+    quizState.userAnswers = Object.fromEntries(questions.map((q) => [q.id, null]));
     quizState.currentQuestionIndex = 0;
     quizState.isSubmitted = false;
-    quizState.score = 0;
 
-    // render first question
     renderQuestion();
-
-    // attach answer listeners delegated through UI helper
-    UI.attachAnswerListeners(handleAnswerSelection);
-
-    // show quiz container
-    try { UI.showView('quiz-content'); } catch (e) { /* ignore */ }
-
+    UI.attachAnswerListeners?.(handleAnswerSelection);
+    UI.showView?.("quiz-content");
   } catch (err) {
-    console.error('[ENGINE ERROR] loadQuiz failed:', err);
-    UI.showStatus(`<span class="text-red-600">ERROR:</span> Could not load quiz. ${err.message}`, 'text-red-600');
+    console.error("[ENGINE] loadQuiz failed:", err);
+    UI.showStatus(`<span class="text-red-600">Error:</span> ${err.message}`);
   }
 }
 
 /**
- * Authentication state change callback
+ * Auth state callback
  */
 async function onAuthChange(user) {
   try {
     if (user) {
-      UI.showStatus(`Checking access for user: ${user.email}...`, 'text-blue-600');
-
-      // show user's first name in header if present
-      try {
-        const nameElem = document.getElementById('user-name');
-        if (nameElem) {
-          const email = user.email || '';
-          const first = email.split('@')[0] || user.displayName || 'User';
-          nameElem.textContent = first;
-        }
-      } catch (e) {
-        // ignore
-      }
-
-      // update header auth UI
-      try { UI.updateAuthUI(user); } catch (e) { /* ignore */ }
-
+      UI.updateAuthUI?.(user);
       const hasAccess = await checkAccess(quizState.topicSlug);
-      if (hasAccess) {
-        await loadQuiz();
-      } else {
-        try {
-          UI.updatePaywallContent(quizState.topicSlug);
-          UI.showView('paywall-screen');
-        } catch (e) {
-          UI.showStatus('Access denied. Please sign in or contact admin.', 'text-yellow-600');
-        }
-      }
+      if (hasAccess) await loadQuiz();
+      else UI.showView?.("paywall-screen");
     } else {
-      // logged out
-      try { UI.updateAuthUI(null); } catch (e) {}
-      UI.showStatus('Please sign in to access premium quizzes.', 'text-yellow-600');
-      try {
-        UI.updatePaywallContent(quizState.topicSlug);
-        UI.showView('paywall-screen');
-      } catch (e) {}
+      UI.updateAuthUI?.(null);
+      UI.showView?.("paywall-screen");
     }
-  } catch (e) {
-    console.error('[ENGINE] onAuthChange error:', e);
+  } catch (err) {
+    console.error("[ENGINE] Auth change error:", err);
   }
 }
 
 /**
- * Setup UI event bindings robustly.
+ * Attach static DOM event listeners
  */
 function attachDomEventHandlers() {
-  // Attach to known static elements via UI.getElements() where possible
-  let elements;
-  try {
-    elements = UI.getElements();
-  } catch (e) {
-    elements = {};
-  }
+  const els = UI.getElements?.() || {};
+  els.prevButton?.addEventListener("click", () => handleNavigation(-1));
+  els.nextButton?.addEventListener("click", () => handleNavigation(1));
+  els.submitButton?.addEventListener("click", handleSubmit);
+  els.reviewCompleteBtn?.addEventListener("click", () => (window.location.href = "index.html"));
 
-  // Prefer direct listeners when available
-  if (elements.prevButton) elements.prevButton.addEventListener('click', () => handleNavigation(-1));
-  if (elements.nextButton) elements.nextButton.addEventListener('click', () => handleNavigation(1));
-  if (elements.submitButton) elements.submitButton.addEventListener('click', () => handleSubmit());
-  if (elements.reviewCompleteBtn) elements.reviewCompleteBtn.addEventListener('click', () => { window.location.href = 'index.html'; });
+  document.addEventListener(
+    "click",
+    (e) => {
+      const btn = e.target.closest("button, a");
+      if (!btn) return;
 
-  // Sign-in / sign-out / paywall buttons: use event delegation with .closest()
-  document.addEventListener('click', (e) => {
-    const btn = e.target;
-    // login buttons (header or paywall)
-    if (btn.closest && btn.closest('#login-btn')) {
-      signInWithGoogle();
-      return;
-    }
-    if (btn.closest && btn.closest('#google-signin-btn')) {
-      // older paywall button id used in some templates
-      signInWithGoogle();
-      return;
-    }
-    if (btn.closest && btn.closest('#paywall-login-btn')) {
-      signInWithGoogle();
-      return;
-    }
-    // logout
-    if (btn.closest && btn.closest('#logout-nav-btn')) {
-      signOut();
-      return;
-    }
-  }, { capture: false });
+      if (btn.id === "login-btn" || btn.id === "google-signin-btn" || btn.id === "paywall-login-btn")
+        return signInWithGoogle();
+      if (btn.id === "logout-nav-btn") return signOut();
+    },
+    false
+  );
 }
 
 /**
- * Initialization sequence
+ * Initialize quiz engine
  */
 async function initQuizEngine() {
   try {
-    // Initialize UI element cache
     UI.initializeElements();
-
-    // Parse parameters (will update header)
     parseUrlParameters();
 
-    // Initialize services (Firebase + Supabase)
-    UI.showStatus('Initializing core services...', 'text-blue-600');
+    UI.showStatus("Initializing services...");
     await initializeServices();
+    console.log("[ENGINE] Firebase/Supabase ready.");
 
-    // Initialize auth listener and wait for redirect restoration & initial auth check
     await initializeAuthListener(onAuthChange);
+    console.log("[ENGINE] Auth listener ready.");
 
-    // Attach DOM handlers for buttons and delegated events
     attachDomEventHandlers();
-
-    // Hide status if nothing else
     UI.hideStatus();
 
-    console.log('[ENGINE] Initialization complete.');
+    console.log("[ENGINE] Initialization complete.");
   } catch (err) {
-    console.error('[ENGINE FATAL] Initialization failed:', err);
-    UI.showStatus(`<span class="text-red-600">CRITICAL ERROR: Initialization Failed.</span><p>${err.message}</p>`);
+    console.error("[ENGINE FATAL] Initialization failed:", err);
+    UI.showStatus(`<span class="text-red-600">Critical error:</span> ${err.message}`);
   }
 }
 
-// Start when DOM loaded
-document.addEventListener('DOMContentLoaded', initQuizEngine);
+// Start when DOM is loaded
+document.addEventListener("DOMContentLoaded", initQuizEngine);
