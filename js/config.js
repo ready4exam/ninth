@@ -18,8 +18,8 @@ let analyticsInitialized = false;
 
 /**
  * initializeServices()
- * - Initializes Firebase (auth + firestore), Supabase client, and GA4 (if config present).
- * - Safe to call multiple times (idempotent).
+ * Initializes Firebase (auth + firestore), Supabase client, and GA4 (if config present).
+ * Safe to call multiple times.
  */
 export async function initializeServices() {
   if (firebaseApp && supabase) {
@@ -27,33 +27,41 @@ export async function initializeServices() {
   }
 
   const cfg = JSON.parse(window.__firebase_config || "{}");
+  if (!cfg?.apiKey) throw new Error("Firebase config not found in window.__firebase_config");
 
-  if (!cfg?.apiKey) {
-    throw new Error("Firebase config not found in window.__firebase_config");
-  }
-
-  // Initialize Firebase
+  // ------------------------------
+  // Firebase Initialization
+  // ------------------------------
   firebaseApp = initializeApp(cfg);
   firebaseAuth = getAuth(firebaseApp);
   firebaseDB = getFirestore(firebaseApp);
   console.log("[Config] Firebase initialized.");
 
-  // Initialize Supabase (reads global constants if set)
-  // You must include SUPABASE_URL and SUPABASE_ANON_KEY globally (e.g. in js/config.js or separate file).
-  // Try both window variables and fallback to cfg.supabase (if you embedded there).
-  const SUPABASE_URL = window.https://gkyvojcmqsgdynmitcuf.supabase.co || cfg.supabaseUrl || cfg.SUPABASE_URL;
-  const SUPABASE_ANON_KEY = window.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdreXZvamNtcXNnZHlubWl0Y3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3NDQ0OTcsImV4cCI6MjA3NjMyMDQ5N30.5dn5HbXxQ5sYNECS9o3VxVeyL6I6Z2Yf-nmPwztx1hE || cfg.supabaseAnonKey || cfg.SUPABASE_ANON_KEY;
+  // ------------------------------
+  // Supabase Initialization
+  // ------------------------------
+  const SUPABASE_URL =
+    cfg.supabaseUrl ||
+    cfg.SUPABASE_URL ||
+    "https://gkyvojcmqsgdynmitcuf.supabase.co";
+
+  const SUPABASE_ANON_KEY =
+    cfg.supabaseAnonKey ||
+    cfg.SUPABASE_ANON_KEY ||
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdreXZvamNtcXNnZHlubWl0Y3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3NDQ0OTcsImV4cCI6MjA3NjMyMDQ5N30.5dn5HbXxQ5sYNECS9o3VxVeyL6I6Z2Yf-nmPwztx1hE";
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    console.warn("[Config] Supabase credentials not found. Supabase client will not be available.");
+    console.warn("[Config] Supabase credentials not found — Supabase client not created.");
     supabase = null;
   } else {
     supabase = createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log("[Config] Supabase client initialized.");
+    console.log("[Config] Supabase initialized:", SUPABASE_URL);
   }
 
-  // Initialize GA4 (gtag) if measurementId present
-  if (cfg?.measurementId && typeof window !== "undefined") {
+  // ------------------------------
+  // Google Analytics (GA4)
+  // ------------------------------
+  if (cfg.measurementId && typeof window !== "undefined") {
     window.dataLayer = window.dataLayer || [];
     window.gtag = function () {
       window.dataLayer.push(arguments);
@@ -69,16 +77,16 @@ export async function initializeServices() {
 
 /**
  * getInitializedClients()
- * - Returns the initialized clients. Throws if initializeServices not yet run.
+ * Returns initialized clients. Throws if initializeServices not yet run.
  */
 export function getInitializedClients() {
   if (!firebaseApp) throw new Error("Firebase not initialized. Call initializeServices() first.");
-  // supabase may be null if credentials missing but return it anyway
   return { app: firebaseApp, auth: firebaseAuth, db: firebaseDB, supabase };
 }
 
 /**
  * getAuthUser()
+ * Returns currently authenticated Firebase user.
  */
 export function getAuthUser() {
   return (firebaseAuth && firebaseAuth.currentUser) || null;
@@ -86,7 +94,7 @@ export function getAuthUser() {
 
 /**
  * logAnalyticsEvent(eventName, params)
- * - Safe wrapper around gtag. No-op if GA not configured.
+ * Safe wrapper for GA4 logging.
  */
 export function logAnalyticsEvent(eventName, params = {}) {
   if (!analyticsInitialized || typeof window.gtag !== "function") {
@@ -101,5 +109,5 @@ export function logAnalyticsEvent(eventName, params = {}) {
   }
 }
 
-// Exports for convenience (modules can import these)
+// Exports for convenience
 export { firebaseApp, firebaseAuth, firebaseDB, supabase };
