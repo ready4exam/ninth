@@ -6,9 +6,7 @@ let isInit = false;
 
 function normalizeReasonText(txt) {
   if (!txt) return "";
-  return txt
-    .replace(/^\s*(Reasoning|Reason|Context)\s*(\(R\))?\s*:\s*/i, "")
-    .trim();
+  return txt.replace(/^\s*(Reasoning|Reason|Context)\s*(\(R\))?\s*:\s*/i, "").trim();
 }
 
 /* -----------------------------------
@@ -16,7 +14,6 @@ function normalizeReasonText(txt) {
 ----------------------------------- */
 export function initializeElements() {
   if (isInit) return;
-
   els = {
     title: document.getElementById("quiz-page-title"),
     diffBadge: document.getElementById("difficulty-display"),
@@ -41,19 +38,12 @@ export function initializeElements() {
     rc.id = "review-container";
     rc.className = "w-full max-w-3xl text-left mb-8";
     const resultsSection = document.getElementById("results-screen");
-    if (resultsSection) {
+    if (resultsSection)
       resultsSection.insertBefore(rc, resultsSection.querySelector(".flex") || null);
-    }
     els.reviewContainer = document.getElementById("review-container");
   }
 
   isInit = true;
-  console.log("[UI] Elements initialized.");
-}
-
-export function getElements() {
-  if (!isInit) initializeElements();
-  return els;
 }
 
 /* -----------------------------------
@@ -75,10 +65,7 @@ export function hideStatus() {
 export function updateHeader(topic, diff) {
   initializeElements();
   if (els.title) {
-    const text =
-      typeof topic === "string" && topic.length
-        ? `${topic.replace(/_/g, " ").toUpperCase()} Quiz`
-        : "Ready4Exam Quiz";
+    const text = topic ? `${topic.replace(/_/g, " ").toUpperCase()} Quiz` : "Ready4Exam Quiz";
     els.title.textContent = text;
   }
   if (els.diffBadge) {
@@ -93,9 +80,7 @@ export function updateHeader(topic, diff) {
 export function updateAuthUI(user) {
   initializeElements();
   if (!els.authNav) return;
-
   const welcomeEl = els.welcomeUser;
-
   if (user) {
     const name =
       user.displayName?.split(" ")[0] ||
@@ -105,10 +90,10 @@ export function updateAuthUI(user) {
       welcomeEl.textContent = `Welcome, ${name}!`;
       welcomeEl.classList.remove("hidden");
     }
-    els.authNav.querySelector("#logout-nav-btn")?.classList.remove("hidden");
+    document.getElementById("logout-nav-btn")?.classList.remove("hidden");
   } else {
     if (welcomeEl) welcomeEl.classList.add("hidden");
-    els.authNav.querySelector("#logout-nav-btn")?.classList.add("hidden");
+    document.getElementById("logout-nav-btn")?.classList.add("hidden");
   }
 }
 
@@ -121,8 +106,7 @@ export function showAuthLoading(message = "Signing you in — please wait...") {
   if (!overlay) {
     overlay = document.createElement("div");
     overlay.id = "auth-loading-overlay";
-    overlay.className =
-      "fixed inset-0 bg-white/80 flex items-center justify-center z-50";
+    overlay.className = "fixed inset-0 bg-white/80 flex items-center justify-center z-50";
     overlay.innerHTML = `
       <div class="p-6 rounded-lg shadow-lg text-center max-w-lg bg-white">
         <div class="text-2xl font-bold mb-2">Signing in</div>
@@ -135,13 +119,8 @@ export function showAuthLoading(message = "Signing you in — please wait...") {
         </div>
       </div>`;
     document.body.appendChild(overlay);
-  } else {
-    const msgEl = overlay.querySelector(".text-sm.text-gray-700");
-    if (msgEl) msgEl.textContent = message;
-    overlay.classList.remove("hidden");
-  }
+  } else overlay.classList.remove("hidden");
 }
-
 export function hideAuthLoading() {
   const overlay = document.getElementById("auth-loading-overlay");
   if (overlay) overlay.remove();
@@ -164,10 +143,9 @@ export function showView(viewName) {
 /* -----------------------------------
    QUESTION RENDERING
 ----------------------------------- */
-export function renderQuestion(q, idxZeroBased, selected, submitted) {
+export function renderQuestion(q, idxOneBased, selected, submitted) {
   initializeElements();
   if (!els.list) return;
-
   const type = (q.question_type || "").toLowerCase();
   const qText = cleanKatexMarkers(q.text || "");
   let reasonRaw = q.explanation || q.scenario_reason || "";
@@ -179,13 +157,11 @@ export function renderQuestion(q, idxZeroBased, selected, submitted) {
 
   const reasonHtml =
     (type === "ar" || type === "case") && reason && !submitted
-      ? `<p class="text-gray-700 mt-2 mb-3">${label}: ${reason}</p>`
-      : "";
+      ? `<p class="text-gray-700 mt-2 mb-3">${label}: ${reason}</p>` : "";
 
   const submittedExplanationHtml =
     submitted && (type === "ar" || type === "case") && reason
-      ? `<div class="mt-3 p-3 bg-gray-50 rounded text-gray-700 border border-gray-100"><b>${label}:</b> ${reason}</div>`
-      : "";
+      ? `<div class="mt-3 p-3 bg-gray-50 rounded text-gray-700 border border-gray-100"><b>${label}:</b> ${reason}</div>` : "";
 
   const optionsHtml = ["A", "B", "C", "D"]
     .map((opt) => {
@@ -194,8 +170,7 @@ export function renderQuestion(q, idxZeroBased, selected, submitted) {
       const isCorrect = submitted && (q.correct_answer || "").toUpperCase() === opt;
       const isWrong = submitted && isSel && !isCorrect;
 
-      let cls =
-        "option-label flex items-start p-3 border-2 rounded-lg cursor-pointer transition";
+      let cls = "option-label flex items-start p-3 border-2 rounded-lg cursor-pointer transition";
       if (isCorrect) cls += " border-green-600 bg-green-50";
       else if (isWrong) cls += " border-red-600 bg-red-50";
       else if (isSel) cls += " border-blue-500 bg-blue-50";
@@ -208,25 +183,39 @@ export function renderQuestion(q, idxZeroBased, selected, submitted) {
             <span class="text-gray-800">${txt}</span>
           </div>
         </label>`;
-    })
-    .join("");
+    }).join("");
 
   els.list.innerHTML = `
     <div class="space-y-6">
-      <p class="text-lg font-bold text-gray-800">Q${idxZeroBased + 1}: ${qText}</p>
+      <p class="text-lg font-bold text-gray-800">Q${idxOneBased}: ${qText}</p>
       ${reasonHtml}
       <div class="space-y-3">${optionsHtml}</div>
       ${submittedExplanationHtml}
     </div>`;
 
-  if (els.counter) {
-    const total = els._total || "--";
-    els.counter.textContent = `${idxZeroBased + 1} / ${total}`;
-  }
+  if (els.counter)
+    els.counter.textContent = `${idxOneBased} / ${els._total || "--"}`;
 }
 
 /* -----------------------------------
-   NAVIGATION
+   ANSWER LISTENERS
+----------------------------------- */
+export function attachAnswerListeners(handler) {
+  initializeElements();
+  if (!els.list) return;
+  if (els._listener) els.list.removeEventListener("change", els._listener);
+  const listener = (e) => {
+    if (e.target && e.target.type === "radio" && e.target.name.startsWith("q-")) {
+      const qid = e.target.name.substring(2);
+      handler(qid, e.target.value);
+    }
+  };
+  els.list.addEventListener("change", listener);
+  els._listener = listener;
+}
+
+/* -----------------------------------
+   NAVIGATION + COUNTER
 ----------------------------------- */
 export function updateNavigation(currentIndexZeroBased, totalQuestions, submitted) {
   initializeElements();
@@ -245,5 +234,55 @@ export function updateNavigation(currentIndexZeroBased, totalQuestions, submitte
 export function showResults(score, total) {
   initializeElements();
   if (els.score) els.score.textContent = `${score} / ${total}`;
+  showView("results-screen");
+}
+
+export function renderAllQuestionsForReview(questions, userAnswers = {}) {
+  initializeElements();
+  if (!els.reviewContainer) return;
+
+  const html = questions.map((q, i) => {
+    const txt = cleanKatexMarkers(q.text || "");
+    const reason = normalizeReasonText(cleanKatexMarkers(q.explanation || ""));
+    const label = (q.question_type || "").toLowerCase() === "case" ? "Context" : "Reasoning (R)";
+    const ua = userAnswers[q.id] || "-";
+    const ca = q.correct_answer || "-";
+    const correct = ua && ua.toUpperCase() === ca.toUpperCase();
+    return `
+      <div class="mb-6 p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
+        <p class="font-bold text-lg mb-1">Q${i + 1}: ${txt}</p>
+        ${reason ? `<p class="text-gray-700 mb-2">${label}: ${reason}</p>` : ""}
+        <p>Your Answer: <span class="${correct ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}">${ua}</span></p>
+        <p>Correct Answer: <b class="text-green-700">${ca}</b></p>
+      </div>`;
+  }).join("");
+
+  els.reviewContainer.innerHTML = html;
+
+  const retryBlock = document.createElement("div");
+  retryBlock.className = "text-center mt-8 space-y-4";
+  retryBlock.innerHTML = `
+    <h3 class="text-lg font-semibold mb-3">Try Again or Explore</h3>
+    <div class="flex justify-center gap-3 flex-wrap">
+      <button data-diff="simple" class="px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700">Simple (Easy)</button>
+      <button data-diff="medium" class="px-5 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">Medium</button>
+      <button data-diff="advanced" class="px-5 py-2 bg-red-600 text-white rounded hover:bg-red-700">Advanced (Hard)</button>
+    </div>
+    <button id="back-to-chapters-btn" class="mt-4 px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700">Go Back to Chapter Selection</button>
+  `;
+  els.reviewContainer.appendChild(retryBlock);
+
+  retryBlock.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-diff]");
+    if (btn) {
+      const params = new URLSearchParams(window.location.search);
+      params.set("difficulty", btn.dataset.diff);
+      window.location.href = `quiz-engine.html?${params.toString()}`;
+    }
+    if (e.target.id === "back-to-chapters-btn") {
+      window.location.href = "chapter-selection.html";
+    }
+  });
+
   showView("results-screen");
 }
