@@ -20,7 +20,7 @@ let quizState = {
   topicSlug: null,
   difficulty: null,
   questions: [],
-  currentQuestionIndex: 0,
+  currentQuestionIndex: 0, // zero-based internal index
   userAnswers: {},
   isSubmitted: false,
   score: 0,
@@ -55,16 +55,24 @@ function parseUrlParameters() {
 // Render a question
 // -------------------------------
 function renderQuestion() {
-  const q = quizState.questions[quizState.currentQuestionIndex];
+  const idx = quizState.currentQuestionIndex;
+  const q = quizState.questions[idx];
   if (!q) {
     UI.showStatus("<span>No question to display.</span>");
     return;
   }
-  UI.renderQuestion(q, quizState.currentQuestionIndex, quizState.userAnswers[q.id], quizState.isSubmitted);
+
+  // IMPORTANT: UI.renderQuestion expects a one-based index for display (Q1, Q2, ...)
+  UI.renderQuestion(q, idx + 1, quizState.userAnswers[q.id], quizState.isSubmitted);
+
   const els = UI.getElements?.() || {};
-  if (els.counter)
-    els.counter.textContent = `${quizState.currentQuestionIndex + 1} / ${quizState.questions.length}`;
-  UI.updateNavigation?.(quizState.currentQuestionIndex, quizState.questions.length, quizState.isSubmitted);
+  // Make counter unambiguous: show 1-based current number
+  if (els.counter) {
+    els.counter.textContent = `${idx + 1} / ${quizState.questions.length}`;
+  }
+
+  // update navigation (this expects zero-based index)
+  UI.updateNavigation?.(idx, quizState.questions.length, quizState.isSubmitted);
   UI.hideStatus();
 }
 
@@ -85,6 +93,7 @@ function handleNavigation(dir) {
 function handleAnswerSelection(questionId, selectedOption) {
   if (quizState.isSubmitted) return;
   quizState.userAnswers[questionId] = selectedOption;
+  // Re-render the same question so selected state reflects immediately
   renderQuestion();
 }
 
@@ -130,28 +139,32 @@ async function handleSubmit() {
       console.warn("[ENGINE] Save failed:", e);
     }
 
-    // Log event to Google Analytics
+    // Log event to Google Analytics (if configured)
     try {
-      const emailHash = await hashEmail(user.email);
-      gtag("event", "quiz_completed", {
-        email_hash: emailHash,
-        topic: quizState.topicSlug,
-        difficulty: quizState.difficulty,
-        score: quizState.score,
-        total: quizState.questions.length,
-        percentage,
-        mcq_correct: correctTypeCount.mcq,
-        ar_correct: correctTypeCount.ar,
-        case_correct: correctTypeCount.case,
-      });
-      console.log("[GA4] Event logged: quiz_completed");
+      const emailHash = user.email ? await hashEmail(user.email) : undefined;
+      if (typeof gtag === "function") {
+        gtag("event", "quiz_completed", {
+          email_hash: emailHash,
+          topic: quizState.topicSlug,
+          difficulty: quizState.difficulty,
+          score: quizState.score,
+          total: quizState.questions.length,
+          percentage,
+          mcq_correct: correctTypeCount.mcq,
+          ar_correct: correctTypeCount.ar,
+          case_correct: correctTypeCount.case,
+        });
+        console.log("[GA4] Event logged: quiz_completed");
+      }
     } catch (err) {
       console.warn("[GA4] Logging failed:", err);
     }
   }
 
+  // Reset index to first question for review view (display will show Q1)
   quizState.currentQuestionIndex = 0;
   renderQuestion();
+
   UI.showResults(quizState.score, quizState.questions.length);
   UI.renderAllQuestionsForReview?.(quizState.questions, quizState.userAnswers);
   UI.updateNavigation?.(quizState.currentQuestionIndex, quizState.questions.length, true);
@@ -165,18 +178,26 @@ async function loadQuiz() {
     UI.showStatus("Fetching questions...");
     const questions = await fetchQuestions(quizState.topicSlug, quizState.difficulty);
     if (!questions?.length) throw new Error("No questions found.");
+
     quizState.questions = questions;
     quizState.userAnswers = Object.fromEntries(questions.map((q) => [q.id, null]));
     quizState.currentQuestionIndex = 0;
     quizState.isSubmitted = false;
 
-    // Log quiz start to GA4
-    gtag("event", "quiz_started", {
-      topic: quizState.topicSlug,
-      difficulty: quizState.difficulty,
-    });
+    // Log quiz start to GA4 (if gtag available)
+    try {
+      if (typeof gtag === "function") {
+        gtag("event", "quiz_started", {
+          topic: quizState.topicSlug,
+          difficulty: quizState.difficulty,
+        });
+      }
+    } catch (e) {
+      console.warn("[GA4] start event failed", e);
+    }
 
     renderQuestion();
+    // attach the answer listener (UI module will handle duplicate listeners)
     UI.attachAnswerListeners?.(handleAnswerSelection);
     UI.showView?.("quiz-content");
   } catch (err) {
@@ -209,17 +230,34 @@ async function onAuthChange(user) {
 // -------------------------------
 function attachDomEventHandlers() {
   const els = UI.getElements?.() || {};
+  // add defensive logs if buttons missing
+  if (!els.prevButton) console.warn("[ENGINE] prevButton not found in DOM");
+  if (!els.nextButton) console.warn("[ENGINE] nextButton not found in DOM");
+  if (!els.submitButton) console.warn("[ENGINE] submitButton not found in DOM");
+
   els.prevButton?.addEventListener("click", () => handleNavigation(-1));
   els.nextButton?.addEventListener("click", () => handleNavigation(1));
   els.submitButton?.addEventListener("click", handleSubmit);
 
-  document.addEventListener("click", (e) => {
-    const btn = e.target.closest("button, a");
-    if (!btn) return;
-    if (btn.id === "login-btn" || btn.id === "google-signin-btn" || btn.id === "paywall-login-btn")
-      return signInWithGoogle();
-    if (btn.id === "logout-nav-btn") return signOut();
-  });
+  // global handler for sign-in / sign-out buttons (keeps wiring simple)
+  document.addEventListener(
+    "click",
+    (e) => {
+      const btn = e.target.closest("button, a");
+      if (!btn) return;
+
+      if (btn.id === "login-btn" || btn.id === "google-signin-btn" || btn.id === "paywall-login-btn") {
+        // trigger sign-in flow
+        signInWithGoogle();
+        return;
+      }
+      if (btn.id === "logout-nav-btn") {
+        signOut();
+        return;
+      }
+    },
+    false
+  );
 }
 
 // -------------------------------
