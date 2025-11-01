@@ -33,6 +33,7 @@ export function initializeElements() {
     paywallContent: document.getElementById("paywall-content"),
     quizContent: document.getElementById("quiz-content"),
     reviewContainer: document.getElementById("review-container"),
+    welcomeUser: document.getElementById("welcome-user"),
   };
 
   if (!els.reviewContainer) {
@@ -65,10 +66,12 @@ export function showStatus(msg, cls = "text-gray-700") {
   els.status.className = `p-3 text-center font-semibold ${cls}`;
   els.status.classList.remove("hidden");
 }
+
 export function hideStatus() {
   initializeElements();
   if (els.status) els.status.classList.add("hidden");
 }
+
 export function updateHeader(topic, diff) {
   initializeElements();
   if (els.title) {
@@ -78,8 +81,35 @@ export function updateHeader(topic, diff) {
         : "Ready4Exam Quiz";
     els.title.textContent = text;
   }
-  if (els.diffBadge)
+  if (els.diffBadge) {
     els.diffBadge.textContent = `Difficulty: ${diff || "--"}`;
+    els.diffBadge.classList.remove("hidden");
+  }
+}
+
+/* -----------------------------------
+   AUTH UI
+----------------------------------- */
+export function updateAuthUI(user) {
+  initializeElements();
+  if (!els.authNav) return;
+
+  const welcomeEl = els.welcomeUser;
+
+  if (user) {
+    const name =
+      user.displayName?.split(" ")[0] ||
+      user.email?.split("@")[0] ||
+      "Student";
+    if (welcomeEl) {
+      welcomeEl.textContent = `Welcome, ${name}!`;
+      welcomeEl.classList.remove("hidden");
+    }
+    els.authNav.querySelector("#logout-nav-btn")?.classList.remove("hidden");
+  } else {
+    if (welcomeEl) welcomeEl.classList.add("hidden");
+    els.authNav.querySelector("#logout-nav-btn")?.classList.add("hidden");
+  }
 }
 
 /* -----------------------------------
@@ -103,9 +133,6 @@ export function showAuthLoading(message = "Signing you in — please wait...") {
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
           </svg>
         </div>
-        <div class="text-xs text-gray-500 mt-2">
-          If the flow doesn't continue, check your popup or redirect settings.
-        </div>
       </div>`;
     document.body.appendChild(overlay);
   } else {
@@ -114,6 +141,7 @@ export function showAuthLoading(message = "Signing you in — please wait...") {
     overlay.classList.remove("hidden");
   }
 }
+
 export function hideAuthLoading() {
   const overlay = document.getElementById("auth-loading-overlay");
   if (overlay) overlay.remove();
@@ -134,9 +162,9 @@ export function showView(viewName) {
 }
 
 /* -----------------------------------
-   RENDER QUESTION
+   QUESTION RENDERING
 ----------------------------------- */
-export function renderQuestion(q, idxOneBased, selected, submitted) {
+export function renderQuestion(q, idxZeroBased, selected, submitted) {
   initializeElements();
   if (!els.list) return;
 
@@ -163,8 +191,7 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
     .map((opt) => {
       const txt = cleanKatexMarkers(q.options?.[opt] || "");
       const isSel = selected === opt;
-      const isCorrect =
-        submitted && (q.correct_answer || "").toUpperCase() === opt;
+      const isCorrect = submitted && (q.correct_answer || "").toUpperCase() === opt;
       const isWrong = submitted && isSel && !isCorrect;
 
       let cls =
@@ -175,9 +202,7 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
 
       return `
         <label class="block">
-          <input type="radio" name="q-${q.id}" value="${opt}" class="hidden" ${
-        isSel ? "checked" : ""
-      } ${submitted ? "disabled" : ""}>
+          <input type="radio" name="q-${q.id}" value="${opt}" class="hidden" ${isSel ? "checked" : ""} ${submitted ? "disabled" : ""}>
           <div class="${cls}">
             <span class="font-bold mr-3">${opt}.</span>
             <span class="text-gray-800">${txt}</span>
@@ -188,7 +213,7 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
 
   els.list.innerHTML = `
     <div class="space-y-6">
-      <p class="text-lg font-bold text-gray-800">Q${idxOneBased}: ${qText}</p>
+      <p class="text-lg font-bold text-gray-800">Q${idxZeroBased + 1}: ${qText}</p>
       ${reasonHtml}
       <div class="space-y-3">${optionsHtml}</div>
       ${submittedExplanationHtml}
@@ -196,29 +221,12 @@ export function renderQuestion(q, idxOneBased, selected, submitted) {
 
   if (els.counter) {
     const total = els._total || "--";
-    els.counter.textContent = `${idxOneBased} / ${total}`;
+    els.counter.textContent = `${idxZeroBased + 1} / ${total}`;
   }
 }
 
 /* -----------------------------------
-   ANSWER LISTENERS
------------------------------------ */
-export function attachAnswerListeners(handler) {
-  initializeElements();
-  if (!els.list) return;
-  if (els._listener) els.list.removeEventListener("change", els._listener);
-  const listener = (e) => {
-    if (e.target && e.target.type === "radio" && e.target.name.startsWith("q-")) {
-      const qid = e.target.name.substring(2);
-      handler(qid, e.target.value);
-    }
-  };
-  els.list.addEventListener("change", listener);
-  els._listener = listener;
-}
-
-/* -----------------------------------
-   NAVIGATION + COUNTER
+   NAVIGATION
 ----------------------------------- */
 export function updateNavigation(currentIndexZeroBased, totalQuestions, submitted) {
   initializeElements();
@@ -238,95 +246,4 @@ export function showResults(score, total) {
   initializeElements();
   if (els.score) els.score.textContent = `${score} / ${total}`;
   showView("results-screen");
-}
-
-export function renderAllQuestionsForReview(questions, userAnswers = {}) {
-  initializeElements();
-  if (!els.reviewContainer) return;
-
-  const html = questions
-    .map((q, i) => {
-      const txt = cleanKatexMarkers(q.text || "");
-      const reason = normalizeReasonText(cleanKatexMarkers(q.explanation || ""));
-      const label =
-        (q.question_type || "").toLowerCase() === "case"
-          ? "Context"
-          : "Reasoning (R)";
-      const ua = userAnswers[q.id] || "-";
-      const ca = q.correct_answer || "-";
-      const correct = ua && ua.toUpperCase() === ca.toUpperCase();
-      return `
-        <div class="mb-6 p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
-          <p class="font-bold text-lg mb-1">Q${i + 1}: ${txt}</p>
-          ${reason ? `<p class="text-gray-700 mb-2">${label}: ${reason}</p>` : ""}
-          <p>Your Answer: <span class="${correct ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}">${ua}</span></p>
-          <p>Correct Answer: <b class="text-green-700">${ca}</b></p>
-        </div>`;
-    })
-    .join("");
-
-  els.reviewContainer.innerHTML = html;
-
-  // Add difficulty retry + back buttons
-  const retryBlock = document.createElement("div");
-  retryBlock.className = "text-center mt-8 space-y-4";
-  retryBlock.innerHTML = `
-    <h3 class="text-lg font-semibold mb-3">Try Again or Explore</h3>
-    <div class="flex justify-center gap-3 flex-wrap">
-      <button data-diff="simple" class="px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700">Simple (Easy)</button>
-      <button data-diff="medium" class="px-5 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">Medium</button>
-      <button data-diff="advanced" class="px-5 py-2 bg-red-600 text-white rounded hover:bg-red-700">Advanced (Hard)</button>
-    </div>
-    <button id="back-to-chapters-btn" class="mt-4 px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700">Go Back to Chapter Selection</button>
-  `;
-  els.reviewContainer.appendChild(retryBlock);
-
-  retryBlock.addEventListener("click", (e) => {
-    const btn = e.target.closest("button[data-diff]");
-    if (btn) {
-      const params = new URLSearchParams(window.location.search);
-      params.set("difficulty", btn.dataset.diff);
-      window.location.href = `quiz-engine.html?${params.toString()}`;
-    }
-    if (e.target.id === "back-to-chapters-btn") {
-      window.location.href = "chapter-selection.html";
-    }
-  });
-
-  showView("results-screen");
-}
-
-/* -----------------------------------
-   AUTH UI (Fixed: show username properly)
------------------------------------ */
-export function updateAuthUI(user) {
-  initializeElements();
-  if (!els.authNav) return;
-
-  if (user) {
-    const name =
-      user.displayName?.split(" ")[0] ||
-      user.email?.split("@")[0] ||
-      "User";
-    els.authNav.innerHTML = `
-      <span class="text-sm mr-2 text-gray-700">Hi, ${name}</span>
-      <button id="logout-nav-btn" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Sign Out</button>`;
-  } else {
-    els.authNav.innerHTML = `
-      <button id="login-btn" class="px-4 py-2 bg-white text-cbse-blue rounded hover:bg-gray-100">Sign In (Google)</button>`;
-  }
-}
-
-/* -----------------------------------
-   PAYWALL
------------------------------------ */
-export function updatePaywallContent(topic) {
-  initializeElements();
-  if (!els.paywallContent) return;
-  els.paywallContent.innerHTML = `
-    <div class="p-8 bg-yellow-50 border-l-4 border-yellow-500 rounded">
-      <h2 class="text-xl font-bold mb-2">Access Restricted</h2>
-      <p>This quiz on <b>${topic.replace(/_/g, " ").toUpperCase()}</b> is for signed-in users only.</p>
-      <button id="paywall-login-btn" class="mt-4 px-6 py-3 bg-green-600 text-white rounded hover:bg-green-700">Sign In to Unlock</button>
-    </div>`;
 }
