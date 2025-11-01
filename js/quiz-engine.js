@@ -13,6 +13,7 @@ import {
   signOut,
 } from "./auth-paywall.js";
 
+// Global quiz state
 let quizState = {
   classId: null,
   subject: null,
@@ -25,6 +26,9 @@ let quizState = {
   score: 0,
 };
 
+// -------------------------------
+// Utility: Hash email for GA4
+// -------------------------------
 async function hashEmail(email) {
   const encoder = new TextEncoder();
   const data = encoder.encode(email.trim().toLowerCase());
@@ -34,6 +38,9 @@ async function hashEmail(email) {
     .join("");
 }
 
+// -------------------------------
+// Parse quiz parameters
+// -------------------------------
 function parseUrlParameters() {
   const urlParams = new URLSearchParams(window.location.search);
   quizState.classId = urlParams.get("class");
@@ -44,28 +51,9 @@ function parseUrlParameters() {
   UI.updateHeader(quizState.topicSlug, quizState.difficulty);
 }
 
-/**
- * Helper — ensures navigation buttons always work even after DOM re-render.
- */
-function rebindNavigationButtons() {
-  const els = UI.getElements?.() || {};
-  els.prevButton?.removeEventListener("click", handlePrevClick);
-  els.nextButton?.removeEventListener("click", handleNextClick);
-  els.submitButton?.removeEventListener("click", handleSubmit);
-
-  els.prevButton?.addEventListener("click", handlePrevClick);
-  els.nextButton?.addEventListener("click", handleNextClick);
-  els.submitButton?.addEventListener("click", handleSubmit);
-}
-
-function handlePrevClick() {
-  handleNavigation(-1);
-}
-
-function handleNextClick() {
-  handleNavigation(1);
-}
-
+// -------------------------------
+// Render question (index is zero-based internal)
+// -------------------------------
 function renderQuestion() {
   const idx = quizState.currentQuestionIndex;
   const q = quizState.questions[idx];
@@ -74,20 +62,18 @@ function renderQuestion() {
     return;
   }
 
+  // UI.renderQuestion expects idxOneBased
   UI.renderQuestion(q, idx + 1, quizState.userAnswers[q.id], quizState.isSubmitted);
 
-  const els = UI.getElements?.() || {};
-  if (els.counter) {
-    els.counter.textContent = `${idx + 1} / ${quizState.questions.length}`;
-  }
-
+  // Update navigation UI and counter
   UI.updateNavigation?.(idx, quizState.questions.length, quizState.isSubmitted);
-  UI.hideStatus();
 
-  // ✅ REBIND after rendering because question list is replaced
-  rebindNavigationButtons();
+  UI.hideStatus();
 }
 
+// -------------------------------
+// Navigation (next/prev)
+// -------------------------------
 function handleNavigation(dir) {
   const newIndex = quizState.currentQuestionIndex + dir;
   if (newIndex >= 0 && newIndex < quizState.questions.length) {
@@ -96,19 +82,26 @@ function handleNavigation(dir) {
   }
 }
 
+// -------------------------------
+// Answer selection handler
+// -------------------------------
 function handleAnswerSelection(questionId, selectedOption) {
   if (quizState.isSubmitted) return;
   quizState.userAnswers[questionId] = selectedOption;
-  renderQuestion(); // will rebind buttons automatically
+  // Re-render to reflect selection (UI.renderQuestion will show selected state)
+  renderQuestion();
 }
 
+// -------------------------------
+// Submit quiz: compute score, save, GA logging
+// -------------------------------
 async function handleSubmit() {
   if (quizState.isSubmitted) return;
   quizState.isSubmitted = true;
   quizState.score = 0;
 
-  let questionTypeCount = { mcq: 0, ar: 0, case: 0 };
-  let correctTypeCount = { mcq: 0, ar: 0, case: 0 };
+  const questionTypeCount = { mcq: 0, ar: 0, case: 0 };
+  const correctTypeCount = { mcq: 0, ar: 0, case: 0 };
 
   quizState.questions.forEach((q) => {
     const type = (q.question_type || "").toLowerCase();
@@ -142,23 +135,26 @@ async function handleSubmit() {
     }
 
     try {
-      const emailHash = await hashEmail(user.email);
-      gtag("event", "quiz_completed", {
-        email_hash: emailHash,
-        topic: quizState.topicSlug,
-        difficulty: quizState.difficulty,
-        score: quizState.score,
-        total: quizState.questions.length,
-        percentage,
-        mcq_correct: correctTypeCount.mcq,
-        ar_correct: correctTypeCount.ar,
-        case_correct: correctTypeCount.case,
-      });
+      const emailHash = await hashEmail(user.email || "");
+      if (typeof gtag === "function") {
+        gtag("event", "quiz_completed", {
+          email_hash: emailHash,
+          topic: quizState.topicSlug,
+          difficulty: quizState.difficulty,
+          score: quizState.score,
+          total: quizState.questions.length,
+          percentage,
+          mcq_correct: correctTypeCount.mcq,
+          ar_correct: correctTypeCount.ar,
+          case_correct: correctTypeCount.case,
+        });
+      }
     } catch (err) {
       console.warn("[GA4] Logging failed:", err);
     }
   }
 
+  // Show results and review
   quizState.currentQuestionIndex = 0;
   renderQuestion();
   UI.showResults(quizState.score, quizState.questions.length);
@@ -166,6 +162,9 @@ async function handleSubmit() {
   UI.updateNavigation?.(quizState.currentQuestionIndex, quizState.questions.length, true);
 }
 
+// -------------------------------
+// Load quiz questions
+// -------------------------------
 async function loadQuiz() {
   try {
     UI.showStatus("Fetching questions...");
@@ -177,12 +176,20 @@ async function loadQuiz() {
     quizState.currentQuestionIndex = 0;
     quizState.isSubmitted = false;
 
-    gtag?.("event", "quiz_started", {
-      topic: quizState.topicSlug,
-      difficulty: quizState.difficulty,
-    });
+    // GA4: quiz started
+    try {
+      if (typeof gtag === "function") {
+        gtag("event", "quiz_started", {
+          topic: quizState.topicSlug,
+          difficulty: quizState.difficulty,
+        });
+      }
+    } catch (e) {
+      console.warn("[GA4] quiz_started log failed:", e);
+    }
 
     renderQuestion();
+    // Attach answer listeners to the question-list container (delegated change handler inside UI)
     UI.attachAnswerListeners?.(handleAnswerSelection);
     UI.showView?.("quiz-content");
   } catch (err) {
@@ -191,6 +198,9 @@ async function loadQuiz() {
   }
 }
 
+// -------------------------------
+// Auth state callback
+// -------------------------------
 async function onAuthChange(user) {
   try {
     if (user) {
@@ -207,26 +217,65 @@ async function onAuthChange(user) {
   }
 }
 
+// -------------------------------
+// DOM Event Handlers (delegated)
+// -------------------------------
 function attachDomEventHandlers() {
-  rebindNavigationButtons();
+  // Single delegated listener to handle navigation AND auth buttons reliably.
+  document.addEventListener(
+    "click",
+    (e) => {
+      const btn = e.target.closest("button, a");
+      if (!btn) return;
 
-  document.addEventListener("click", (e) => {
-    const btn = e.target.closest("button, a");
-    if (!btn) return;
-    if (btn.id === "login-btn" || btn.id === "google-signin-btn" || btn.id === "paywall-login-btn")
-      return signInWithGoogle();
-    if (btn.id === "logout-nav-btn") return signOut();
-  });
+      // Navigation controls (use IDs present in DOM)
+      if (btn.id === "prev-btn") {
+        e.preventDefault();
+        return handleNavigation(-1);
+      }
+      if (btn.id === "next-btn") {
+        e.preventDefault();
+        return handleNavigation(1);
+      }
+      if (btn.id === "submit-btn") {
+        e.preventDefault();
+        return handleSubmit();
+      }
+
+      // Auth & paywall buttons
+      if (btn.id === "login-btn" || btn.id === "google-signin-btn" || btn.id === "paywall-login-btn") {
+        e.preventDefault();
+        return signInWithGoogle();
+      }
+      if (btn.id === "logout-nav-btn") {
+        e.preventDefault();
+        return signOut();
+      }
+
+      // Back to chapter selection button (inside review)
+      if (btn.id === "back-to-chapters-btn") {
+        e.preventDefault();
+        return (window.location.href = "chapter-selection.html");
+      }
+    },
+    false
+  );
 }
 
+// -------------------------------
+// Initialize quiz engine
+// -------------------------------
 async function initQuizEngine() {
   try {
     UI.initializeElements();
     parseUrlParameters();
+
     UI.showStatus("Initializing services...");
     await initializeServices();
     await initializeAuthListener(onAuthChange);
+
     attachDomEventHandlers();
+
     UI.hideStatus();
     console.log("[ENGINE] Initialization complete.");
   } catch (err) {
