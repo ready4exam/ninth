@@ -65,7 +65,7 @@ const curriculum = {
         { id: "euclids_geometry", title: "Chapter 5: Introduction to Euclid’s Geometry" },
         { id: "lines_angles", title: "Chapter 6: Lines and Angles" },
         { id: "triangles_quiz", title: "Chapter 7: Triangles" },
-        { id: "quadrilaterals", title: "Chapter 8: Quadrilaterals" },
+        { id: "quadrilaterals_quiz", title: "Chapter 8: Quadrilaterals" },
         { id: "areas_shapes", title: "Chapter 9: Areas of Parallelograms and Triangles" },
         { id: "circles", title: "Chapter 10: Circles" },
         { id: "constructions", title: "Chapter 11: Constructions" }
