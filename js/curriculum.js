@@ -17,7 +17,7 @@ const curriculum = {
         { id: "structure_atom", title: "Chapter 4: Structure of the Atom" }
       ],
       "Biology": [
-        { id: "fundamental_unit_quiz", title: "Chapter 5: The Fundamental Unit of Life" },
+        { id: "the_fundamental_quiz", title: "Chapter 5: The Fundamental Unit of Life" },
         { id: "tissues_quiz", title: "Chapter 6: Tissues" },
         { id: "food_resources", title: "Chapter 15: Improvement in Food Resources" }
       ]
