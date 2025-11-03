@@ -13,7 +13,7 @@ const curriculum = {
       "Chemistry": [
         { id: "matter_surroundings", title: "Chapter 1: Matter in Our Surroundings" },
         { id: "matter_pure", title: "Chapter 2: Is Matter Around Us Pure" },
-        { id: "atom_molecules", title: "Chapter 3: Atoms and Molecules" },
+        { id: "atoms_and_quiz", title: "Chapter 3: Atoms and Molecules" },
         { id: "structure_atom", title: "Chapter 4: Structure of the Atom" }
       ],
       "Biology": [
