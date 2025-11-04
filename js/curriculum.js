@@ -44,7 +44,7 @@ const curriculum = {
         { id: "constitutional_design_quiz", title: "Chapter 2: Constitutional Design" },
         { id: "electoral_politics_quiz", title: "Chapter 3: Electoral Politics" },
         { id: "working_of_quiz", title: "Chapter 4: Working of Institutions" },
-        { id: "democratic_rights", title: "Chapter 5: Democratic Rights" }
+        { id: "democratic_rights_quiz", title: "Chapter 5: Democratic Rights" }
       ],
       "Economics": [
         { id: "village_palampur", title: "Chapter 1: The Story of Village Palampur" },
