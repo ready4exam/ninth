@@ -43,7 +43,7 @@ const curriculum = {
         { id: "what_is_quiz", title: "Chapter 1: What is Democracy? Why Democracy?" },
         { id: "constitutional_design_quiz", title: "Chapter 2: Constitutional Design" },
         { id: "electoral_politics_quiz", title: "Chapter 3: Electoral Politics" },
-        { id: "working_institutions", title: "Chapter 4: Working of Institutions" },
+        { id: "working_of_quiz", title: "Chapter 4: Working of Institutions" },
         { id: "democratic_rights", title: "Chapter 5: Democratic Rights" }
       ],
       "Economics": [
