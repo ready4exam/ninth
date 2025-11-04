@@ -40,7 +40,7 @@ const curriculum = {
         { id: "population_quiz", title: "Chapter 6: Population" }
       ],
       "Political_Science": [
-        { id: "what_is_democracy", title: "Chapter 1: What is Democracy? Why Democracy?" },
+        { id: "what_is_quiz", title: "Chapter 1: What is Democracy? Why Democracy?" },
         { id: "constitutional_design", title: "Chapter 2: Constitutional Design" },
         { id: "electoral_politics", title: "Chapter 3: Electoral Politics" },
         { id: "working_institutions", title: "Chapter 4: Working of Institutions" },
