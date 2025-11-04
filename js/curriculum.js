@@ -36,7 +36,7 @@ const curriculum = {
         { id: "physical_features_quiz", title: "Chapter 2: Physical Features of India" },
         { id: "drainage", title: "Chapter 3: Drainage" },
         { id: "climate_quiz", title: "Chapter 4: Climate" },
-        { id: "natural_veg", title: "Chapter 5: Natural Vegetation and Wildlife" },
+        { id: "natural_vegetation_quiz", title: "Chapter 5: Natural Vegetation and Wildlife" },
         { id: "population", title: "Chapter 6: Population" }
       ],
       "Political_Science": [
