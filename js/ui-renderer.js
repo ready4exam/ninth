@@ -15,10 +15,15 @@ function normalizeReasonText(txt) {
 export function initializeElements() {
   if (isInit) return;
   els = {
+    // primary title in the header (big Ready4Exam heading area)
     title: document.getElementById("quiz-page-title"),
+    // difficulty badge
     diffBadge: document.getElementById("difficulty-display"),
+    // status line
     status: document.getElementById("status-message"),
+    // question list container
     list: document.getElementById("question-list"),
+    // question counter
     counter: document.getElementById("question-counter"),
     prevButton: document.getElementById("prev-btn"),
     nextButton: document.getElementById("next-btn"),
@@ -31,6 +36,8 @@ export function initializeElements() {
     quizContent: document.getElementById("quiz-content"),
     reviewContainer: document.getElementById("review-container"),
     welcomeUser: document.getElementById("welcome-user"),
+    // small/left mini title (the extra Ready4Exam label you wanted removed)
+    miniTitle: document.getElementById("quiz-title"),
   };
 
   if (!els.reviewContainer) {
@@ -62,10 +69,21 @@ export function hideStatus() {
   if (els.status) els.status.classList.add("hidden");
 }
 
-export function updateHeader(topic, diff) {
+export function updateHeader(topicDisplayTitle, diff) {
   initializeElements();
+
+  // Remove the extra left-mini title (user requested removal)
+  if (els.miniTitle) {
+    // clear content to remove the duplicate/left Ready4Exam text
+    els.miniTitle.textContent = "";
+  }
+
   if (els.title) {
-    const text = topic ? `${topic.replace(/_/g, " ").toUpperCase()} Quiz` : "Ready4Exam Quiz";
+    // If a descriptive title was provided (e.g. "Chapter 3: Drainage") use it.
+    // Otherwise fallback to a humanized topic label.
+    const text = topicDisplayTitle
+      ? `${topicDisplayTitle}`
+      : "Ready4Exam Quiz";
     els.title.textContent = text;
   }
   if (els.diffBadge) {
