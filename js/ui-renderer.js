@@ -1,4 +1,4 @@
-// js/ui-renderer.js
+// js/ui-renderer.js 
 import { cleanKatexMarkers } from './utils.js';
 
 let els = {};
@@ -15,15 +15,10 @@ function normalizeReasonText(txt) {
 export function initializeElements() {
   if (isInit) return;
   els = {
-    // primary title in the header (big Ready4Exam heading area)
     title: document.getElementById("quiz-page-title"),
-    // difficulty badge
     diffBadge: document.getElementById("difficulty-display"),
-    // status line
     status: document.getElementById("status-message"),
-    // question list container
     list: document.getElementById("question-list"),
-    // question counter
     counter: document.getElementById("question-counter"),
     prevButton: document.getElementById("prev-btn"),
     nextButton: document.getElementById("next-btn"),
@@ -36,8 +31,8 @@ export function initializeElements() {
     quizContent: document.getElementById("quiz-content"),
     reviewContainer: document.getElementById("review-container"),
     welcomeUser: document.getElementById("welcome-user"),
-    // small/left mini title (the extra Ready4Exam label you wanted removed)
     miniTitle: document.getElementById("quiz-title"),
+    chapterNameDisplay: document.getElementById("chapter-name-display"), // ✅ added
   };
 
   if (!els.reviewContainer) {
@@ -72,20 +67,22 @@ export function hideStatus() {
 export function updateHeader(topicDisplayTitle, diff) {
   initializeElements();
 
-  // Remove the extra left-mini title (user requested removal)
-  if (els.miniTitle) {
-    // clear content to remove the duplicate/left Ready4Exam text
-    els.miniTitle.textContent = "";
-  }
+  // Remove old mini Ready4Exam label
+  if (els.miniTitle) els.miniTitle.textContent = "";
 
+  // Update main heading
   if (els.title) {
-    // If a descriptive title was provided (e.g. "Chapter 3: Drainage") use it.
-    // Otherwise fallback to a humanized topic label.
-    const text = topicDisplayTitle
-      ? `${topicDisplayTitle}`
-      : "Ready4Exam Quiz";
+    const text = topicDisplayTitle ? `${topicDisplayTitle}` : "Ready4Exam Quiz";
     els.title.textContent = text;
   }
+
+  // ✅ New: Also show chapter beside the home button
+  if (els.chapterNameDisplay) {
+    els.chapterNameDisplay.textContent = topicDisplayTitle || "";
+    els.chapterNameDisplay.classList.remove("hidden");
+  }
+
+  // Difficulty badge
   if (els.diffBadge) {
     els.diffBadge.textContent = `Difficulty: ${diff || "--"}`;
     els.diffBadge.classList.remove("hidden");
