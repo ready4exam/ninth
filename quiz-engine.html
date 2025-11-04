@@ -1,4 +1,39 @@
-<!-- Header -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ready4Exam | Quiz Engine</title>
+
+  <!-- Tailwind + Fonts -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            'cbse-blue': '#1a3e6a',
+            'cbse-light': '#f5f7fa',
+            'accent-gold': '#ffb703',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #f5f7fa; }
+    .option-label { transition: all 0.2s ease; }
+    .option-label.correct { border-color: #16a34a; background-color: #dcfce7; }
+    .option-label.incorrect { border-color: #dc2626; background-color: #fee2e2; }
+    .option-label:hover { border-color: #2563eb; }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col"><!-- Header -->
 <header class="bg-cbse-blue shadow-md py-4 px-6 flex justify-between items-center">
   <!-- Left section -->
   <div class="flex items-center space-x-4">
