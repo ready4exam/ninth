@@ -49,7 +49,7 @@ const curriculum = {
       "Economics": [
         { id: "the_story_quiz", title: "Chapter 1: The Story of Village Palampur" },
         { id: "people_as_quiz", title: "Chapter 2: People as Resource" },
-        { id: "poverty_challenge", title: "Chapter 3: Poverty as a Challenge" },
+        { id: "poverty_as_quiz", title: "Chapter 3: Poverty as a Challenge" },
         { id: "food_security_quiz", title: "Chapter 4: Food Security in India" }
       ]
     },
