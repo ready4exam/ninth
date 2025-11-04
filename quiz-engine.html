@@ -36,42 +36,39 @@
 <body class="min-h-screen flex flex-col">
 
   <!-- Header -->
-  <header class="bg-cbse-blue shadow-md py-4 px-6 flex justify-between items-center">
-    <!-- ✅ Added: quiz title will dynamically show the chapter name -->
-    <div>
-      <h2 id="quiz-title" class="text-xl font-bold text-accent-gold"></h2>
-      <p id="chapter-display" class="text-sm text-white opacity-90 mt-1"></p>
-    </div>
+  <!-- Header -->
+<header class="bg-cbse-blue shadow-md py-4 px-6 flex justify-between items-center">
+  <!-- LEFT: Home + Chapter Title + Tagline -->
+  <div class="flex items-center space-x-4">
+    <a href="index.html"
+       class="p-2 bg-white text-cbse-blue font-semibold rounded-full shadow hover:bg-gray-100 transition">
+      🏠
+    </a>
+    <div class="flex flex-col">
+      <!-- Dynamic Chapter Name -->
+      <h2 id="quiz-title" class="text-xl font-bold text-accent-gold leading-tight"></h2>
 
-    <!-- Left section -->
-    <div class="flex items-center space-x-4">
-      <a href="index.html"
-         class="p-2 bg-white text-cbse-blue font-semibold rounded-full shadow hover:bg-gray-100 transition">
-        🏠
-      </a>
-      <div>
-        <h1 id="quiz-page-title" class="text-2xl font-extrabold text-accent-gold tracking-wider">
-          Ready4<span class="text-white">Exam</span>
-        </h1>
-        <p class="text-sm text-white opacity-90 italic">
-          Ready4Exam helps students excel in school exams — a learning initiative by Ready4Industry.
-        </p>
-      </div>
+      <!-- Static tagline -->
+      <p class="text-sm text-white opacity-90 italic leading-snug">
+        Ready4Exam helps students excel in school exams — a learning initiative by Ready4Industry.
+      </p>
     </div>
+  </div>
 
-    <!-- Right section -->
-    <div id="auth-nav-container" class="flex items-center space-x-4">
-      <span id="welcome-user" class="hidden text-sm text-white"></span>
-      <span id="difficulty-display"
-        class="px-3 py-1 text-sm font-semibold bg-yellow-100 text-yellow-800 rounded-full">
-        Difficulty: Simple
-      </span>
-      <button id="logout-nav-btn"
-        class="hidden px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">
-        Sign Out
-      </button>
-    </div>
-  </header>
+  <!-- RIGHT: Difficulty + Auth Controls -->
+  <div id="auth-nav-container" class="flex items-center space-x-4">
+    <span id="welcome-user" class="hidden text-sm text-white"></span>
+    <span id="difficulty-display"
+      class="px-3 py-1 text-sm font-semibold bg-yellow-100 text-yellow-800 rounded-full">
+      Difficulty: Simple
+    </span>
+    <button id="logout-nav-btn"
+      class="hidden px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">
+      Sign Out
+    </button>
+  </div>
+</header>
+
 
   <!-- Status -->
   <div id="status-message" class="text-center p-6 font-semibold text-blue-700 hidden"></div>
