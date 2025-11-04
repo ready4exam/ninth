@@ -21,30 +21,21 @@
           }
         }
       }
-    }
+    };
   </script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
     body { font-family: 'Inter', sans-serif; }
     .cbse-blue { background-color: #1a3e6a; }
     .cbse-light { background-color: #f5f7fa; }
-    .header-bg { background-color: #1a3e6a; }
-    .card { @apply bg-white p-6 rounded-xl shadow-lg border border-gray-200; }
-    .topic-btn {
-      @apply flex items-center justify-between p-4 bg-white border border-gray-300 rounded-lg shadow-sm cursor-pointer hover:bg-cbse-light transition-all duration-200;
-    }
-    .topic-btn.selected {
-      @apply border-cbse-blue bg-blue-50/50 shadow-md;
-    }
-    .difficulty-btn {
-      @apply px-5 py-3 rounded-xl font-semibold transition-colors duration-200 border-2;
-    }
-    .difficulty-btn.selected {
-      @apply ring-4 ring-cbse-blue/50;
-    }
-    .sub-subject-btn.selected {
-      @apply border-4 border-cbse-blue ring-2 ring-cbse-blue/30;
-    }
+    /* Tailwind @apply inlined classes for safety in static file */
+    .card { background: white; padding: 1.5rem; border-radius: .75rem; box-shadow: 0 8px 20px rgba(2,6,23,0.06); border: 1px solid #e5e7eb; }
+    .topic-btn { display:flex; align-items:center; justify-content:space-between; padding:1rem; background:white; border:1px solid #d1d5db; border-radius:.5rem; box-shadow: 0 2px 6px rgba(2,6,23,0.04); cursor:pointer; transition: all .18s; }
+    .topic-btn:hover { background: #f5f7fa; }
+    .topic-btn.selected { border-color:#1a3e6a; background:#eff6ff; box-shadow:0 6px 18px rgba(2,6,23,0.06); }
+    .difficulty-btn { padding:.6rem 1.25rem; border-radius: .75rem; font-weight:600; transition: all .15s; border:2px solid transparent; cursor:pointer; }
+    .difficulty-btn.selected { box-shadow: 0 6px 18px rgba(26,62,106,0.14); outline: none; }
+    .sub-subject-btn.selected { border:4px solid #1a3e6a; box-shadow: 0 8px 24px rgba(26,62,106,0.06); }
   </style>
 </head>
 
@@ -81,19 +72,12 @@
       <div id="difficulty-selection-container" class="space-y-6 mb-10 hidden">
         <h3 class="text-2xl font-bold text-gray-800 border-b pb-2">3. Select Quiz Difficulty</h3>
 
-        <!-- ✅ Added: display current selected chapter name -->
-        <p id="selected-chapter-display" class="text-center text-blue-700 font-semibold hidden"></p>
+        <p id="selected-chapter-display" class="text-center text-cbse-blue font-semibold mb-4 hidden"></p>
 
         <div id="difficulty-selection" class="flex flex-wrap justify-center gap-4">
-          <button data-difficulty="simple" class="difficulty-btn bg-green-500 text-white hover:bg-green-600 border-green-500">
-            Simple (Easy)
-          </button>
-          <button data-difficulty="medium" class="difficulty-btn bg-yellow-500 text-white hover:bg-yellow-600 border-yellow-500">
-            Medium
-          </button>
-          <button data-difficulty="advanced" class="difficulty-btn bg-red-500 text-white hover:bg-red-600 border-red-500">
-            Advanced (Hard)
-          </button>
+          <button data-difficulty="simple" class="difficulty-btn" style="background:#16a34a;color:white;border-color:#16a34a">Simple (Easy)</button>
+          <button data-difficulty="medium" class="difficulty-btn" style="background:#f59e0b;color:white;border-color:#f59e0b">Medium</button>
+          <button data-difficulty="advanced" class="difficulty-btn" style="background:#ef4444;color:white;border-color:#ef4444">Advanced (Hard)</button>
         </div>
       </div>
 
@@ -120,6 +104,7 @@
   <script type="module">
     import curriculumData from './js/curriculum.js';
 
+    // DOM refs
     const pageTitleEl = document.getElementById('page-title');
     const subSubjectListEl = document.getElementById('sub-subject-list');
     const chapterSelectionContainerEl = document.getElementById('chapter-selection-container');
@@ -129,26 +114,27 @@
     const startQuizBtn = document.getElementById('start-quiz-btn');
     const errorMessageEl = document.getElementById('error-message');
     const subjectSelectionContainerEl = document.getElementById('subject-selection-container');
-    const selectedChapterDisplayEl = document.getElementById('selected-chapter-display'); // ✅ Added
+    const selectedChapterDisplay = document.getElementById('selected-chapter-display');
 
+    // state
     let selectedTopic = null;
+    let selectedTopicTitle = null;
     let selectedDifficulty = null;
     let selectedSubSubject = null;
-    let selectedChapterTitle = null; // ✅ Added
     let currentClass = '9';
     let currentSubject = '';
 
+    // -- FUNCTIONS (defined before any call) --
+
     function handleTopicSelection(topicId, buttonElement) {
       selectedTopic = topicId;
-
-      // ✅ Added: save chapter title & persist for quiz-engine.html
-      selectedChapterTitle = buttonElement.querySelector('span').textContent.trim();
-      localStorage.setItem('selectedChapter', selectedChapterTitle);
-      selectedChapterDisplayEl.textContent = `Selected Chapter: ${selectedChapterTitle}`;
-      selectedChapterDisplayEl.classList.remove('hidden');
+      selectedTopicTitle = buttonElement.querySelector('span')?.textContent?.trim() || topicId;
 
       document.querySelectorAll('.topic-btn').forEach(btn => btn.classList.remove('selected'));
       buttonElement.classList.add('selected');
+
+      selectedChapterDisplay.textContent = `Selected Chapter: ${selectedTopicTitle}`;
+      selectedChapterDisplay.classList.remove('hidden');
 
       difficultySelectionContainerEl.classList.remove('hidden');
       if (selectedDifficulty) startQuizBtn.disabled = false;
@@ -157,37 +143,139 @@
 
     function handleDifficultySelection(difficulty, buttonElement) {
       selectedDifficulty = difficulty;
+
       difficultySelectionEl.querySelectorAll('.difficulty-btn').forEach(btn => {
-        btn.classList.remove('selected', 'bg-cbse-blue', 'text-white', 'border-cbse-blue');
-        const type = btn.dataset.difficulty;
-        btn.classList.add(
-          type === 'simple' ? 'bg-green-500' :
-          type === 'medium' ? 'bg-yellow-500' : 'bg-red-500',
-          'text-white', `hover:bg-${type === 'simple' ? 'green' : type === 'medium' ? 'yellow' : 'red'}-600`,
-          `border-${type === 'simple' ? 'green' : type === 'medium' ? 'yellow' : 'red'}-500`
-        );
+        btn.classList.remove('selected');
+        // restore original inline backgrounds (not changing functionality)
+        const diff = btn.dataset.difficulty;
+        if (diff === 'simple') { btn.style.background = '#16a34a'; btn.style.color = 'white'; }
+        else if (diff === 'medium') { btn.style.background = '#f59e0b'; btn.style.color = 'white'; }
+        else { btn.style.background = '#ef4444'; btn.style.color = 'white'; }
       });
-      buttonElement.classList.add('selected', 'bg-cbse-blue', 'text-white', 'border-cbse-blue');
+
+      buttonElement.classList.add('selected');
+      buttonElement.style.background = '#1a3e6a';
+      buttonElement.style.color = '#fff';
+
       if (selectedTopic) startQuizBtn.disabled = false;
       errorMessageEl.classList.add('hidden');
     }
 
-    // ... rest of your code below (unchanged) ...
-    // keep renderSubSubjects(), renderChapters(), handleSubSubjectSelection(), handleStartQuiz(), initPage()
+    function handleSubSubjectSelection(subSubjectId, buttonElement) {
+      selectedSubSubject = subSubjectId;
+      document.querySelectorAll('.sub-subject-btn').forEach(btn => btn.classList.remove('selected'));
+      buttonElement.classList.add('selected');
 
-    document.addEventListener('DOMContentLoaded', () => {
+      renderChapters(currentClass, currentSubject, selectedSubSubject);
+
+      subjectSelectionContainerEl.classList.add('hidden');
+      chapterSelectionContainerEl.classList.remove('hidden');
+      selectedTopic = null;
+      selectedDifficulty = null;
+      startQuizBtn.disabled = true;
+      difficultySelectionContainerEl.classList.add('hidden');
+      errorMessageEl.classList.add('hidden');
+    }
+
+    function renderSubSubjects(classId, subject) {
+      subSubjectListEl.innerHTML = '';
+      const subjectData = curriculumData[classId]?.[subject];
+
+      if (subjectData && typeof subjectData === 'object' && !Array.isArray(subjectData)) {
+        const subSubjectNames = Object.keys(subjectData);
+        subSubjectNames.forEach(name => {
+          const card = document.createElement('div');
+          card.className = 'sub-subject-btn card flex flex-col justify-between cursor-pointer transition';
+          card.innerHTML = `<h4 class="text-xl font-bold text-heading mb-2">${name.replace(/_/g, ' ')}</h4>
+                            <p class="text-sm text-gray-600">${(Array.isArray(subjectData[name]) ? subjectData[name].length : 0)} Chapters available.</p>`;
+          card.addEventListener('click', (e) => handleSubSubjectSelection(name, e.currentTarget));
+          subSubjectListEl.appendChild(card);
+        });
+        pageTitleEl.textContent = `${subject.replace(/_/g, ' ')} - Select Sub-Subject`;
+        subjectSelectionContainerEl.classList.remove('hidden');
+        chapterSelectionContainerEl.classList.add('hidden');
+        difficultySelectionContainerEl.classList.add('hidden');
+      } else if (Array.isArray(subjectData)) {
+        // Subject directly contains chapters
+        selectedSubSubject = null;
+        subjectSelectionContainerEl.classList.add('hidden');
+        renderChapters(classId, subject, selectedSubSubject);
+      } else {
+        pageTitleEl.textContent = `Error: Curriculum Not Found`;
+        subSubjectListEl.innerHTML = `<p class="text-red-500 font-semibold text-center">No chapters/sub-subjects found for subject <strong>${subject}</strong> in class ${classId}.</p>`;
+        subjectSelectionContainerEl.classList.remove('hidden');
+        chapterSelectionContainerEl.classList.add('hidden');
+        difficultySelectionContainerEl.classList.add('hidden');
+      }
+    }
+
+    // Expose to global in case non-module code calls it
+    window.renderSubSubjects = renderSubSubjects;
+
+    function renderChapters(classId, subject, subSubject) {
+      topicListEl.innerHTML = '';
+      const chapters = subSubject ? (curriculumData[classId]?.[subject]?.[subSubject] || []) : (curriculumData[classId]?.[subject] || []);
+      pageTitleEl.textContent = subSubject ? `${subSubject.replace(/_/g,' ')} Chapters` : `${subject.replace(/_/g,' ')} Chapters`;
+
+      console.log(`[RENDER] Chapters Load Check: Subject=${subject}, SubSubject=${subSubject}, Found=${chapters.length}`);
+
+      if (chapters.length > 0) {
+        chapters.forEach(chapter => {
+          const button = document.createElement('button');
+          button.className = 'topic-btn';
+          button.innerHTML = `<span class="text-left font-semibold text-gray-800">${chapter.title}</span><i data-lucide="chevron-right" class="w-5 h-5 text-cbse-blue"></i>`;
+          button.addEventListener('click', (e) => handleTopicSelection(chapter.id, e.currentTarget));
+          topicListEl.appendChild(button);
+        });
+        chapterSelectionContainerEl.classList.remove('hidden');
+      } else {
+        topicListEl.innerHTML = `<p class="text-center text-gray-500">No chapters available for this section yet.</p>`;
+        chapterSelectionContainerEl.classList.remove('hidden');
+      }
       lucide.createIcons();
+    }
+
+    function handleStartQuiz() {
+      if (selectedTopic && selectedDifficulty) {
+        let url = `quiz-engine.html?class=${currentClass}&subject=${encodeURIComponent(currentSubject)}&topic=${selectedTopic}&difficulty=${selectedDifficulty}`;
+        if (selectedSubSubject) url += `&sub_subject=${encodeURIComponent(selectedSubSubject)}`;
+        if (selectedTopicTitle) url += `&chapter_title=${encodeURIComponent(selectedTopicTitle)}`;
+        window.location.href = url;
+      } else {
+        errorMessageEl.classList.remove('hidden');
+      }
+    }
+
+    // Initialization runs on DOMContentLoaded — functions are already defined and `renderSubSubjects` is on window
+    function initPage() {
+      lucide.createIcons();
+      console.log('[CHAPTER_SELECTION] initPage start');
+
       const params = new URLSearchParams(window.location.search);
       currentSubject = decodeURIComponent(params.get('subject') || 'Science');
       currentClass = params.get('class') || '9';
-      if (curriculumData[currentClass]?.[currentSubject]) {
+
+      if (curriculumData[currentClass] && currentSubject in curriculumData[currentClass]) {
         renderSubSubjects(currentClass, currentSubject);
+      } else {
+        pageTitleEl.textContent = 'Error: Invalid Subject/Class';
+        subjectSelectionContainerEl.innerHTML = `<p class="text-red-500 font-semibold text-center">The requested subject (<strong>${currentSubject}</strong>) or class could not be found in the curriculum data. Please go back to the <a href="index.html" class="text-blue-600 hover:text-blue-800 underline">Main Page</a>.</p>`;
+        subjectSelectionContainerEl.classList.remove('hidden');
+        chapterSelectionContainerEl.classList.add('hidden');
+        difficultySelectionContainerEl.classList.add('hidden');
       }
+
       difficultySelectionEl.querySelectorAll('.difficulty-btn').forEach(btn => {
-        btn.addEventListener('click', e => handleDifficultySelection(e.currentTarget.dataset.difficulty, e.currentTarget));
+        btn.addEventListener('click', (e) => {
+          handleDifficultySelection(e.currentTarget.dataset.difficulty, e.currentTarget);
+        });
       });
+
       startQuizBtn.addEventListener('click', handleStartQuiz);
-    });
+      console.log('[CHAPTER_SELECTION] initPage end');
+    }
+
+    document.addEventListener('DOMContentLoaded', initPage);
   </script>
 </body>
 </html>
