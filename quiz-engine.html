@@ -37,7 +37,12 @@
 
   <!-- Header -->
   <header class="bg-cbse-blue shadow-md py-4 px-6 flex justify-between items-center">
-    <h2 id="quiz-title"></h2>
+    <!-- ✅ Added: quiz title will dynamically show the chapter name -->
+    <div>
+      <h2 id="quiz-title" class="text-xl font-bold text-accent-gold"></h2>
+      <p id="chapter-display" class="text-sm text-white opacity-90 mt-1"></p>
+    </div>
+
     <!-- Left section -->
     <div class="flex items-center space-x-4">
       <a href="index.html"
@@ -125,6 +130,23 @@
       "appId": "1:863414222321:web:819f5564825308bcd9d850",
       "measurementId": "G-4EFDM0CRYY",
       "clientId": "863414222321-XXXX.apps.googleusercontent.com"
+    });
+  </script>
+
+  <!-- ✅ Added Script for Chapter Display -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const chapter = localStorage.getItem("selectedChapter");
+      const quizTitle = document.getElementById("quiz-title");
+      const chapterDisplay = document.getElementById("chapter-display");
+
+      if (chapter) {
+        quizTitle.textContent = "Now Playing:";
+        chapterDisplay.textContent = chapter;
+      } else {
+        quizTitle.textContent = "Ready4Exam Quiz";
+        chapterDisplay.textContent = "";
+      }
     });
   </script>
 
