@@ -3,6 +3,7 @@
 // Core quiz logic: loading questions, tracking progress, auth state, GA4 logging
 // -----------------------------------------------------------------------------
 
+
 import { initializeServices, getAuthUser } from "./config.js";
 import { fetchQuestions, saveResult } from "./api.js";
 import * as UI from "./ui-renderer.js";
@@ -12,16 +13,14 @@ import {
   signInWithGoogle,
   signOut,
 } from "./auth-paywall.js";
+import curriculumData from "./curriculum.js"; // <-- used to map slug -> full chapter title
 
-// -------------------------------
 // Global quiz state
-// -------------------------------
 let quizState = {
   classId: null,
   subject: null,
   topicSlug: null,
   difficulty: null,
-  chapterName: null,
   questions: [],
   currentQuestionIndex: 0,
   userAnswers: {},
@@ -42,7 +41,57 @@ async function hashEmail(email) {
 }
 
 // -------------------------------
-// Parse quiz parameters from URL
+// Convert slug to readable fallback
+// -------------------------------
+function humanizeSlug(slug) {
+  if (!slug) return "";
+  return slug
+    .replace(/_/g, " ")
+    .split(" ")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+// -------------------------------
+// Find chapter title from curriculum (safe search across sub-subjects)
+// Returns the full title (e.g. "Chapter 3: Drainage") or null
+// -------------------------------
+function findChapterTitle(classId, subject, topicSlug) {
+  try {
+    if (!classId || !subject || !topicSlug) return null;
+    const classBlock = curriculumData?.[classId];
+    if (!classBlock) return null;
+
+    const subjectBlock = classBlock[subject];
+    if (!subjectBlock) return null;
+
+    // If subjectBlock is an object (has sub-subjects), search each array
+    if (typeof subjectBlock === "object" && !Array.isArray(subjectBlock)) {
+      for (const sub in subjectBlock) {
+        const arr = subjectBlock[sub];
+        if (!Array.isArray(arr)) continue;
+        for (const ch of arr) {
+          if (ch?.id === topicSlug) return ch?.title || null;
+        }
+      }
+    }
+
+    // If subjectBlock itself is an array of chapters
+    if (Array.isArray(subjectBlock)) {
+      for (const ch of subjectBlock) {
+        if (ch?.id === topicSlug) return ch?.title || null;
+      }
+    }
+
+    return null;
+  } catch (e) {
+    console.warn("[ENGINE] findChapterTitle failed:", e);
+    return null;
+  }
+}
+
+// -------------------------------
+// Parse quiz parameters
 // -------------------------------
 function parseUrlParameters() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -50,18 +99,20 @@ function parseUrlParameters() {
   quizState.subject = urlParams.get("subject");
   quizState.topicSlug = urlParams.get("topic");
   quizState.difficulty = urlParams.get("difficulty");
-  quizState.chapterName = urlParams.get("chapter")
-    ? decodeURIComponent(urlParams.get("chapter"))
-    : quizState.topicSlug;
 
   if (!quizState.topicSlug) throw new Error("Missing topic parameter.");
 
-  // Update header with readable chapter name
-  UI.updateHeader(quizState.chapterName, quizState.difficulty);
+  // Resolve display title using curriculum.js. Fallback to humanized slug.
+  const displayTitle =
+    findChapterTitle(quizState.classId, quizState.subject, quizState.topicSlug) ||
+    humanizeSlug(quizState.topicSlug) + (humanizeSlug(quizState.topicSlug) ? " Quiz" : "");
+
+  // now update header with the resolved *chapter title*
+  UI.updateHeader(displayTitle, quizState.difficulty);
 }
 
 // -------------------------------
-// Render current question
+// Render question (index is zero-based internal)
 // -------------------------------
 function renderQuestion() {
   const idx = quizState.currentQuestionIndex;
@@ -71,8 +122,12 @@ function renderQuestion() {
     return;
   }
 
+  // UI.renderQuestion expects idxOneBased
   UI.renderQuestion(q, idx + 1, quizState.userAnswers[q.id], quizState.isSubmitted);
+
+  // Update navigation UI and counter
   UI.updateNavigation?.(idx, quizState.questions.length, quizState.isSubmitted);
+
   UI.hideStatus();
 }
 
@@ -93,11 +148,12 @@ function handleNavigation(dir) {
 function handleAnswerSelection(questionId, selectedOption) {
   if (quizState.isSubmitted) return;
   quizState.userAnswers[questionId] = selectedOption;
-  renderQuestion(); // re-render to reflect selected option
+  // Re-render to reflect selection (UI.renderQuestion will show selected state)
+  renderQuestion();
 }
 
 // -------------------------------
-// Submit quiz
+// Submit quiz: compute score, save, GA logging
 // -------------------------------
 async function handleSubmit() {
   if (quizState.isSubmitted) return;
@@ -158,6 +214,7 @@ async function handleSubmit() {
     }
   }
 
+  // Show results and review
   quizState.currentQuestionIndex = 0;
   renderQuestion();
   UI.showResults(quizState.score, quizState.questions.length);
@@ -166,7 +223,7 @@ async function handleSubmit() {
 }
 
 // -------------------------------
-// Load quiz data
+// Load quiz questions
 // -------------------------------
 async function loadQuiz() {
   try {
@@ -179,7 +236,7 @@ async function loadQuiz() {
     quizState.currentQuestionIndex = 0;
     quizState.isSubmitted = false;
 
-    // GA4 event
+    // GA4: quiz started
     try {
       if (typeof gtag === "function") {
         gtag("event", "quiz_started", {
@@ -192,6 +249,7 @@ async function loadQuiz() {
     }
 
     renderQuestion();
+    // Attach answer listeners to the question-list container (delegated change handler inside UI)
     UI.attachAnswerListeners?.(handleAnswerSelection);
     UI.showView?.("quiz-content");
   } catch (err) {
@@ -220,36 +278,44 @@ async function onAuthChange(user) {
 }
 
 // -------------------------------
-// Event listeners
+// DOM Event Handlers (delegated)
 // -------------------------------
 function attachDomEventHandlers() {
+  // Single delegated listener to handle navigation AND auth buttons reliably.
   document.addEventListener(
     "click",
     (e) => {
       const btn = e.target.closest("button, a");
       if (!btn) return;
 
-      switch (btn.id) {
-        case "prev-btn":
-          e.preventDefault();
-          return handleNavigation(-1);
-        case "next-btn":
-          e.preventDefault();
-          return handleNavigation(1);
-        case "submit-btn":
-          e.preventDefault();
-          return handleSubmit();
-        case "login-btn":
-        case "google-signin-btn":
-        case "paywall-login-btn":
-          e.preventDefault();
-          return signInWithGoogle();
-        case "logout-nav-btn":
-          e.preventDefault();
-          return signOut();
-        case "back-to-chapters-btn":
-          e.preventDefault();
-          return (window.location.href = "chapter-selection.html");
+      // Navigation controls (use IDs present in DOM)
+      if (btn.id === "prev-btn") {
+        e.preventDefault();
+        return handleNavigation(-1);
+      }
+      if (btn.id === "next-btn") {
+        e.preventDefault();
+        return handleNavigation(1);
+      }
+      if (btn.id === "submit-btn") {
+        e.preventDefault();
+        return handleSubmit();
+      }
+
+      // Auth & paywall buttons
+      if (btn.id === "login-btn" || btn.id === "google-signin-btn" || btn.id === "paywall-login-btn") {
+        e.preventDefault();
+        return signInWithGoogle();
+      }
+      if (btn.id === "logout-nav-btn") {
+        e.preventDefault();
+        return signOut();
+      }
+
+      // Back to chapter selection button (inside review)
+      if (btn.id === "back-to-chapters-btn") {
+        e.preventDefault();
+        return (window.location.href = "chapter-selection.html");
       }
     },
     false
