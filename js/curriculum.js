@@ -37,7 +37,7 @@ const curriculum = {
         { id: "drainage", title: "Chapter 3: Drainage" },
         { id: "climate_quiz", title: "Chapter 4: Climate" },
         { id: "natural_vegetation_quiz", title: "Chapter 5: Natural Vegetation and Wildlife" },
-        { id: "population", title: "Chapter 6: Population" }
+        { id: "population_quiz", title: "Chapter 6: Population" }
       ],
       "Political_Science": [
         { id: "what_is_democracy", title: "Chapter 1: What is Democracy? Why Democracy?" },
