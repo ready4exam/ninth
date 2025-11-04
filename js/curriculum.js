@@ -27,7 +27,7 @@ const curriculum = {
       "History": [
         { id: "the_french_revolution", title: "Chapter 1: The French Revolution" },
         { id: "socialism_in_quiz", title: "Chapter 2: Socialism in Europe and the Russian Revolution" },
-        { id: "nazism", title: "Chapter 3: Nazism and the Rise of Hitler" },
+        { id: "nazism_and_quiz", title: "Chapter 3: Nazism and the Rise of Hitler" },
         { id: "forest_society", title: "Chapter 4: Forest Society and Colonialism" },
         { id: "pastoralists", title: "Chapter 5: Pastoralists in the Modern World" }
       ],
