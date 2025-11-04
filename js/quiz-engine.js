@@ -48,11 +48,15 @@ function parseUrlParameters() {
   quizState.topicSlug = urlParams.get("topic");
   quizState.difficulty = urlParams.get("difficulty");
   if (!quizState.topicSlug) throw new Error("Missing topic parameter.");
-  UI.updateHeader(quizState.topicSlug, quizState.difficulty);
+
+  // ✅ Added: Prefer real chapter name from localStorage (set in chapter-selection.html)
+  const storedChapterName = localStorage.getItem("selectedChapter");
+  const displayTitle = storedChapterName || quizState.topicSlug.replace(/_/g, " ");
+  UI.updateHeader(displayTitle, quizState.difficulty);
 }
 
 // -------------------------------
-// Render question (index is zero-based internal)
+// Render question
 // -------------------------------
 function renderQuestion() {
   const idx = quizState.currentQuestionIndex;
@@ -62,12 +66,8 @@ function renderQuestion() {
     return;
   }
 
-  // UI.renderQuestion expects idxOneBased
   UI.renderQuestion(q, idx + 1, quizState.userAnswers[q.id], quizState.isSubmitted);
-
-  // Update navigation UI and counter
   UI.updateNavigation?.(idx, quizState.questions.length, quizState.isSubmitted);
-
   UI.hideStatus();
 }
 
@@ -88,12 +88,11 @@ function handleNavigation(dir) {
 function handleAnswerSelection(questionId, selectedOption) {
   if (quizState.isSubmitted) return;
   quizState.userAnswers[questionId] = selectedOption;
-  // Re-render to reflect selection (UI.renderQuestion will show selected state)
   renderQuestion();
 }
 
 // -------------------------------
-// Submit quiz: compute score, save, GA logging
+// Submit quiz
 // -------------------------------
 async function handleSubmit() {
   if (quizState.isSubmitted) return;
@@ -154,7 +153,6 @@ async function handleSubmit() {
     }
   }
 
-  // Show results and review
   quizState.currentQuestionIndex = 0;
   renderQuestion();
   UI.showResults(quizState.score, quizState.questions.length);
@@ -176,7 +174,6 @@ async function loadQuiz() {
     quizState.currentQuestionIndex = 0;
     quizState.isSubmitted = false;
 
-    // GA4: quiz started
     try {
       if (typeof gtag === "function") {
         gtag("event", "quiz_started", {
@@ -189,7 +186,6 @@ async function loadQuiz() {
     }
 
     renderQuestion();
-    // Attach answer listeners to the question-list container (delegated change handler inside UI)
     UI.attachAnswerListeners?.(handleAnswerSelection);
     UI.showView?.("quiz-content");
   } catch (err) {
@@ -199,7 +195,7 @@ async function loadQuiz() {
 }
 
 // -------------------------------
-// Auth state callback
+// Auth state
 // -------------------------------
 async function onAuthChange(user) {
   try {
@@ -218,17 +214,15 @@ async function onAuthChange(user) {
 }
 
 // -------------------------------
-// DOM Event Handlers (delegated)
+// DOM Event Handlers
 // -------------------------------
 function attachDomEventHandlers() {
-  // Single delegated listener to handle navigation AND auth buttons reliably.
   document.addEventListener(
     "click",
     (e) => {
       const btn = e.target.closest("button, a");
       if (!btn) return;
 
-      // Navigation controls (use IDs present in DOM)
       if (btn.id === "prev-btn") {
         e.preventDefault();
         return handleNavigation(-1);
@@ -241,8 +235,6 @@ function attachDomEventHandlers() {
         e.preventDefault();
         return handleSubmit();
       }
-
-      // Auth & paywall buttons
       if (btn.id === "login-btn" || btn.id === "google-signin-btn" || btn.id === "paywall-login-btn") {
         e.preventDefault();
         return signInWithGoogle();
@@ -251,8 +243,6 @@ function attachDomEventHandlers() {
         e.preventDefault();
         return signOut();
       }
-
-      // Back to chapter selection button (inside review)
       if (btn.id === "back-to-chapters-btn") {
         e.preventDefault();
         return (window.location.href = "chapter-selection.html");
@@ -273,7 +263,6 @@ async function initQuizEngine() {
     UI.showStatus("Initializing services...");
     await initializeServices();
     await initializeAuthListener(onAuthChange);
-
     attachDomEventHandlers();
 
     UI.hideStatus();
