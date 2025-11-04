@@ -73,7 +73,7 @@ const curriculum = {
       "Mensuration_And_Data": [
         { id: "herons_formula", title: "Chapter 12: Heron’s Formula" },
         { id: "surface_areas_quiz", title: "Chapter 13: Surface Areas and Volumes" },
-        { id: "statistics", title: "Chapter 14: Statistics" },
+        { id: "statistics_quiz", title: "Chapter 14: Statistics" },
         { id: "probability_quiz", title: "Chapter 15: Probability" }
       ]
     }
