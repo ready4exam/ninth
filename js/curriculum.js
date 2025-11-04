@@ -34,7 +34,7 @@ const curriculum = {
       "Geography": [
         { id: "india_size", title: "Chapter 1: India – Size and Location" },
         { id: "physical_features_quiz", title: "Chapter 2: Physical Features of India" },
-        { id: "drainage", title: "Chapter 3: Drainage" },
+        { id: "drainage_quiz", title: "Chapter 3: Drainage" },
         { id: "climate_quiz", title: "Chapter 4: Climate" },
         { id: "natural_vegetation_quiz", title: "Chapter 5: Natural Vegetation and Wildlife" },
         { id: "population_quiz", title: "Chapter 6: Population" }
