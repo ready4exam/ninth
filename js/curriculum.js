@@ -57,7 +57,7 @@ const curriculum = {
     "Mathematics": {
       "Number_And_Algebra": [
         { id: "number_systems_quiz", title: "Chapter 1: Number Systems" },
-        { id: "polynomials", title: "Chapter 2: Polynomials" },
+        { id: "polynomials_quiz", title: "Chapter 2: Polynomials" },
         { id: "linear_equations", title: "Chapter 3: Linear Equations in Two Variables" },
         { id: "coordinate_geometry", title: "Chapter 4: Coordinate Geometry" }
       ],
