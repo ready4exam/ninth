@@ -66,7 +66,7 @@ const curriculum = {
         { id: "lines_and_quiz", title: "Chapter 6: Lines and Angles" },
         { id: "triangles_quiz", title: "Chapter 7: Triangles" },
         { id: "quadrilaterals_quiz", title: "Chapter 8: Quadrilaterals" },
-        { id: "areas_shapes", title: "Chapter 9: Areas of Parallelograms and Triangles" },
+        { id: "triangles_quiz", title: "Chapter 9: Areas of Parallelograms and Triangles" },
         { id: "circles_quiz", title: "Chapter 10: Circles" },
         { id: "constructions", title: "Chapter 11: Constructions" }
       ],
